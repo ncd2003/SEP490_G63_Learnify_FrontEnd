@@ -5,6 +5,7 @@ import RegisterScreen from "../pages/Register.jsx";
 import OtpVerification from "../pages/OtpVerification.jsx";
 import HomePage from "../pages/Home.jsx";
 import OAuth2Redirect from "../pages/OAuth2Redirect.jsx";
+import UserProfile from "../pages/UserProfile.jsx";
 
 const router = createBrowserRouter([
   {
@@ -26,6 +27,10 @@ const router = createBrowserRouter([
   {
     path: "/home",
     element: <HomePage />,
+  },
+  {
+    path: "/profile",
+    element: <UserProfile />,
   },
   {
     path: "/oauth2/redirect",

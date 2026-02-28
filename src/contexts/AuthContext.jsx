@@ -5,7 +5,7 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import authApi from "../api/authApi";
+import authApi from "../apis/authApi";
 
 const AuthContext = createContext(null);
 
