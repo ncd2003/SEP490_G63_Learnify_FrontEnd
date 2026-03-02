@@ -39,8 +39,8 @@ const UserProfile = () => {
   const [profileData, setProfileData] = useState({
     fullName: "",
     email: "",
-    phone: "",
-    dateOfBirth: "",
+    phoneNumber: "",
+    birthDate: "",
     address: "",
     role: "",
   });
@@ -49,6 +49,8 @@ const UserProfile = () => {
   const [avatarFile, setAvatarFile] = useState(null); // actual File object for upload
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  // Snapshot để restore khi Cancel
+  const originalProfileData = useRef(null);
 
   // Change password state
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -83,27 +85,31 @@ const UserProfile = () => {
         }
         const response = await userApi.getProfile(userId);
         const data = response.result;
-        setProfileData({
+        const mapped = {
           fullName: data.fullName || "",
           email: data.email || "",
-          phone: data.phone || "",
-          dateOfBirth: data.dateOfBirth || "",
+          phoneNumber: data.phoneNumber || "",
+          birthDate: data.birthDate || "",
           address: data.address || "",
           role: mapRole(data.role),
-        });
+        };
+        setProfileData(mapped);
+        originalProfileData.current = mapped;
         setAvatarUrl(data.avatarUrl || null);
       } catch (error) {
         console.error("Failed to load profile:", error);
         // Fallback to AuthContext data
         if (user) {
-          setProfileData({
+          const fallback = {
             fullName: user.fullName || "",
             email: user.email || "",
-            phone: user.phone || "",
-            dateOfBirth: user.dateOfBirth || "",
+            phoneNumber: user.phoneNumber || "",
+            birthDate: user.birthDate || "",
             address: user.address || "",
             role: mapRole(user.role),
-          });
+          };
+          setProfileData(fallback);
+          originalProfileData.current = fallback;
           setAvatarUrl(user.avatarUrl || null);
         }
       } finally {
@@ -148,8 +154,8 @@ const UserProfile = () => {
         const response = await userApi.updateProfile(
           {
             fullName: profileData.fullName,
-            phone: profileData.phone,
-            dateOfBirth: profileData.dateOfBirth,
+            phoneNumber: profileData.phoneNumber,
+            birthDate: profileData.birthDate,
             address: profileData.address,
           },
           file,
@@ -183,15 +189,9 @@ const UserProfile = () => {
     setIsEditing(false);
     setAvatarFile(null);
     setAvatarPreview(null);
-    // Reload original data
-    if (user) {
-      setProfileData((prev) => ({
-        ...prev,
-        fullName: user.fullName || prev.fullName,
-        phone: user.phone || prev.phone,
-        dateOfBirth: user.dateOfBirth || prev.dateOfBirth,
-        address: user.address || prev.address,
-      }));
+    // Restore snapshot chụp lúc load — giữ nguyên phone & dateOfBirth
+    if (originalProfileData.current) {
+      setProfileData(originalProfileData.current);
     }
   };
 
@@ -204,15 +204,27 @@ const UserProfile = () => {
       const response = await userApi.updateProfile(
         {
           fullName: profileData.fullName,
-          phone: profileData.phone,
-          dateOfBirth: profileData.dateOfBirth,
+          phoneNumber: profileData.phoneNumber,
+          birthDate: profileData.birthDate,
           address: profileData.address,
         },
         avatarFile, // null nếu không chọn ảnh mới
       );
       const updated = response.result;
-      // Sync lại avatar URL từ server nếu có
-      if (updated?.avatarUrl) setAvatarUrl(updated.avatarUrl);
+      // Sync tất cả fields từ response (server có thể format lại)
+      if (updated) {
+        const synced = {
+          fullName: updated.fullName || profileData.fullName,
+          email: updated.email || profileData.email,
+          phoneNumber: updated.phoneNumber || profileData.phoneNumber,
+          birthDate: updated.birthDate || profileData.birthDate,
+          address: updated.address || profileData.address,
+          role: mapRole(updated.role) || profileData.role,
+        };
+        setProfileData(synced);
+        originalProfileData.current = synced;
+        if (updated.avatarUrl) setAvatarUrl(updated.avatarUrl);
+      }
       setAvatarFile(null);
       setAvatarPreview(null);
       setSuccessMessage("Cập nhật thông tin thành công!");
@@ -392,12 +404,12 @@ const UserProfile = () => {
               <input
                 type="tel"
                 className="info-input"
-                value={profileData.phone}
-                onChange={(e) => handleProfileChange("phone", e.target.value)}
+                value={profileData.phoneNumber}
+                onChange={(e) => handleProfileChange("phoneNumber", e.target.value)}
                 placeholder="Nhập số điện thoại"
               />
             ) : (
-              <div className="info-value">{profileData.phone || "—"}</div>
+              <div className="info-value">{profileData.phoneNumber || "—"}</div>
             )}
           </div>
 
@@ -411,13 +423,13 @@ const UserProfile = () => {
               <input
                 type="date"
                 className="info-input"
-                value={profileData.dateOfBirth}
-                onChange={(e) => handleProfileChange("dateOfBirth", e.target.value)}
+                value={profileData.birthDate}
+                onChange={(e) => handleProfileChange("birthDate", e.target.value)}
               />
             ) : (
               <div className="info-value">
-                {profileData.dateOfBirth
-                  ? new Date(profileData.dateOfBirth).toLocaleDateString("vi-VN")
+                {profileData.birthDate
+                  ? new Date(profileData.birthDate).toLocaleDateString("vi-VN")
                   : "—"}
               </div>
             )}

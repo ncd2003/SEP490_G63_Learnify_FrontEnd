@@ -14,7 +14,7 @@ const userApi = {
   /**
    * Update user profile (profile JSON + optional avatar file)
    * PUT /users/profile
-   * @param {Object} profileData - { fullName, phone, dateOfBirth, address }
+   * @param {Object} profileData - { fullName, phoneNumber, birthDate, address }
    * @param {File|null} avatarFile - optional avatar image file
    * @returns {Promise}
    */
