@@ -7,7 +7,7 @@
 const path = (root, sublink) => `${root}${sublink}`;
 
 // ─── ROOT SEGMENTS ────────────────────────────────────────────────────────────
-const ROOTS_GUEST    = '/auth';
+const ROOTS_GUEST    = '/';
 const ROOTS_TEACHER  = '/teacher';
 const ROOTS_STUDENT  = '/student';
 const ROOTS_ADMIN    = '/admin';
