@@ -1,26 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import LoginPage from "./pages/Login";
-import RegisterPage from "./pages/Register";
-import HomePage from "./pages/Home";
-import OtpVerificationPage from "./pages/OtpVerification";
-import OAuth2Redirect from "./pages/OAuth2Redirect";
-import UserProfile from "./pages/UserProfile";
+import AppRouter from "./routes/router";
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verify-otp" element={<OtpVerificationPage />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/profile" element={<UserProfile />} />
-          <Route path="/oauth2/redirect" element={<OAuth2Redirect />} />
-        </Routes>
-      </BrowserRouter>
+      <AppRouter />
     </AuthProvider>
   );
 }

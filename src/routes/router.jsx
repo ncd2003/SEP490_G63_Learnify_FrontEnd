@@ -1,41 +1,33 @@
-// src/routes/index.js
-import { createBrowserRouter, Navigate } from "react-router-dom";
-import LoginPage from "../pages/Login.jsx";
-import RegisterScreen from "../pages/Register.jsx";
-import OtpVerification from "../pages/OtpVerification.jsx";
-import HomePage from "../pages/Home.jsx";
-import OAuth2Redirect from "../pages/OAuth2Redirect.jsx";
-import UserProfile from "../pages/UserProfile.jsx";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "../pages/Login";
+import RegisterPage from "../pages/Register";
+import OtpVerificationPage from "../pages/OtpVerification";
+import HomePage from "../pages/Home";
+import OAuth2Redirect from "../pages/OAuth2Redirect";
+import UserProfile from "../pages/UserProfile";
+import ClassroomList from "../pages/classroom/ClassroomList";
+import { PATH_AUTH, PATH_TEACHER } from "./paths";
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Navigate to="/login" replace />,
-  },
-  {
-    path: "/login",
-    element: <LoginPage />,
-  },
-  {
-    path: "/register",
-    element: <RegisterScreen />,
-  },
-  {
-    path: "/verify-otp",
-    element: <OtpVerification />,
-  },
-  {
-    path: "/home",
-    element: <HomePage />,
-  },
-  {
-    path: "/profile",
-    element: <UserProfile />,
-  },
-  {
-    path: "/oauth2/redirect",
-    element: <OAuth2Redirect />,
-  },
-]);
+const AppRouter = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Default redirect */}
+        <Route path="/" element={<Navigate to={PATH_AUTH.home} replace />} />
 
-export default router;
+        {/* Guest / Public */}
+        <Route path={PATH_AUTH.home}           element={<HomePage />} />
+        <Route path={PATH_AUTH.login}          element={<LoginPage />} />
+        <Route path={PATH_AUTH.register}       element={<RegisterPage />} />
+        <Route path={PATH_AUTH.verifyOtp}      element={<OtpVerificationPage />} />
+        <Route path={PATH_AUTH.oauth2Redirect} element={<OAuth2Redirect />} />
+
+        {/* Teacher */}
+        <Route path={PATH_TEACHER.profile}           element={<UserProfile />} />
+        <Route path={PATH_TEACHER.classroom.root}    element={<ClassroomList />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+export default AppRouter;
