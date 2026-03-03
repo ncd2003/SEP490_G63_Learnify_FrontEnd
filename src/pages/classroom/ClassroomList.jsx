@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Plus,
@@ -13,6 +14,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import EditClassroomModal from "@/pages/classroom/EditClassroomModal";
 import CreateClassroomModal from "@/pages/classroom/CreateClassroomModal";
 import DeleteConfirmModal from "@/pages/classroom/DeleteConfirmModal";
+import { PATH_TEACHER } from "@/routes/paths";
 import "@/assets/css/pages/classroom/classroomList.css";
 
 const SORT_OPTIONS = [
@@ -34,15 +36,27 @@ const TABLE_HEADERS = [
   { key: "documents", label: "Tài liệu", className: "text-center" },
 ];
 
-const ClassroomRow = ({ classroom, onMenuClick, activeMenu, onMenuClose, onEdit, onDelete }) => {
+const ClassroomRow = ({ classroom, onMenuClick, activeMenu, onMenuClose, onEdit, onDelete, navigate }) => {
   const isMenuOpen = activeMenu === classroom.id;
+
+  const handleNavigateToClassroom = () => {
+    navigate(PATH_TEACHER.classroom.detail(classroom.id));
+  };
 
   return (
     <tr>
       {/* Tên lớp */}
       <td>
         <div className="classroom-info">
-          <div className="classroom-thumbnail">
+          <div
+            className="classroom-thumbnail classroom-thumbnail-clickable"
+            onClick={handleNavigateToClassroom}
+            role="button"
+            tabIndex={0}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') handleNavigateToClassroom();
+            }}
+          >
             {classroom.imageUrl ? (
               <img src={classroom.imageUrl} alt={classroom.name} />
             ) : (
@@ -52,7 +66,17 @@ const ClassroomRow = ({ classroom, onMenuClick, activeMenu, onMenuClose, onEdit,
             )}
           </div>
           <div className="classroom-details">
-            <p className="classroom-name">{classroom.name}</p>
+            <p
+              className="classroom-name classroom-name-clickable"
+              onClick={handleNavigateToClassroom}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') handleNavigateToClassroom();
+              }}
+            >
+              {classroom.name}
+            </p>
             <p className="classroom-code">Mã lớp &bull; {classroom.code}</p>
           </div>
         </div>
@@ -111,6 +135,7 @@ const ClassroomRow = ({ classroom, onMenuClick, activeMenu, onMenuClose, onEdit,
 const ClassroomList = () => {
   const { user } = useAuth();
   const { classrooms, loading, error, refetch } = useClassrooms(user?.id);
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState(TABS.ACTIVE);
   const [searchQuery, setSearchQuery] = useState("");
@@ -262,6 +287,7 @@ const ClassroomList = () => {
                       onMenuClose={handleMenuClose}
                       onEdit={handleEditClick}
                       onDelete={handleDeleteClick}
+                      navigate={navigate}
                     />
                   ))
                 )}

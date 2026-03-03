@@ -31,6 +31,7 @@ export const PATH_TEACHER = {
     detail: (id) => path(ROOTS_TEACHER, `/classrooms/${id}`),
     create: path(ROOTS_TEACHER, '/classrooms/new'),
     edit:   (id) => path(ROOTS_TEACHER, `/classrooms/${id}/edit`),
+    pendingRequests: (id) => path(ROOTS_TEACHER, `/classrooms/${id}/pending-requests`),
   },
   schedule:   path(ROOTS_TEACHER, '/schedule'),
   students:   path(ROOTS_TEACHER, '/students'),

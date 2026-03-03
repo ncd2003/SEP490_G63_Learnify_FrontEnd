@@ -51,12 +51,102 @@ const classroomApi = {
     return response.data;
   },
   /**
+   * Get classroom by ID
+   * @param {number} id
+   * @returns {Promise<{ code: number, result: ClassroomDetailDTO }>}
+   */
+  getClassroomById: async (id) => {
+    const response = await axiosInstance.get(`/classrooms/${id}`);
+    return response.data;
+  },
+  /**
    * Delete a classroom by ID
    * @param {number} id
    * @returns {Promise<{ code: number, message: string }>}
    */
   deleteClassroom: async (id) => {
     const response = await axiosInstance.delete(`/classrooms/${id}`);
+    return response.data;
+  },
+  /**
+   * Get pending join requests for a classroom
+   * @param {number} classroomId
+   * @returns {Promise<{ code: number, result: Array<{id: number, studentName: string, studentEmail: string, requestTime: string}> }>}
+   */
+  getPendingRequests: async (classroomId) => {
+    const response = await axiosInstance.get(`/classrooms/${classroomId}/pending-requests`);
+    return response.data;
+  },
+  /**
+   * Approve student join requests
+   * @param {number} classroomId
+   * @param {Array<number>} studentIds
+   * @returns {Promise<{ code: number, message: string }>}
+   */
+  approveRequests: async (classroomId, studentIds) => {
+    const response = await axiosInstance.post(`/classrooms/${classroomId}/approve-requests`, {
+      studentIds
+    });
+    return response.data;
+  },
+  /**
+   * Reject student join requests
+   * @param {number} classroomId
+   * @param {Array<number>} studentIds
+   * @returns {Promise<{ code: number, message: string }>}
+   */
+  rejectRequests: async (classroomId, studentIds) => {
+    const response = await axiosInstance.post(`/classrooms/${classroomId}/reject-requests`, {
+      studentIds
+    });
+    return response.data;
+  },
+
+  // ========================================
+  // SCHEDULE / EVENT MANAGEMENT
+  // ========================================
+
+  /**
+   * Get all schedule events for a classroom
+   * @param {number} classroomId
+   * @returns {Promise<{ code: number, result: Array<ScheduleEvent> }>}
+   */
+  getScheduleEvents: async (classroomId) => {
+    const response = await axiosInstance.get(`/classrooms/${classroomId}/schedule`);
+    return response.data;
+  },
+
+  /**
+   * Create a new schedule event
+   * @param {number} classroomId
+   * @param {Object} eventData
+   * @returns {Promise<{ code: number, result: ScheduleEvent }>}
+   */
+  createScheduleEvent: async (classroomId, eventData) => {
+    const response = await axiosInstance.post(`/classrooms/${classroomId}/schedule`, eventData);
+    return response.data;
+  },
+
+  /**
+   * Update an existing schedule event
+   * @param {number} classroomId
+   * @param {number} eventId
+   * @param {Object} eventData
+   * @returns {Promise<{ code: number, result: ScheduleEvent }>}
+   */
+  updateScheduleEvent: async (classroomId, eventId, eventData) => {
+    const response = await axiosInstance.put(`/classrooms/${classroomId}/schedule/${eventId}`, eventData);
+    return response.data;
+  },
+
+  /**
+   * Delete a schedule event
+   * @param {number} classroomId
+   * @param {number} eventId
+   * @returns {Promise<{ code: number, message: string }>}
+   */
+  deleteScheduleEvent: async (classroomId, eventId) => {
+    const response = await axiosInstance.delete(`/classrooms/${classroomId}/schedule/${eventId}`);
     return response.data;
   },
 };
