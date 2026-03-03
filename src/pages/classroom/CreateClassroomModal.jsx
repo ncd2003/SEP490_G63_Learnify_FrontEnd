@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { X, ImagePlus, Upload } from "lucide-react";
 import classroomApi from "@/apis/classroomApi";
 import { classroomValidationRules } from "@/schema/classroomSchema";
+import "@/assets/css/pages/classroom/modals.css";
 
 const INITIAL_FIELDS = { name: "", subject: "", description: "" };
 const INITIAL_ERRORS = { name: "", subject: "", description: "" };
@@ -93,35 +94,25 @@ const CreateClassroomModal = ({ onClose, onSuccess }) => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => e.target === e.currentTarget && onClose?.()}
-    >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+      <div className="modal-container">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Tạo lớp học mới</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+        <div className="modal-header">
+          <h2 className="modal-title">Tạo lớp học mới</h2>
+          <button onClick={onClose} className="modal-close-btn">
             <X size={18} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+        <form onSubmit={handleSubmit} className="modal-form">
           {/* Server error */}
-          {serverError && (
-            <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">
-              {serverError}
-            </p>
-          )}
+          {serverError && <p className="modal-error-alert">{serverError}</p>}
 
           {/* Tên lớp */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tên lớp <span className="text-red-500">*</span>
+          <div className="form-group">
+            <label className="form-label">
+              Tên lớp <span className="form-label-required">*</span>
             </label>
             <input
               type="text"
@@ -129,19 +120,15 @@ const CreateClassroomModal = ({ onClose, onSuccess }) => {
               value={fields.name}
               onChange={handleFieldChange}
               placeholder="Nhập tên lớp học (3–50 ký tự)"
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                errors.name ? "border-red-400 bg-red-50" : "border-gray-300"
-              }`}
+              className={`form-input ${errors.name ? "has-error" : ""}`}
             />
-            {errors.name && (
-              <p className="mt-1 text-xs text-red-500">{errors.name}</p>
-            )}
+            {errors.name && <p className="form-error-text">{errors.name}</p>}
           </div>
 
           {/* Môn học */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Môn học <span className="text-red-500">*</span>
+          <div className="form-group">
+            <label className="form-label">
+              Môn học <span className="form-label-required">*</span>
             </label>
             <input
               type="text"
@@ -149,20 +136,16 @@ const CreateClassroomModal = ({ onClose, onSuccess }) => {
               value={fields.subject}
               onChange={handleFieldChange}
               placeholder="Ví dụ: Toán, Văn, Tiếng Anh... (3–50 ký tự)"
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                errors.subject ? "border-red-400 bg-red-50" : "border-gray-300"
-              }`}
+              className={`form-input ${errors.subject ? "has-error" : ""}`}
             />
-            {errors.subject && (
-              <p className="mt-1 text-xs text-red-500">{errors.subject}</p>
-            )}
+            {errors.subject && <p className="form-error-text">{errors.subject}</p>}
           </div>
 
           {/* Mô tả */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="form-group">
+            <label className="form-label">
               Mô tả
-              <span className="text-gray-400 font-normal ml-1">(tuỳ chọn)</span>
+              <span className="form-label-optional">(tuỳ chọn)</span>
             </label>
             <textarea
               name="description"
@@ -170,44 +153,36 @@ const CreateClassroomModal = ({ onClose, onSuccess }) => {
               onChange={handleFieldChange}
               placeholder="Mô tả ngắn về lớp học (3–50 ký tự nếu điền)..."
               rows={3}
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-colors ${
-                errors.description ? "border-red-400 bg-red-50" : "border-gray-300"
-              }`}
+              className={`form-textarea ${errors.description ? "has-error" : ""}`}
             />
-            {errors.description && (
-              <p className="mt-1 text-xs text-red-500">{errors.description}</p>
-            )}
+            {errors.description && <p className="form-error-text">{errors.description}</p>}
           </div>
 
-          {/* Ảnh đại diện (optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Ảnh đại diện */}
+          <div className="form-group">
+            <label className="form-label">
               Ảnh đại diện
-              <span className="text-gray-400 font-normal ml-1">(tuỳ chọn)</span>
+              <span className="form-label-optional">(tuỳ chọn)</span>
             </label>
 
             <div
               onClick={() => fileInputRef.current?.click()}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              className="relative w-full h-36 rounded-xl border-2 border-dashed border-gray-300 cursor-pointer flex items-center justify-center overflow-hidden hover:border-blue-400 hover:bg-blue-50/40 transition-colors"
+              className="image-upload-area"
             >
               {imagePreview ? (
                 <>
-                  <img
-                    src={imagePreview}
-                    alt="Xem trước"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <Upload size={20} className="text-white mb-1" />
-                    <span className="text-xs text-white font-medium">Đổi ảnh</span>
+                  <img src={imagePreview} alt="Xem trước" className="image-preview" />
+                  <div className="image-overlay">
+                    <Upload size={20} className="image-overlay-icon" />
+                    <span className="image-overlay-text">Đổi ảnh</span>
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center gap-2 text-gray-400">
-                  <ImagePlus size={28} />
-                  <span className="text-xs">Kéo thả hoặc nhấn để chọn ảnh</span>
+                <div className="image-placeholder">
+                  <ImagePlus className="image-placeholder-icon" />
+                  <span className="image-placeholder-text">Kéo thả hoặc nhấn để chọn ảnh</span>
                 </div>
               )}
             </div>
@@ -216,30 +191,19 @@ const CreateClassroomModal = ({ onClose, onSuccess }) => {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              className="hidden"
+              className="hidden-file-input"
               onChange={handleFileChange}
             />
 
-            {imageFile && (
-              <p className="mt-1 text-xs text-gray-400">Đã chọn: {imageFile.name}</p>
-            )}
+            {imageFile && <p className="form-hint-text">Đã chọn: {imageFile.name}</p>}
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
+          <div className="modal-actions with-padding-top">
+            <button type="button" onClick={onClose} disabled={submitting} className="btn-cancel">
               Hủy
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
+            <button type="submit" disabled={submitting} className="btn-primary">
               {submitting ? "Đang tạo..." : "Tạo lớp học"}
             </button>
           </div>

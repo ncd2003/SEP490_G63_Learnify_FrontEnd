@@ -49,11 +49,22 @@ const OAuth2Redirect = () => {
 
           if (result.success) {
             console.log(
-              "[OAuth2Redirect] Login completed, navigating to /home",
+              "[OAuth2Redirect] Login completed, redirecting based on role",
             );
+            
+            // Get user role and redirect accordingly
+            const userRole = result.user?.role?.toUpperCase();
+            
             // Đợi một chút để đảm bảo state được update
             setTimeout(() => {
-              navigate("/home", { replace: true });
+              if (userRole === "TEACHER") {
+                navigate("/teacher/classrooms", { replace: true });
+              } else if (userRole === "STUDENT") {
+                navigate("/student/classrooms", { replace: true });
+              } else {
+                // Fallback to home if role is not recognized
+                navigate("/home", { replace: true });
+              }
             }, 200);
           }
         } else {

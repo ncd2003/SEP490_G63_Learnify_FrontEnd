@@ -20,8 +20,19 @@ const LoginPage = () => {
     setError("");
 
     try {
-      await login({ email, password });
-      navigate("/home"); // Redirect to home after successful login
+      const userData = await login({ email, password });
+      
+      // Get user role from userData and redirect accordingly
+      const userRole = userData?.role?.toUpperCase();
+      
+      if (userRole === "TEACHER") {
+        navigate("/teacher/classrooms");
+      } else if (userRole === "STUDENT") {
+        navigate("/student/classrooms");
+      } else {
+        // Fallback to home if role is not recognized
+        navigate("/home");
+      }
     } catch (err) {
       // Get error message from backend response
       const errorMessage =

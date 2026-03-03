@@ -5,14 +5,15 @@ import {
   Trash2,
   LayoutList,
   MoreVertical,
-  ChevronLeft,
   BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import useClassrooms from "@/hooks/useClassrooms";
+import DashboardLayout from "@/components/DashboardLayout";
 import EditClassroomModal from "@/pages/classroom/EditClassroomModal";
 import CreateClassroomModal from "@/pages/classroom/CreateClassroomModal";
 import DeleteConfirmModal from "@/pages/classroom/DeleteConfirmModal";
+import "@/assets/css/pages/classroom/classroomList.css";
 
 const SORT_OPTIONS = [
   { value: "", label: "Sắp xếp..." },
@@ -37,83 +38,65 @@ const ClassroomRow = ({ classroom, onMenuClick, activeMenu, onMenuClose, onEdit,
   const isMenuOpen = activeMenu === classroom.id;
 
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+    <tr>
       {/* Tên lớp */}
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-3">
-          <div className="w-16 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
+      <td>
+        <div className="classroom-info">
+          <div className="classroom-thumbnail">
             {classroom.imageUrl ? (
-              <img
-                src={classroom.imageUrl}
-                alt={classroom.name}
-                className="w-full h-full object-cover"
-              />
+              <img src={classroom.imageUrl} alt={classroom.name} />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-blue-100">
-                <BookOpen size={20} className="text-blue-400" />
+              <div className="classroom-thumbnail-placeholder">
+                <BookOpen size={20} />
               </div>
             )}
           </div>
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">{classroom.name}</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Mã lớp &bull; {classroom.code}
-            </p>
+          <div className="classroom-details">
+            <p className="classroom-name">{classroom.name}</p>
+            <p className="classroom-code">Mã lớp &bull; {classroom.code}</p>
           </div>
         </div>
       </td>
 
       {/* Học sinh */}
-      <td className="py-3 px-4 text-center text-sm text-gray-700">
-        {classroom.studentCount ?? 0}
-      </td>
+      <td className="classroom-stat">{classroom.studentCount ?? 0}</td>
 
       {/* Bài giảng */}
-      <td className="py-3 px-4 text-center text-sm text-gray-700">
-        {classroom.lectureCount ?? 0}
-      </td>
+      <td className="classroom-stat">{classroom.lectureCount ?? 0}</td>
 
       {/* Bài tập */}
-      <td className="py-3 px-4 text-center text-sm text-gray-700">
-        {classroom.assignmentCount ?? 0}
-      </td>
+      <td className="classroom-stat">{classroom.assignmentCount ?? 0}</td>
 
       {/* Tài liệu */}
-      <td className="py-3 px-4 text-center text-sm text-gray-700">
-        {classroom.documentCount ?? 0}
-      </td>
+      <td className="classroom-stat">{classroom.documentCount ?? 0}</td>
 
       {/* Actions */}
-      <td className="py-3 px-4 text-center relative">
-        <button
-          onClick={() => onMenuClick(classroom.id)}
-          className="p-1 rounded hover:bg-gray-200 transition-colors text-gray-500"
-        >
+      <td className="row-actions">
+        <button onClick={() => onMenuClick(classroom.id)} className="action-menu-trigger">
           <MoreVertical size={18} />
         </button>
 
         {isMenuOpen && (
           <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={onMenuClose}
-            />
-            <div className="absolute right-6 top-8 z-20 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-36">
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                Xem lớp học
-              </button>
+            <div className="menu-backdrop" onClick={onMenuClose} />
+            <div className="action-menu">
+              <button className="action-menu-item">Xem lớp học</button>
               <button
-                onClick={() => { onMenuClose(); onEdit(classroom); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => {
+                  onMenuClose();
+                  onEdit(classroom);
+                }}
+                className="action-menu-item"
               >
                 Chỉnh sửa
               </button>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                Ẩn lớp học
-              </button>
+              <button className="action-menu-item">Ẩn lớp học</button>
               <button
-                onClick={() => { onMenuClose(); onDelete(classroom); }}
-                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+                onClick={() => {
+                  onMenuClose();
+                  onDelete(classroom);
+                }}
+                className="action-menu-item danger"
               >
                 Xóa lớp học
               </button>
@@ -177,169 +160,140 @@ const ClassroomList = () => {
   const handleDeleteSuccess = () => { refetch(); setDeletingClassroom(null); };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Tabs + top-right actions */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-0 border-b border-gray-200">
-        <div className="flex items-center gap-1">
-          {/* Tab: Lớp của bạn */}
-          <button
-            onClick={() => setActiveTab(TABS.ACTIVE)}
-            className={`px-4 py-2 rounded-t text-sm font-medium transition-colors ${
-              activeTab === TABS.ACTIVE
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            Lớp của bạn {filteredClassrooms.length > 0 && activeTab === TABS.ACTIVE ? filteredClassrooms.length : ""}
-          </button>
+    <DashboardLayout>
+      <div className="classroom-list-container">
+        {/* Tabs + top-right actions */}
+        <div className="tabs-header">
+          <div className="tabs-wrapper">
+            {/* Tab: Lớp của bạn */}
+            <button
+              onClick={() => setActiveTab(TABS.ACTIVE)}
+              className={`tab-button ${activeTab === TABS.ACTIVE ? "active" : ""}`}
+            >
+              Lớp của bạn {filteredClassrooms.length > 0 && activeTab === TABS.ACTIVE ? `(${filteredClassrooms.length})` : ""}
+            </button>
 
-          {/* Tab: Lớp đã ẩn */}
-          <button
-            onClick={() => setActiveTab(TABS.HIDDEN)}
-            className={`px-4 py-2 rounded-t text-sm font-medium transition-colors ${
-              activeTab === TABS.HIDDEN
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            Lớp đã ẩn
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 mb-1">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-            <Trash2 size={15} />
-            <span>Thùng rác</span>
-          </button>
-          <button className="p-1.5 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-            <LayoutList size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* Search + Sort + Create */}
-      <div className="flex items-center gap-3 px-6 py-4">
-        {/* Sidebar toggle */}
-        <button className="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition-colors flex-shrink-0">
-          <ChevronLeft size={18} />
-        </button>
-
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            placeholder="Tìm kiếm..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-
-        {/* Sort */}
-        <select
-          value={sortValue}
-          onChange={(e) => setSortValue(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-600 cursor-pointer"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-
-        {/* Create button */}
-        <button
-          onClick={handleCreateOpen}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0"
-        >
-          <Plus size={16} />
-          Tạo lớp học
-        </button>
-      </div>
-
-      {/* Table */}
-      <div className="px-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
-            Đang tải danh sách lớp học...
+            {/* Tab: Lớp đã ẩn */}
+            <button
+              onClick={() => setActiveTab(TABS.HIDDEN)}
+              className={`tab-button ${activeTab === TABS.HIDDEN ? "active" : ""}`}
+            >
+              Lớp đã ẩn
+            </button>
           </div>
-        ) : error ? (
-          <div className="flex items-center justify-center py-20 text-red-500 text-sm">
-            {error}
+
+          <div className="header-actions">
+            <button className="btn-secondary">
+              <Trash2 size={15} />
+              <span>Thùng rác</span>
+            </button>
+            <button className="btn-icon">
+              <LayoutList size={18} />
+            </button>
+            <button onClick={handleCreateOpen} className="btn-create">
+              <Plus size={16} />
+              Tạo lớp học
+            </button>
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-y border-gray-200">
-                {TABLE_HEADERS.map((h) => (
-                  <th
-                    key={h.key}
-                    className={`py-2.5 px-4 font-medium text-gray-500 text-sm ${h.className}`}
-                  >
-                    {h.label}
-                  </th>
-                ))}
-                <th className="py-2.5 px-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {filteredClassrooms.length === 0 ? (
+        </div>
+
+        {/* Search + Sort */}
+        <div className="toolbar">
+          {/* Search */}
+          <div className="search-box">
+            <Search size={16} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm lớp học..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
+
+          {/* Sort */}
+          <select
+            value={sortValue}
+            onChange={(e) => setSortValue(e.target.value)}
+            className="sort-select"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Table */}
+        <div className="table-wrapper">
+          {loading ? (
+            <div className="empty-state">Đang tải danh sách lớp học...</div>
+          ) : error ? (
+            <div className="empty-state error">{error}</div>
+          ) : (
+            <table className="classroom-table">
+              <thead>
                 <tr>
-                  <td
-                    colSpan={TABLE_HEADERS.length + 1}
-                    className="py-16 text-center text-gray-400 text-sm"
-                  >
-                    {searchQuery
-                      ? "Không tìm thấy lớp học phù hợp."
-                      : "Bạn chưa có lớp học nào."}
-                  </td>
+                  {TABLE_HEADERS.map((h) => (
+                    <th key={h.key} className={h.className}>
+                      {h.label}
+                    </th>
+                  ))}
+                  <th />
                 </tr>
-              ) : (
-                filteredClassrooms.map((classroom) => (
-                  <ClassroomRow
-                    key={classroom.id}
-                    classroom={classroom}
-                    onMenuClick={handleMenuClick}
-                    activeMenu={activeMenu}
-                    onMenuClose={handleMenuClose}
-                    onEdit={handleEditClick}
-                    onDelete={handleDeleteClick}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredClassrooms.length === 0 ? (
+                  <tr>
+                    <td colSpan={TABLE_HEADERS.length + 1} className="empty-cell">
+                      {searchQuery
+                        ? "Không tìm thấy lớp học phù hợp."
+                        : "Bạn chưa có lớp học nào."}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredClassrooms.map((classroom) => (
+                    <ClassroomRow
+                      key={classroom.id}
+                      classroom={classroom}
+                      onMenuClick={handleMenuClick}
+                      activeMenu={activeMenu}
+                      onMenuClose={handleMenuClose}
+                      onEdit={handleEditClick}
+                      onDelete={handleDeleteClick}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {editingClassroom && (
+          <EditClassroomModal
+            classroom={editingClassroom}
+            onClose={handleEditClose}
+            onSuccess={handleEditSuccess}
+          />
+        )}
+
+        {showCreateModal && (
+          <CreateClassroomModal
+            onClose={handleCreateClose}
+            onSuccess={handleCreateSuccess}
+          />
+        )}
+
+        {deletingClassroom && (
+          <DeleteConfirmModal
+            classroom={deletingClassroom}
+            onClose={handleDeleteClose}
+            onSuccess={handleDeleteSuccess}
+          />
         )}
       </div>
-
-      {editingClassroom && (
-        <EditClassroomModal
-          classroom={editingClassroom}
-          onClose={handleEditClose}
-          onSuccess={handleEditSuccess}
-        />
-      )}
-
-      {showCreateModal && (
-        <CreateClassroomModal
-          onClose={handleCreateClose}
-          onSuccess={handleCreateSuccess}
-        />
-      )}
-
-      {deletingClassroom && (
-        <DeleteConfirmModal
-          classroom={deletingClassroom}
-          onClose={handleDeleteClose}
-          onSuccess={handleDeleteSuccess}
-        />
-      )}
-    </div>
+    </DashboardLayout>
   );
 };
 

@@ -52,9 +52,10 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
 
     // Lấy thông tin user chi tiết từ API /users/me
+    let userData;
     try {
       const userResponse = await authApi.getCurrentUser();
-      const userData = userResponse.result; // { id, fullName, email, avatarUrl }
+      userData = userResponse.result; // { id, fullName, email, avatarUrl, role }
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
@@ -62,17 +63,18 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Could not fetch user info after login:", error);
       // Fallback: dùng thông tin từ login response
-      const fallbackData = {
+      userData = {
         id: response.result.id,
         email: response.result.email,
         fullName: response.result.fullName,
         avatarUrl: null,
+        role: response.result.role,
       };
-      setUser(fallbackData);
-      localStorage.setItem("user", JSON.stringify(fallbackData));
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
     }
 
-    return response;
+    return userData;
   };
 
   const register = async (userData) => {
