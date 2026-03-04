@@ -296,7 +296,6 @@ const UserProfile = () => {
       <div className="profile-loading">
         <div className="spinner-large"></div>
         <p>Đang tải thông tin...</p>
-        <style>{profileStyles}</style>
       </div>
     );
   }

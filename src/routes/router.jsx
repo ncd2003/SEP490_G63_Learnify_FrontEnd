@@ -28,9 +28,9 @@ const AppRouter = () => {
         {/* Teacher */}
         <Route path={PATH_TEACHER.profile}           element={<UserProfile />} />
         <Route path={PATH_TEACHER.classroom.root}    element={<ClassroomList />} />
-        <Route path="/teacher/classrooms/:id" element={<ClassroomFeed />} />
-        <Route path="/teacher/classrooms/:id/schedule" element={<ClassroomSchedule />} />
-        <Route path="/teacher/classrooms/:id/pending-requests" element={<PendingRequests />} />
+        <Route path="/classrooms/:id" element={<ClassroomFeed />} />
+        <Route path="/classrooms/:id/schedule" element={<ClassroomSchedule />} />
+        <Route path="/classrooms/:id/pending-requests" element={<PendingRequests />} />
       </Routes>
     </BrowserRouter>
   );
