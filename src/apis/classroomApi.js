@@ -102,53 +102,7 @@ const classroomApi = {
     return response.data;
   },
 
-  // ========================================
-  // SCHEDULE / EVENT MANAGEMENT
-  // ========================================
 
-  /**
-   * Get all schedule events for a classroom
-   * @param {number} classroomId
-   * @returns {Promise<{ code: number, result: Array<ScheduleEvent> }>}
-   */
-  getScheduleEvents: async (classroomId) => {
-    const response = await axiosInstance.get(`/classrooms/${classroomId}/schedule`);
-    return response.data;
-  },
-
-  /**
-   * Create a new schedule event
-   * @param {number} classroomId
-   * @param {Object} eventData
-   * @returns {Promise<{ code: number, result: ScheduleEvent }>}
-   */
-  createScheduleEvent: async (classroomId, eventData) => {
-    const response = await axiosInstance.post(`/classrooms/${classroomId}/schedule`, eventData);
-    return response.data;
-  },
-
-  /**
-   * Update an existing schedule event
-   * @param {number} classroomId
-   * @param {number} eventId
-   * @param {Object} eventData
-   * @returns {Promise<{ code: number, result: ScheduleEvent }>}
-   */
-  updateScheduleEvent: async (classroomId, eventId, eventData) => {
-    const response = await axiosInstance.put(`/classrooms/${classroomId}/schedule/${eventId}`, eventData);
-    return response.data;
-  },
-
-  /**
-   * Delete a schedule event
-   * @param {number} classroomId
-   * @param {number} eventId
-   * @returns {Promise<{ code: number, message: string }>}
-   */
-  deleteScheduleEvent: async (classroomId, eventId) => {
-    const response = await axiosInstance.delete(`/classrooms/${classroomId}/schedule/${eventId}`);
-    return response.data;
-  },
 };
 
 export default classroomApi;

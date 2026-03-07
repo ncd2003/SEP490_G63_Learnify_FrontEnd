@@ -7,7 +7,7 @@ import OAuth2Redirect from "../pages/OAuth2Redirect";
 import UserProfile from "../pages/UserProfile";
 import ClassroomList from "../pages/classroom/ClassroomList";
 import ClassroomFeed from "../pages/classroom/ClassroomFeed";
-import ClassroomSchedule from "../pages/classroom/ClassroomSchedule";
+import SchedulePage from "../pages/schedule/SchedulePage";
 import PendingRequests from "../pages/classroom/PendingRequests";
 import { PATH_AUTH, PATH_TEACHER } from "./paths";
 
@@ -29,7 +29,7 @@ const AppRouter = () => {
         <Route path={PATH_TEACHER.profile}           element={<UserProfile />} />
         <Route path={PATH_TEACHER.classroom.root}    element={<ClassroomList />} />
         <Route path="/classrooms/:id" element={<ClassroomFeed />} />
-        <Route path="/classrooms/:id/schedule" element={<ClassroomSchedule />} />
+        <Route path="/classrooms/:id/schedule" element={<SchedulePage />} />
         <Route path="/classrooms/:id/pending-requests" element={<PendingRequests />} />
       </Routes>
     </BrowserRouter>
