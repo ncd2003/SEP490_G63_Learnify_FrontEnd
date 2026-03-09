@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Outlet } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import "@/assets/css/components/dashboardLayout.css";
@@ -6,7 +7,6 @@ import {
   BookOpen,
   LayoutDashboard,
   Users,
-  Calendar,
   FileText,
   Settings,
   LogOut,
@@ -18,15 +18,15 @@ import {
 } from "lucide-react";
 import { PATH_AUTH, PATH_TEACHER, PATH_STUDENT } from "@/routes/paths";
 
-const DashboardLayout = ({ children }) => {
+const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  const isTeacher = user?.role?.toUpperCase() === "TEACHER";
-  const isStudent = user?.role?.toUpperCase() === "STUDENT";
+  const isTeacher = user?.role === "ROLE_TEACHER";
+  const isStudent = user?.role === "ROLE_STUDENT";
 
   const handleLogout = async () => {
     try {
@@ -48,11 +48,6 @@ const DashboardLayout = ({ children }) => {
       icon: BookOpen,
       label: "Lớp học",
       path: PATH_TEACHER.classroom.root,
-    },
-    {
-      icon: Calendar,
-      label: "Lịch giảng dạy",
-      path: PATH_TEACHER.schedule,
     },
     {
       icon: Users,
@@ -87,11 +82,6 @@ const DashboardLayout = ({ children }) => {
       icon: BookOpen,
       label: "Lớp học của tôi",
       path: PATH_STUDENT.classroom.root,
-    },
-    {
-      icon: Calendar,
-      label: "Lịch học",
-      path: PATH_STUDENT.schedule,
     },
   ];
 
@@ -269,7 +259,7 @@ const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="dashboard-content">{children}</main>
+        <main className="dashboard-content"><Outlet /></main>
       </div>
     </div>
   );

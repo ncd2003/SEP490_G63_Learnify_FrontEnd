@@ -5,7 +5,7 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import authApi from "../apis/authApi";
+import { authApi } from "@/apis/auth.api";
 
 const AuthContext = createContext(null);
 
@@ -19,27 +19,12 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem("user");
     const token = localStorage.getItem("accessToken");
 
-    console.log("[AuthContext] Initial mount - checking localStorage:", {
-      hasUser: !!storedUser,
-      hasToken: !!token,
-    });
-
     if (storedUser && token) {
       setUser(JSON.parse(storedUser));
       setIsAuthenticated(true);
     }
     setLoading(false);
   }, []);
-
-  // Debug: Log authentication state changes
-  useEffect(() => {
-    console.log("[AuthContext] State changed:", {
-      isAuthenticated,
-      hasUser: !!user,
-      userId: user?.id,
-      userName: user?.fullName,
-    });
-  }, [isAuthenticated, user]);
 
   const login = async (credentials) => {
     const response = await authApi.login(credentials);
@@ -59,7 +44,6 @@ export const AuthProvider = ({ children }) => {
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      console.log("Login successful, user data loaded:", userData);
     } catch (error) {
       console.error("Could not fetch user info after login:", error);
       // Fallback: dùng thông tin từ login response
@@ -109,8 +93,6 @@ export const AuthProvider = ({ children }) => {
 
   const handleOAuth2Login = useCallback(async (token) => {
     try {
-      console.log("[OAuth2] Starting login with token");
-
       // Xóa dữ liệu user cũ trước khi xử lý token mới
       localStorage.removeItem("user");
       localStorage.removeItem("accessToken");
@@ -121,18 +103,13 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("accessToken", token);
 
       // Lấy thông tin user từ backend API /users/me
-      console.log("[OAuth2] Fetching user data from /users/me");
       const response = await authApi.getCurrentUser();
-      const userData = response.result; // { id, fullName, email, avatarUrl }
-
-      console.log("[OAuth2] User data received:", userData);
+      const userData = response.result;
 
       // CHỈ set authenticated = true SAU KHI có user data
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
       setIsAuthenticated(true);
-
-      console.log("[OAuth2] Login completed successfully");
 
       return { success: true, user: userData };
     } catch (error) {

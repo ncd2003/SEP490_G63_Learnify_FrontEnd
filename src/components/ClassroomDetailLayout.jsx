@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PATH_TEACHER } from '@/routes/paths';
-import classroomApi from '@/apis/classroomApi';
+import { classroomApi } from '@/apis/classroom.api';
 import '@/assets/css/components/classroomDetailLayout.css';
 
 const MENU_ITEMS = [
@@ -96,9 +96,9 @@ const ClassroomDetailLayout = ({ children }) => {
             <span className="classroom-info-label">Giảng viên:</span>
             <span className="classroom-info-value">{user?.fullName || user?.username}</span>
           </div>
-          <div className="classroom-info-row">
+          {/* <div className="classroom-info-row">
             <span className="classroom-info-email">{user?.email}</span>
-          </div>
+          </div> */}
           <div className="classroom-info-row">
             <span className="classroom-info-label">Mã lớp:</span>
             <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>
