@@ -456,7 +456,7 @@ const ClassroomSchedule = () => {
         )}
 
         {/* Week view */}
-        {viewMode === VIEW_MODES.WEEK && (() => {
+        {!loading && !error && viewMode === VIEW_MODES.WEEK && (() => {
           const weekDays = getWeekDays(currentDate);
           return (
             <div className="week-view-container">
@@ -530,7 +530,7 @@ const ClassroomSchedule = () => {
         })()}
 
         {/* Day view */}
-        {viewMode === VIEW_MODES.DAY && (() => {
+        {!loading && !error && viewMode === VIEW_MODES.DAY && (() => {
           const dayEvents = getEventsForDate(currentDate);
           return (
             <div className="day-view-container">

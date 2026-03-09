@@ -89,9 +89,9 @@ const UserProfile = () => {
         const mapped = {
           fullName: data.fullName || "",
           email: data.email || "",
-          phoneNumber: data.phoneNumber || "",
-          birthDate: data.birthDate || "",
-          address: data.address || "",
+          phoneNumber: data.phoneNumber ?? "",
+          birthDate: data.birthDate ?? "",
+          address: data.address ?? "",
           role: mapRole(data.role),
         };
         setProfileData(mapped);
@@ -152,13 +152,16 @@ const UserProfile = () => {
     // If not in edit mode, save immediately with current profile data
     if (!isEditing) {
       try {
+        // Chỉ gửi các trường có giá trị
+        const updateData = {
+          fullName: profileData.fullName,
+        };
+        if (profileData.phoneNumber) updateData.phoneNumber = profileData.phoneNumber;
+        if (profileData.birthDate) updateData.birthDate = profileData.birthDate;
+        if (profileData.address) updateData.address = profileData.address;
+        
         const response = await userApi.updateProfile(
-          {
-            fullName: profileData.fullName,
-            phoneNumber: profileData.phoneNumber,
-            birthDate: profileData.birthDate,
-            address: profileData.address,
-          },
+          updateData,
           file,
         );
         const updated = response.result;
@@ -202,13 +205,16 @@ const UserProfile = () => {
     setSuccessMessage("");
 
     try {
+      // Chỉ gửi các trường có giá trị
+      const updateData = {
+        fullName: profileData.fullName,
+      };
+      if (profileData.phoneNumber) updateData.phoneNumber = profileData.phoneNumber;
+      if (profileData.birthDate) updateData.birthDate = profileData.birthDate;
+      if (profileData.address) updateData.address = profileData.address;
+      
       const response = await userApi.updateProfile(
-        {
-          fullName: profileData.fullName,
-          phoneNumber: profileData.phoneNumber,
-          birthDate: profileData.birthDate,
-          address: profileData.address,
-        },
+        updateData,
         avatarFile, // null nếu không chọn ảnh mới
       );
       const updated = response.result;
@@ -296,7 +302,6 @@ const UserProfile = () => {
       <div className="profile-loading">
         <div className="spinner-large"></div>
         <p>Đang tải thông tin...</p>
-        <style>{profileStyles}</style>
       </div>
     );
   }

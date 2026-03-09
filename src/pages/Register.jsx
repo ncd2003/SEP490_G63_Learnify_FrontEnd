@@ -430,7 +430,7 @@ const RegisterScreen = () => {
 
               <div className="social-login">
                 <a
-                  href="http://localhost:8080/oauth2/authorization/google"
+                  href="http://localhost:8081/oauth2/authorization/google"
                   className="social-button google"
                 >
                   <svg viewBox="0 0 24 24" width="20" height="20">
