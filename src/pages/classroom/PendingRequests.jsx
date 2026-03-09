@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
-import classroomApi from '@/apis/classroomApi';
+import { classroomApi } from '@/apis/classroom.api';
 import ApproveRequestsModal from './ApproveRequestsModal';
 import RejectRequestsModal from './RejectRequestsModal';
 import '@/assets/css/pages/classroom/pendingRequests.css';
