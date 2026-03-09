@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { KeyRound, ArrowLeft } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import authApi from "@/apis/authApi";
+import { authApi } from "@/apis/auth.api";
 import { PATH_AUTH } from "@/routes/paths";
 
 const ForgotPasswordOtpPage = () => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Eye, EyeOff, ShieldCheck, Check, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import authApi from "@/apis/authApi";
+import { authApi } from "@/apis/auth.api";
 import { PATH_AUTH } from "@/routes/paths";
 
 const ResetPasswordPage = () => {

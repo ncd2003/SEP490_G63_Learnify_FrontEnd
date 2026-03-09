@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Mail, BookOpen, ArrowLeft } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import authApi from "@/apis/authApi";
+import { authApi } from "@/apis/auth.api";
 import { PATH_AUTH } from "@/routes/paths";
 
 const ForgotPasswordPage = () => {

@@ -209,12 +209,12 @@ const RegisterScreen = () => {
                   <input
                     type="radio"
                     name="role"
-                    value="student"
-                    checked={formData.role === "student"}
+                    value="ROLE_STUDENT"
+                    checked={formData.role === "ROLE_STUDENT"}
                     onChange={(e) => handleChange("role", e.target.value)}
                   />
                   <div
-                    className={`role-card ${formData.role === "student" ? "selected" : ""}`}
+                    className={`role-card ${formData.role === "ROLE_STUDENT" ? "selected" : ""}`}
                   >
                     <div className="role-icon">🎓</div>
                     <div className="role-name">Học viên</div>
@@ -228,12 +228,12 @@ const RegisterScreen = () => {
                   <input
                     type="radio"
                     name="role"
-                    value="teacher"
-                    checked={formData.role === "teacher"}
+                    value="ROLE_TEACHER"
+                    checked={formData.role === "ROLE_TEACHER"}
                     onChange={(e) => handleChange("role", e.target.value)}
                   />
                   <div
-                    className={`role-card ${formData.role === "teacher" ? "selected" : ""}`}
+                    className={`role-card ${formData.role === "ROLE_TEACHER" ? "selected" : ""}`}
                   >
                     <div className="role-icon">👨‍🏫</div>
                     <div className="role-name">Giáo viên</div>

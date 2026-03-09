@@ -21,9 +21,9 @@ const Header = () => {
   };
 
   const handleDashboardClick = () => {
-    if (user?.role?.toUpperCase() === "TEACHER") {
+    if (user?.role?.toUpperCase() === "ROLE_TEACHER") {
       navigate(PATH_TEACHER.classroom.root);
-    } else if (user?.role?.toUpperCase() === "STUDENT") {
+    } else if (user?.role?.toUpperCase() === "ROLE_STUDENT") {
       navigate(PATH_STUDENT.classroom.root);
     }
   };
@@ -141,7 +141,7 @@ const Header = () => {
                           navigate(
                             user?.role?.toUpperCase() === "TEACHER"
                               ? PATH_TEACHER.profile
-                              : PATH_STUDENT.profile
+                              : PATH_STUDENT.profile,
                           );
                         }}
                       >
