@@ -1,28 +1,536 @@
-/* ================================
-   CLASSROOM FEED PAGE
-   ================================ */
+/* ============================================================
+   CLASSROOM FEED — Posts
+   ============================================================ */
 
-.classroom-feed-page {
-  max-width: 100%;
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* ── Layout ─────────────────────────────────────────────── */
+.classroom-feed {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.classroom-feed-title {
-  font-size: 20px;
+/* ── Feed state (loading / error / empty) ────────────────── */
+.feed-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+}
+
+.feed-state--error {
+  color: #dc2626;
+}
+
+.feed-state-icon {
+  color: #9ca3af;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Post create form wrapper ────────────────────────────── */
+.post-form-wrapper {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* ── Post form ───────────────────────────────────────────── */
+.post-form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top area: avatar + textarea */
+.post-form-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.post-form-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6b7280;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.post-form-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-form-textarea {
+  flex: 1;
+  resize: none;
+  min-height: 48px;
+  max-height: 160px;
+  padding: 8px 0;
+  border: none;
+  font-size: 14px;
+  color: #111827;
+  outline: none;
+  font-family: inherit;
+  background: transparent;
+  line-height: 1.5;
+}
+
+.post-form-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.post-form-textarea:disabled {
+  opacity: 0.6;
+}
+
+.post-form-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin: 0 16px 6px;
+}
+
+/* File chips */
+.post-form-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 8px;
+}
+
+.post-form-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #f3f4f6;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #374151;
+  max-width: 200px;
+  overflow: hidden;
+}
+
+.post-form-file-chip button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.post-form-file-chip button:hover {
+  color: #dc2626;
+}
+
+/* Divider */
+.post-form-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0;
+}
+
+/* Bottom actions */
+.post-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  gap: 8px;
+}
+
+.post-form-right-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.post-form-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.post-form-attach-btn:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+.post-form-attach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.post-form-submit {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.post-form-submit:not(:disabled) {
+  background: #4f46e5;
+  color: #fff;
+  cursor: pointer;
+}
+
+.post-form-submit:not(:disabled):hover {
+  background: #4338ca;
+}
+
+.post-form-submit:disabled {
+  cursor: not-allowed;
+}
+
+/* ── Post list ───────────────────────────────────────────── */
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Post card ───────────────────────────────────────────── */
+.post-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.post-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.post-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.post-author-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 15px;
+  color: #374151;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.post-author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.post-author-name {
+  font-size: 14px;
   font-weight: 600;
   color: #111827;
-  margin: 0 0 20px 0;
 }
 
-.classroom-feed-content {
-  color: #4b5563;
+.post-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+/* ── Post menu ───────────────────────────────────────────── */
+.post-menu-wrapper {
+  position: relative;
+}
+
+.post-menu-trigger {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.post-menu-trigger:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+/* ── Post content ────────────────────────────────────────── */
+.post-content {
   font-size: 14px;
+  color: #374151;
   line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.classroom-feed-content p {
-  margin-bottom: 12px;
+/* ── Post attachments ────────────────────────────────────── */
+.post-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.post-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #374151;
+  font-size: 13px;
+  transition: background 0.15s, border-color 0.15s;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.post-attachment-chip:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.post-attachment-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-attachment-size {
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* ─── Comments Section ────────────────────────────────────── */
+.post-comments-section {
+  margin-top: 12px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
+}
+
+.post-comments-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.post-comments-toggle:hover {
+  background: #f9fafb;
+  color: #374151;
+}
+
+.post-comments-content {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comments-loading {
+  text-align: center;
+  padding: 20px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comments-header {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ─── Comment Card ────────────────────────────────────────── */
+.comment-card {
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.comment-author-info {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.comment-author-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.comment-author-role {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.comment-date {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.comment-content {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ─── Comment Form ────────────────────────────────────────── */
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.comment-form-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.comment-form-textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.comment-form-textarea:focus {
+  border-color: #6366f1;
+}
+
+.comment-form-textarea:disabled {
+  background: #f3f4f6;
+  opacity: 0.6;
+}
+
+.comment-form-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin: 0;
+}
+
+.comment-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.comment-char-count {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.comment-char-count.limit-exceeded {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.comment-form-actions {
+  display: flex;
+  gap: 8px;
 }

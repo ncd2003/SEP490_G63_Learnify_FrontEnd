@@ -8,8 +8,8 @@ const path = (root, sublink) => `${root}${sublink}`;
 
 // ─── ROOT SEGMENTS ────────────────────────────────────────────────────────────
 const ROOTS_GUEST    = '/';
-const ROOTS_TEACHER  = '/teacher';
-const ROOTS_STUDENT  = '/student';
+const ROOTS_TEACHER  = '';  // Removed /teacher prefix
+const ROOTS_STUDENT  = '';  // Removed /student prefix
 const ROOTS_ADMIN    = '/admin';
 
 // ─── GUEST / AUTH ─────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ export const PATH_AUTH = {
 
 // ─── TEACHER ──────────────────────────────────────────────────────────────────
 export const PATH_TEACHER = {
-  root: ROOTS_TEACHER,
+  root: '/',  // Default root without /teacher prefix
   profile: path(ROOTS_TEACHER, '/profile'),
   classroom: {
     root:   path(ROOTS_TEACHER, '/classrooms'),
@@ -33,7 +33,6 @@ export const PATH_TEACHER = {
     edit:   (id) => path(ROOTS_TEACHER, `/classrooms/${id}/edit`),
     pendingRequests: (id) => path(ROOTS_TEACHER, `/classrooms/${id}/pending-requests`),
   },
-  schedule:   path(ROOTS_TEACHER, '/schedule'),
   students:   path(ROOTS_TEACHER, '/students'),
   documents:  path(ROOTS_TEACHER, '/documents'),
   questionBank: path(ROOTS_TEACHER, '/question-bank'),
@@ -42,13 +41,12 @@ export const PATH_TEACHER = {
 
 // ─── STUDENT ──────────────────────────────────────────────────────────────────
 export const PATH_STUDENT = {
-  root: ROOTS_STUDENT,
+  root: '/',  // Default root without /student prefix
   profile: path(ROOTS_STUDENT, '/profile'),
   classroom: {
     root:   path(ROOTS_STUDENT, '/classrooms'),
     detail: (id) => path(ROOTS_STUDENT, `/classrooms/${id}`),
   },
-  schedule: path(ROOTS_STUDENT, '/schedule'),
 };
 
 // ─── ADMIN ────────────────────────────────────────────────────────────────────

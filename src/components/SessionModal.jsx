@@ -1,0 +1,284 @@
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
+import { SESSION_TYPE, validateSessionForm } from '@/schema/scheduleSchema';
+import '@/assets/css/components/eventModal.css';
+
+/**
+ * Modal for creating/editing a ClassSession.
+ * Form fields map 1:1 to CreateClassSessionRequestDTO.
+ *
+ * @param {{ isOpen, onClose, onSubmit, session }} props
+ *   - session: ClassSessionResponseDTO | null (null = create mode)
+ */
+const SessionModal = ({ isOpen, onClose, onSubmit, session }) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    sessionDate: '',
+    startTime: '',
+    endTime: '',
+    type: SESSION_TYPE.OFFLINE,
+    location: '',
+    meetingLink: '',
+  });
+
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      setFormData({
+        title: session.title ?? '',
+        description: session.description ?? '',
+        sessionDate: session.sessionDate ?? '',
+        startTime: session.startTime ?? '',
+        endTime: session.endTime ?? '',
+        type: session.type ?? SESSION_TYPE.OFFLINE,
+        location: session.location ?? '',
+        meetingLink: session.meetingLink ?? '',
+      });
+    } else {
+      resetForm();
+    }
+  }, [session, isOpen]);
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      sessionDate: '',
+      startTime: '',
+      endTime: '',
+      type: SESSION_TYPE.OFFLINE,
+      location: '',
+      meetingLink: '',
+    });
+    setErrors({});
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { valid, errors: validationErrors } = validateSessionForm(formData);
+    if (!valid) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Build payload matching CreateClassSessionRequestDTO exactly
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || null,
+        sessionDate: formData.sessionDate,       // "yyyy-MM-dd"
+        startTime: formData.startTime,           // "HH:mm"
+        endTime: formData.endTime,               // "HH:mm"
+        type: formData.type,                     // "ONLINE" | "OFFLINE"
+        location: formData.type === SESSION_TYPE.OFFLINE ? formData.location.trim() || null : null,
+        meetingLink: formData.type === SESSION_TYPE.ONLINE ? formData.meetingLink.trim() || null : null,
+      };
+
+      await onSubmit(payload, session?.id);
+      resetForm();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="event-modal-overlay" onClick={handleClose}>
+      <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="event-modal-header">
+          <h2>{session ? 'Chỉnh Sửa Buổi Học' : 'Tạo Buổi Học Mới'}</h2>
+          <button className="event-modal-close" onClick={handleClose}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="event-modal-form">
+          <div className="form-section">
+            <h3>Chi Tiết Buổi Học</h3>
+
+            {/* Title → title */}
+            <div className="form-group">
+              <label>
+                Tiêu đề <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="Vd: Bài giảng chương 1"
+                className={errors.title ? 'error' : ''}
+                maxLength={200}
+              />
+              {errors.title && <span className="error-message">{errors.title}</span>}
+            </div>
+
+            {/* Session Date & Time → sessionDate, startTime, endTime */}
+            <div className="form-section-title">Thời gian</div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>
+                  Ngày học <span className="required">*</span>
+                </label>
+                <input
+                  type="date"
+                  name="sessionDate"
+                  value={formData.sessionDate}
+                  onChange={handleChange}
+                  className={errors.sessionDate ? 'error' : ''}
+                />
+                {errors.sessionDate && <span className="error-message">{errors.sessionDate}</span>}
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>
+                  Giờ bắt đầu <span className="required">*</span>
+                </label>
+                <input
+                  type="time"
+                  name="startTime"
+                  value={formData.startTime}
+                  onChange={handleChange}
+                  className={errors.startTime ? 'error' : ''}
+                />
+                {errors.startTime && <span className="error-message">{errors.startTime}</span>}
+              </div>
+
+              <div className="form-group">
+                <label>
+                  Giờ kết thúc <span className="required">*</span>
+                </label>
+                <input
+                  type="time"
+                  name="endTime"
+                  value={formData.endTime}
+                  onChange={handleChange}
+                  className={errors.endTime ? 'error' : ''}
+                />
+                {errors.endTime && <span className="error-message">{errors.endTime}</span>}
+              </div>
+            </div>
+
+            {/* Type → type (ONLINE | OFFLINE) */}
+            <div className="form-group">
+              <label>
+                Loại buổi học <span className="required">*</span>
+              </label>
+              <div className="radio-group">
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="type"
+                    value={SESSION_TYPE.OFFLINE}
+                    checked={formData.type === SESSION_TYPE.OFFLINE}
+                    onChange={handleChange}
+                  />
+                  <span>Trực tiếp tại lớp</span>
+                </label>
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="type"
+                    value={SESSION_TYPE.ONLINE}
+                    checked={formData.type === SESSION_TYPE.ONLINE}
+                    onChange={handleChange}
+                  />
+                  <span>Học trực tuyến</span>
+                </label>
+              </div>
+              {errors.type && <span className="error-message">{errors.type}</span>}
+            </div>
+
+            {/* Description → description */}
+            <div className="form-group">
+              <label>Mô tả</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Nhập mô tả về nội dung buổi học..."
+                rows={4}
+                maxLength={1000}
+              />
+              {errors.description && <span className="error-message">{errors.description}</span>}
+            </div>
+          </div>
+
+          {/* Online fields → meetingLink */}
+          {formData.type === SESSION_TYPE.ONLINE && (
+            <div className="form-section">
+              <h3>Link Cuộc Họp Trực Tuyến</h3>
+              <div className="form-group">
+                <label>Link cuộc họp</label>
+                <input
+                  type="url"
+                  name="meetingLink"
+                  value={formData.meetingLink}
+                  onChange={handleChange}
+                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  className={errors.meetingLink ? 'error' : ''}
+                  maxLength={500}
+                />
+                {errors.meetingLink && <span className="error-message">{errors.meetingLink}</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Offline fields → location */}
+          {formData.type === SESSION_TYPE.OFFLINE && (
+            <div className="form-section">
+              <h3>Địa Điểm</h3>
+              <div className="form-group">
+                <label>Phòng học / Địa điểm</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Vd: Phòng 301, Tòa nhà A"
+                  className={errors.location ? 'error' : ''}
+                  maxLength={200}
+                />
+                {errors.location && <span className="error-message">{errors.location}</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="event-modal-actions">
+            <button type="button" className="btn-cancel" onClick={handleClose} disabled={submitting}>
+              Hủy
+            </button>
+            <button type="submit" className="btn-submit" disabled={submitting}>
+              {submitting ? 'Đang xử lý...' : session ? 'Cập Nhật' : 'Tạo Buổi Học'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default SessionModal;
