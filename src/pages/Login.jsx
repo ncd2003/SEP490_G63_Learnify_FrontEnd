@@ -25,10 +25,11 @@ const LoginPage = () => {
       // Get user role from userData and redirect accordingly
       const userRole = userData?.role?.toUpperCase();
       
-      if (userRole === "TEACHER") {
-        navigate("/teacher/classrooms");
-      } else if (userRole === "STUDENT") {
-        navigate("/student/classrooms");
+      if (userRole === "TEACHER" || userRole === "STUDENT") {
+        navigate("/classrooms");
+      } else if (userRole === "ADMIN") {
+        // Redirect to classrooms for now until admin pages are ready
+        navigate("/classrooms");
       } else {
         // Fallback to home if role is not recognized
         navigate("/home");

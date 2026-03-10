@@ -36,7 +36,7 @@ const OAuth2Redirect = () => {
           setErrorMessage(decodedError);
           setStatus("error");
           setTimeout(() => {
-            navigate("/login");
+            navigate("/");
           }, 5000);
           return;
         }
@@ -57,10 +57,11 @@ const OAuth2Redirect = () => {
             
             // Đợi một chút để đảm bảo state được update
             setTimeout(() => {
-              if (userRole === "TEACHER") {
-                navigate("/teacher/classrooms", { replace: true });
-              } else if (userRole === "STUDENT") {
-                navigate("/student/classrooms", { replace: true });
+              if (userRole === "TEACHER" || userRole === "STUDENT") {
+                navigate("/classrooms", { replace: true });
+              } else if (userRole === "ADMIN") {
+                // Redirect to classrooms for now until admin pages are ready
+                navigate("/classrooms", { replace: true });
               } else {
                 // Fallback to home if role is not recognized
                 navigate("/home", { replace: true });
@@ -72,7 +73,7 @@ const OAuth2Redirect = () => {
           setErrorMessage("Không nhận được token từ server");
           setStatus("error");
           setTimeout(() => {
-            navigate("/login");
+            navigate("/");
           }, 5000);
         }
       } catch (err) {
@@ -80,7 +81,7 @@ const OAuth2Redirect = () => {
         setErrorMessage(err.message || "Đã xảy ra lỗi không xác định");
         setStatus("error");
         setTimeout(() => {
-          navigate("/login");
+          navigate("/");
         }, 3000);
       }
     };

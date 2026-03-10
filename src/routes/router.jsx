@@ -1,8 +1,7 @@
 import { lazy, Suspense } from "react";
-import { Navigate, useRoutes } from "react-router-dom";
-import { PATH_AUTH, PATH_TEACHER } from "./paths";
+import { useRoutes } from "react-router-dom";
+import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
-import RoleBasedGuard from "@/guards/role-base-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 
@@ -30,76 +29,70 @@ const NotFoundPage        = Loadable(lazy(() => import("@/pages/not-found/not-fo
 
 const AppRoutes = () =>
   useRoutes([
-    // ── Root redirect ──────────────────────────────────────────────────────────
+    // ── Root / Home ────────────────────────────────────────────────────────────
     {
       path: "/",
-      element: <Navigate to={PATH_AUTH.home} replace />,
+      element: <HomePage />,
+    },
+    {
+      path: "/home",
+      element: <HomePage />,
     },
 
     // ── Auth routes ────────────────────────────────────────────────────────────
     {
-      path: PATH_AUTH.root,
-      children: [
-        {
-          path: PATH_AUTH.login,
-          element: (
-            <GuestGuard>
-              <LoginPage />
-            </GuestGuard>
-          ),
-        },
-        {
-          path: PATH_AUTH.register,
-          element: (
-            <GuestGuard>
-              <RegisterPage />
-            </GuestGuard>
-          ),
-        },
-        {
-          path: PATH_AUTH.verifyOtp,
-          element: <OtpVerificationPage />,
-        },
-        {
-          path: PATH_AUTH.oauth2Redirect,
-          element: <OAuth2RedirectPage />,
-        },
-      ],
-    },
-
-    // ── Public routes ──────────────────────────────────────────────────────────
-    {
-      path: PATH_AUTH.home,
-      element: <HomePage />,
-    },
-
-    // ── Teacher routes ─────────────────────────────────────────────────────────
-    {
-      path: PATH_TEACHER.root,
+      path: "login",
       element: (
-        <RoleBasedGuard role="ROLE_TEACHER">
+        <GuestGuard>
+          <LoginPage />
+        </GuestGuard>
+      ),
+    },
+    {
+      path: "register",
+      element: (
+        <GuestGuard>
+          <RegisterPage />
+        </GuestGuard>
+      ),
+    },
+    {
+      path: "verify-otp",
+      element: <OtpVerificationPage />,
+    },
+    {
+      path: "oauth2/redirect",
+      element: <OAuth2RedirectPage />,
+    },
+
+    // ── User Profile (All authenticated users) ─────────────────────────────────
+    {
+      path: "profile",
+      element: (
+        <AuthGuard>
+          <UserProfilePage />
+        </AuthGuard>
+      ),
+    },
+
+    // ── Classroom routes (Teacher & Student with DashboardLayout) ──────────────
+    {
+      element: (
+        <AuthGuard>
           <DashboardLayout />
-        </RoleBasedGuard>
+        </AuthGuard>
       ),
       children: [
         {
-          index: true,
-          element: <Navigate to={PATH_TEACHER.classroom.root} replace />,
-        },
-        {
-          path: PATH_TEACHER.profile,
-          element: <UserProfilePage />,
-        },
-        {
-          path: PATH_TEACHER.classroom.root,
+          path: "classrooms",
           element: <ClassroomListPage />,
         },
         {
-          path: PATH_TEACHER.classroom.detail(":id"),
+          path: "classrooms/:id",
           element: <ClassroomPostPage />,
         },
         {
-          path: PATH_TEACHER.classroom.pendingRequests(":id"),
+          path: "classrooms/:id/pending-requests",
           element: <PendingRequestsPage />,
         },
       ],

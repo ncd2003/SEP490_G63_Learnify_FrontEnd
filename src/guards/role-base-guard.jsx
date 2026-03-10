@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { PATH_AUTH, PATH_TEACHER, PATH_STUDENT, PATH_ADMIN } from "@/routes/paths";
-import Login from "@/pages/Login";
+import { PATH_TEACHER, PATH_STUDENT, PATH_ADMIN } from "@/routes/paths";
 
 /**
  * @param {{ role: string, children: import("react").ReactNode }} props
@@ -16,16 +15,7 @@ const RoleBasedGuard = ({ children, role }) => {
     if (pathname !== requestedLocation) {
       setRequestedLocation(pathname);
     }
-    if (pathname === "/") {
-      return <Navigate to={PATH_AUTH.login} />;
-    }
-    return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
-        <div className="w-full max-w-sm md:max-w-5xl">
-          <Login />
-        </div>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   const userRole = user?.role;

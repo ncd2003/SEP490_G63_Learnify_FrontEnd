@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import "@/assets/css/components/header.css";
 import { BookOpen, Menu, X, LogOut, User, Settings } from "lucide-react";
-import { PATH_AUTH, PATH_TEACHER, PATH_STUDENT } from "@/routes/paths";
+import { PATH_AUTH, PATH_COMMON } from "@/routes/paths";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -21,10 +21,12 @@ const Header = () => {
   };
 
   const handleDashboardClick = () => {
-    if (user?.role?.toUpperCase() === "TEACHER") {
-      navigate(PATH_TEACHER.classroom.root);
-    } else if (user?.role?.toUpperCase() === "STUDENT") {
-      navigate(PATH_STUDENT.classroom.root);
+    const userRole = user?.role?.toUpperCase();
+    if (userRole === "TEACHER" || userRole === "STUDENT") {
+      navigate("/classrooms");
+    } else if (userRole === "ADMIN") {
+      // Redirect to classrooms for now until admin pages are ready
+      navigate("/classrooms");
     }
   };
 
@@ -138,11 +140,7 @@ const Header = () => {
                         className="dropdown-item"
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          navigate(
-                            user?.role?.toUpperCase() === "TEACHER"
-                              ? PATH_TEACHER.profile
-                              : PATH_STUDENT.profile
-                          );
+                          navigate(PATH_COMMON.profile);
                         }}
                       >
                         <User size={16} />

@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import "@/assets/css/components/dashboardLayout.css";
 import {
   BookOpen,
-  LayoutDashboard,
   Users,
   FileText,
   Settings,
@@ -16,7 +15,7 @@ import {
   BookMarked,
   ClipboardList,
 } from "lucide-react";
-import { PATH_AUTH, PATH_TEACHER, PATH_STUDENT } from "@/routes/paths";
+import { PATH_AUTH, PATH_COMMON, PATH_TEACHER, PATH_STUDENT, PATH_ADMIN } from "@/routes/paths";
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -27,6 +26,7 @@ const DashboardLayout = () => {
 
   const isTeacher = user?.role === "ROLE_TEACHER";
   const isStudent = user?.role === "ROLE_STUDENT";
+  const isAdmin = user?.role === "ROLE_ADMIN";
 
   const handleLogout = async () => {
     try {
@@ -39,11 +39,6 @@ const DashboardLayout = () => {
 
   // Teacher menu items
   const teacherMenuItems = [
-    {
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      path: PATH_TEACHER.root,
-    },
     {
       icon: BookOpen,
       label: "Lớp học",
@@ -74,18 +69,37 @@ const DashboardLayout = () => {
   // Student menu items
   const studentMenuItems = [
     {
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      path: PATH_STUDENT.root,
-    },
-    {
       icon: BookOpen,
       label: "Lớp học của tôi",
       path: PATH_STUDENT.classroom.root,
     },
   ];
 
-  const menuItems = isTeacher ? teacherMenuItems : studentMenuItems;
+  // Admin menu items
+  const adminMenuItems = [
+    {
+      icon: BookOpen,
+      label: "Lớp học",
+      path: "/classrooms",
+    },
+    {
+      icon: Users,
+      label: "Quản lý người dùng",
+      path: PATH_ADMIN.users.root,
+    },
+    {
+      icon: BookMarked,
+      label: "Báo cáo hệ thống",
+      path: PATH_ADMIN.reports,
+    },
+    {
+      icon: Settings,
+      label: "Cài đặt",
+      path: PATH_ADMIN.settings,
+    },
+  ];
+
+  const menuItems = isTeacher ? teacherMenuItems : isStudent ? studentMenuItems : adminMenuItems;
 
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + "/");
@@ -129,11 +143,7 @@ const DashboardLayout = () => {
         <div className="sidebar-footer">
           <button
             className="nav-item"
-            onClick={() =>
-              navigate(
-                isTeacher ? PATH_TEACHER.profile : PATH_STUDENT.profile
-              )
-            }
+            onClick={() => navigate(PATH_COMMON.profile)}
             title={!isSidebarOpen ? "Cài đặt" : ""}
           >
             <Settings size={20} />
@@ -228,9 +238,7 @@ const DashboardLayout = () => {
                       className="dropdown-item"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        navigate(
-                          isTeacher ? PATH_TEACHER.profile : PATH_STUDENT.profile
-                        );
+                        navigate(PATH_COMMON.profile);
                       }}
                     >
                       <Settings size={16} />

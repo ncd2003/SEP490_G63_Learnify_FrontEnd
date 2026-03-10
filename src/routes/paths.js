@@ -22,10 +22,14 @@ export const PATH_AUTH = {
   oauth2Redirect: path(ROOTS_GUEST, '/oauth2/redirect'),
 };
 
+// ─── COMMON (All authenticated users) ─────────────────────────────────────────
+export const PATH_COMMON = {
+  profile: '/profile',
+};
+
 // ─── TEACHER ──────────────────────────────────────────────────────────────────
 export const PATH_TEACHER = {
   root: '/',  // Default root without /teacher prefix
-  profile: path(ROOTS_TEACHER, '/profile'),
   classroom: {
     root:   path(ROOTS_TEACHER, '/classrooms'),
     detail: (id) => path(ROOTS_TEACHER, `/classrooms/${id}`),
@@ -42,7 +46,6 @@ export const PATH_TEACHER = {
 // ─── STUDENT ──────────────────────────────────────────────────────────────────
 export const PATH_STUDENT = {
   root: '/',  // Default root without /student prefix
-  profile: path(ROOTS_STUDENT, '/profile'),
   classroom: {
     root:   path(ROOTS_STUDENT, '/classrooms'),
     detail: (id) => path(ROOTS_STUDENT, `/classrooms/${id}`),
