@@ -2,6 +2,20 @@ import { useState } from "react";
 import { postApi } from "@/apis/post.api";
 
 /**
+ * Sort posts: pinned posts first, then by creation date (newest first)
+ */
+const sortPosts = (posts) => {
+  return [...posts].sort((a, b) => {
+    // Pinned posts come first
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    
+    // If both pinned or both not pinned, sort by createdAt (newest first)
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+};
+
+/**
  * Mutations for posts: create, update, delete.
  * Receives `setPosts` from `usePosts` to update the shared list.
  *
@@ -14,7 +28,7 @@ const usePostMutations = (setPosts) => {
     setSubmitting(true);
     try {
       const response = await postApi.createPost(data, files);
-      setPosts((prev) => [response.result, ...prev]);
+      setPosts((prev) => sortPosts([response.result, ...prev]));
       return { success: true };
     } catch (err) {
       return {
@@ -30,7 +44,7 @@ const usePostMutations = (setPosts) => {
     setSubmitting(true);
     try {
       const response = await postApi.updatePost(id, data, files);
-      setPosts((prev) => prev.map((p) => (p.id === id ? response.result : p)));
+      setPosts((prev) => sortPosts(prev.map((p) => (p.id === id ? response.result : p))));
       return { success: true };
     } catch (err) {
       return {

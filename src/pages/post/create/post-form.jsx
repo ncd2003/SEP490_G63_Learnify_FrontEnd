@@ -1,13 +1,13 @@
 import { useState, useRef } from "react";
-import { ImagePlus, X, Paperclip } from "lucide-react";
+import { ImagePlus, X, Paperclip, Pin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * @param {{
  *   classroomId: number,
- *   onSubmit: (data: { classroomId: number, content: string }, files: File[]) => Promise<{ success: boolean, message?: string }>,
+ *   onSubmit: (data: { classroomId: number, content: string, pinned: boolean }, files: File[]) => Promise<{ success: boolean, message?: string }>,
  *   submitting: boolean,
- *   initialPost?: { id: number, content: string } | null,
+ *   initialPost?: { id: number, content: string, pinned?: boolean } | null,
  *   onCancel?: () => void,
  * }} props
  */
@@ -15,6 +15,7 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
   const { user } = useAuth();
   const fileInputRef = useRef(null);
   const [content, setContent] = useState(initialPost?.content ?? "");
+  const [pinned, setPinned] = useState(initialPost?.pinned ?? false);
   const [files, setFiles] = useState([]);
   const [error, setError] = useState("");
 
@@ -40,9 +41,10 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
       return;
     }
 
-    const result = await onSubmit({ classroomId, content: content.trim() }, files);
+    const result = await onSubmit({ classroomId, content: content.trim(), pinned }, files);
     if (result?.success) {
       setContent("");
+      setPinned(false);
       setFiles([]);
       onCancel?.();
     } else {
@@ -93,30 +95,43 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
 
       {/* Bottom actions */}
       <div className="post-form-actions">
-        <button
-          type="button"
-          className="post-form-attach-btn"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={submitting}
-        >
-          <ImagePlus size={18} />
-          Thêm hình ảnh
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          className="hidden-file-input"
-          onChange={handleFileChange}
-        />
+        <div className="post-form-left-actions">
+          <button
+            type="button"
+            className="post-form-attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={submitting}
+          >
+            <ImagePlus size={18} />
+            Thêm tài liệu
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden-file-input"
+            onChange={handleFileChange}
+          />
+          
+          <label className="post-form-pin-checkbox">
+            <input
+              type="checkbox"
+              checked={pinned}
+              onChange={(e) => setPinned(e.target.checked)}
+              disabled={submitting}
+            />
+            <Pin size={14} />
+            <span>Ghím bài đăng</span>
+          </label>
+        </div>
 
         <div className="post-form-right-actions">
           {isEditing && (
             <button
               type="button"
               className="btn-cancel"
-              onClick={() => { setContent(initialPost.content); setFiles([]); setError(""); onCancel?.(); }}
+              onClick={() => { setContent(initialPost.content); setPinned(initialPost.pinned ?? false); setFiles([]); setError(""); onCancel?.(); }}
               disabled={submitting}
             >
               Hủy

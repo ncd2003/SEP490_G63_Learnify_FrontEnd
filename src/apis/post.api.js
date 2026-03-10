@@ -10,25 +10,29 @@ export const postApi = {
     apiRequest.get(BASE, { params: { classroomId } }),
 
   /**
-   * @param {{ classroomId: number, content: string }} data
+   * @param {{ classroomId: number, content: string, pinned: boolean }} data
    * @param {File[]} files
    */
   createPost: (data, files = []) => {
     const formData = new FormData();
     formData.append("classroomId", data.classroomId);
     formData.append("content", data.content);
+    formData.append("pinned", data.pinned);
     files.forEach((f) => formData.append("files", f));
     return apiRequest.post(BASE, formData);
   },
 
   /**
    * @param {number} id
-   * @param {{ content: string }} data
+   * @param {{ content: string, pinned?: boolean }} data
    * @param {File[]} files
    */
   updatePost: (id, data, files = []) => {
     const formData = new FormData();
     formData.append("content", data.content);
+    if (data.pinned !== undefined) {
+      formData.append("pinned", data.pinned);
+    }
     files.forEach((f) => formData.append("files", f));
     return apiRequest.put(`${BASE}/${id}`, formData);
   },

@@ -163,6 +163,12 @@
   gap: 8px;
 }
 
+.post-form-left-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .post-form-right-actions {
   display: flex;
   gap: 8px;
@@ -191,6 +197,36 @@
 .post-form-attach-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.post-form-pin-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: #6366f1;
+  user-select: none;
+}
+
+.post-form-pin-checkbox:hover {
+  background: #eff6ff;
+}
+
+.post-form-pin-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.post-form-pin-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .post-form-submit {
@@ -277,10 +313,22 @@
   gap: 2px;
 }
 
+.post-author-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .post-author-name {
   font-size: 14px;
   font-weight: 600;
   color: #111827;
+}
+
+.post-created-time {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 400;
 }
 
 .post-pinned-badge {
@@ -431,14 +479,14 @@
 .comment-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 8px;
 }
 
 .comment-author-info {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .comment-author-name {
@@ -533,4 +581,65 @@
 .comment-form-actions {
   display: flex;
   gap: 8px;
+}
+
+/* ─── Reply Button ────────────────────────────────────────── */
+.comment-reply-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.comment-reply-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ─── Nested Replies ─────────────────────────────────────── */
+.comment-replies {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comment-reply-form {
+  margin-top: 12px;
+}
+
+/* Nested comment styling adjustments */
+.comment-card .comment-card {
+  background: #f3f4f6;
+  border-left: 2px solid #d1d5db;
+}
+
+.comment-card .comment-card .comment-card {
+  background: #e5e7eb;
+}
+
+/* Reply form inside comment */
+.comment-reply-form .comment-form {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  padding: 12px;
+}
+
+.comment-reply-form .comment-form-title {
+  font-size: 13px;
+  color: #6366f1;
+}
+
+.comment-reply-form .comment-form-textarea {
+  min-height: 80px;
 }

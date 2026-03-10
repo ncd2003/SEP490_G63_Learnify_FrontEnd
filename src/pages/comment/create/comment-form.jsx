@@ -4,13 +4,15 @@ import { CreateCommentSchema } from "@/schema/comment.schema";
 /**
  * @param {{
  *   postId: number,
- *   onSubmit: (data: { content: string }) => Promise<{ success: boolean, message?: string }>,
+ *   onSubmit: (data: { content: string, parentId?: number }) => Promise<{ success: boolean, message?: string }>,
  *   submitting: boolean,
  *   initialComment?: { id: number, content: string } | null,
  *   onCancel?: () => void,
+ *   parentId?: number,
+ *   parentAuthorName?: string,
  * }} props
  */
-const CommentForm = ({ postId, onSubmit, submitting, initialComment = null, onCancel }) => {
+const CommentForm = ({ postId, onSubmit, submitting, initialComment = null, onCancel, parentId, parentAuthorName }) => {
   const [content, setContent] = useState(initialComment?.content ?? "");
   const [error, setError] = useState("");
 
@@ -23,14 +25,17 @@ const CommentForm = ({ postId, onSubmit, submitting, initialComment = null, onCa
     setError("");
 
     // Validate using Zod schema
-    const validation = CreateCommentSchema.safeParse({ postId, content: content.trim() });
+    const payload = { postId, content: content.trim() };
+    if (parentId) payload.parentId = parentId;
+    
+    const validation = CreateCommentSchema.safeParse(payload);
     
     if (!validation.success) {
       setError(validation.error.errors[0].message);
       return;
     }
 
-    const result = await onSubmit({ content: content.trim() });
+    const result = await onSubmit(payload);
     if (result?.success) {
       setContent("");
       onCancel?.();
@@ -47,7 +52,9 @@ const CommentForm = ({ postId, onSubmit, submitting, initialComment = null, onCa
 
   return (
     <form className="comment-form" onSubmit={handleSubmit}>
-      <h3 className="comment-form-title">Thêm bình luận</h3>
+      <h3 className="comment-form-title">
+        {parentId && parentAuthorName ? `Trả lời ${parentAuthorName}` : "Thêm bình luận"}
+      </h3>
       <textarea
         className="comment-form-textarea"
         placeholder="Nhập nội dung bình luận của bạn..."

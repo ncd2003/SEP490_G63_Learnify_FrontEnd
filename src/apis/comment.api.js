@@ -10,7 +10,7 @@ export const commentApi = {
 
   /**
    * Create a new comment
-   * @param {{ postId: number, content: string }} data
+   * @param {{ postId: number, content: string, parentId?: number }} data
    */
   createComment: (data) =>
     apiRequest.post(`/comments`, data),
