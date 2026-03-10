@@ -1,186 +1,203 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { CheckCircle, XCircle, Loader2, Users, Clock } from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import { classroomApi } from '@/apis/classroom.api';
+import { enrollmentApi } from '@/apis/enrollment.api';
 import ApproveRequestsModal from './ApproveRequestsModal';
 import RejectRequestsModal from './RejectRequestsModal';
 import '@/assets/css/pages/classroom/pendingRequests.css';
 
 const PendingRequests = () => {
-  const { id } = useParams(); // classroomId from URL
+  const { id } = useParams();
+
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [error, setError] = useState('');
+  const [showRejectModal, setShowRejectModal]   = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // { type: 'approve'|'reject', ids: number[] }
+  const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
   const [classroomInfo, setClassroomInfo] = useState(null);
 
-  useEffect(() => {
-    fetchClassroomInfo();
-    fetchPendingRequests();
-  }, [id]);
-
-  const fetchClassroomInfo = async () => {
+  const fetchClassroomInfo = useCallback(async () => {
     try {
       const response = await classroomApi.getClassroomById(id);
-      if (response.code === 1000) {
-        setClassroomInfo(response.result);
-      }
+      if (response.code === 1000) setClassroomInfo(response.result);
     } catch (err) {
       console.error('Error fetching classroom info:', err);
     }
-  };
+  }, [id]);
 
-  const fetchPendingRequests = async () => {
+  const fetchPendingRequests = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await classroomApi.getPendingRequests(id);
+      const response = await enrollmentApi.getPendingMembers(id);
       if (response.code === 1000) {
-        setPendingRequests(response.result || []);
+        setPendingRequests(response.result ?? []);
       } else {
-        setError('Không thể tải danh sách yêu cầu');
+        setError(response.message || 'Không thể tải danh sách yêu cầu');
       }
     } catch (err) {
-      setError('Đã xảy ra lỗi khi tải dữ liệu');
+      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi tải dữ liệu');
       console.error('Error fetching pending requests:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(pendingRequests.map((req) => req.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
+  useEffect(() => {
+    fetchClassroomInfo();
+    fetchPendingRequests();
+  }, [fetchClassroomInfo, fetchPendingRequests]);
 
-  const handleSelectOne = (requestId) => {
+  /* ── Selection helpers ─────────────────────────────────────────────── */
+  const allSelected =
+    pendingRequests.length > 0 && selectedIds.length === pendingRequests.length;
+
+  const handleSelectAll = (e) =>
+    setSelectedIds(e.target.checked ? pendingRequests.map((r) => r.memberId) : []);
+
+  const handleSelectOne = (reqId) =>
     setSelectedIds((prev) =>
-      prev.includes(requestId)
-        ? prev.filter((id) => id !== requestId)
-        : [...prev, requestId]
+      prev.includes(reqId) ? prev.filter((x) => x !== reqId) : [...prev, reqId]
     );
-  };
 
-  const handleApprove = () => {
-    if (selectedIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một yêu cầu để duyệt');
-      return;
-    }
+  /* ── Open confirm modals ───────────────────────────────────────────── */
+  const openApprove = (ids) => {
+    setError('');
+    if (!ids.length) { setError('Vui lòng chọn ít nhất một yêu cầu để duyệt'); return; }
+    setPendingAction({ type: 'approve', ids });
     setShowApproveModal(true);
   };
 
-  const handleReject = () => {
-    if (selectedIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một yêu cầu để từ chối');
-      return;
-    }
+  const openReject = (ids) => {
+    setError('');
+    if (!ids.length) { setError('Vui lòng chọn ít nhất một yêu cầu để từ chối'); return; }
+    setPendingAction({ type: 'reject', ids });
     setShowRejectModal(true);
   };
 
+  /* ── Confirm handlers ──────────────────────────────────────────────── */
   const handleApproveConfirm = async () => {
+    setShowApproveModal(false);
+    setActionLoading(true);
+    setError('');
     try {
-      setError('');
-      const response = await classroomApi.approveRequests(id, selectedIds);
+      const response = await enrollmentApi.approveRequests(id, pendingAction.ids);
       if (response.code === 1000) {
-        setSuccess('Đã duyệt yêu cầu tham gia thành công'); // MSG44
+        setSuccess('Đã phê duyệt yêu cầu tham gia thành công.');
         setSelectedIds([]);
-        await fetchPendingRequests(); // Refresh list
-        setTimeout(() => setSuccess(''), 3000);
-      } else if (response.code === 48) {
-        setError('Lớp học đã đạt sức chứa tối đa (60 học sinh)'); // MSG48
+        await fetchPendingRequests();
+        setTimeout(() => setSuccess(''), 4000);
       } else {
         setError(response.message || 'Có lỗi xảy ra khi duyệt yêu cầu');
       }
     } catch (err) {
-      setError('Đã xảy ra lỗi khi duyệt yêu cầu');
-      console.error('Error approving requests:', err);
+      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi duyệt yêu cầu');
     } finally {
-      setShowApproveModal(false);
+      setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
   const handleRejectConfirm = async () => {
+    setShowRejectModal(false);
+    setActionLoading(true);
+    setError('');
     try {
-      setError('');
-      const response = await classroomApi.rejectRequests(id, selectedIds);
+      const response = await enrollmentApi.rejectRequests(id, pendingAction.ids);
       if (response.code === 1000) {
-        setSuccess('Đã từ chối yêu cầu tham gia'); // MSG44
+        setSuccess('Đã từ chối các yêu cầu tham gia.');
         setSelectedIds([]);
-        await fetchPendingRequests(); // Refresh list
-        setTimeout(() => setSuccess(''), 3000);
+        await fetchPendingRequests();
+        setTimeout(() => setSuccess(''), 4000);
       } else {
         setError(response.message || 'Có lỗi xảy ra khi từ chối yêu cầu');
       }
     } catch (err) {
-      setError('Đã xảy ra lỗi khi từ chối yêu cầu');
-      console.error('Error rejecting requests:', err);
+      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi từ chối yêu cầu');
     } finally {
-      setShowRejectModal(false);
+      setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
   const formatDateTime = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleString('vi-VN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
     });
   };
+
+  const getInitials = (name) =>
+    (name ?? '').split(' ').filter(Boolean).slice(-2).map((w) => w[0]).join('').toUpperCase() || '?';
 
   return (
     <ClassroomDetailLayout>
       <div className="pending-requests-page">
         <h1 className="pending-requests-title">Yêu cầu tham gia đang chờ duyệt</h1>
 
+        {/* Info box */}
         <div className="pending-requests-info-box">
-          <div className="info-box-text">
-            Lớp hiện đang có - {classroomInfo?.name || 'Lớp A'} / Sĩ số: {classroomInfo?.studentCount || 0}/{classroomInfo?.maxStudents || 60} học sinh
+          <div className="info-box-left">
+            <div className="info-box-class">
+              <span className="info-label">Lớp:</span>
+              <span className="info-value">{classroomInfo?.name || '—'}</span>
+            </div>
+            <div className="info-box-capacity">
+              <Users size={14} />
+              <span>Sĩ số: {classroomInfo?.studentCount ?? 0}{classroomInfo?.maxStudents ? ` / ${classroomInfo.maxStudents}` : ''}</span>
+              <span className="info-separator">•</span>
+              <Clock size={14} />
+              <span>Đang chờ: <strong>{pendingRequests.length}</strong></span>
+            </div>
           </div>
-          <div className="info-box-actions">
-            <button
-              className="btn-approve"
-              onClick={handleApprove}
-              disabled={selectedIds.length === 0}
-            >
-              Duyệt
-            </button>
-            <button
-              className="btn-reject"
-              onClick={handleReject}
-              disabled={selectedIds.length === 0}
-            >
-              Từ chối
-            </button>
+          <div className="info-box-right">
+            <span className="pending-badge">Yêu cầu đang chờ (Pending)</span>
+            <span className="info-hint">Chọn nhiều hàng để xử lý đồng thời</span>
           </div>
         </div>
 
-        {error && (
-          <div className="pending-requests-alert alert-error">
-            {error}
-          </div>
-        )}
+        {/* Bulk action buttons */}
+        <div className="pending-bulk-actions">
+          <button
+            className="btn-approve"
+            onClick={() => openApprove(selectedIds)}
+            disabled={selectedIds.length === 0 || actionLoading}
+          >
+            {actionLoading ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
+            Duyệt {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+          </button>
+          <button
+            className="btn-reject"
+            onClick={() => openReject(selectedIds)}
+            disabled={selectedIds.length === 0 || actionLoading}
+          >
+            {actionLoading ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
+            Từ chối {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+          </button>
+        </div>
 
-        {success && (
-          <div className="pending-requests-alert alert-success">
-            {success}
-          </div>
-        )}
+        {/* Alerts */}
+        {error && <div className="pending-requests-alert alert-error">{error}</div>}
+        {success && <div className="pending-requests-alert alert-success">{success}</div>}
 
+        {/* Table */}
         {loading ? (
-          <div className="pending-requests-loading">Đang tải...</div>
+          <div className="pending-requests-loading">
+            <Loader2 size={28} className="spin" />
+            <span>Đang tải danh sách yêu cầu...</span>
+          </div>
         ) : pendingRequests.length === 0 ? (
           <div className="pending-requests-empty">
-            Không có yêu cầu tham gia nào đang chờ duyệt
+            <CheckCircle size={40} className="empty-check-icon" />
+            <p className="empty-title">Không có yêu cầu nào đang chờ duyệt</p>
+            <p className="empty-desc">Tất cả yêu cầu tham gia đã được xử lý.</p>
           </div>
         ) : (
           <div className="pending-requests-table-wrapper">
@@ -190,33 +207,65 @@ const PendingRequests = () => {
                   <th>
                     <input
                       type="checkbox"
-                      checked={
-                        selectedIds.length === pendingRequests.length &&
-                        pendingRequests.length > 0
-                      }
+                      checked={allSelected}
                       onChange={handleSelectAll}
                       aria-label="Chọn tất cả"
                     />
                   </th>
-                  <th>Họ tên</th>
+                  <th>Học sinh</th>
                   <th>Email</th>
                   <th>Thời gian yêu cầu</th>
+                  <th className="col-actions">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingRequests.map((request) => (
-                  <tr key={request.id}>
+                  <tr
+                    key={request.memberId}
+                    className={selectedIds.includes(request.memberId) ? 'row-selected' : ''}
+                  >
                     <td>
                       <input
                         type="checkbox"
-                        checked={selectedIds.includes(request.id)}
-                        onChange={() => handleSelectOne(request.id)}
+                        checked={selectedIds.includes(request.memberId)}
+                        onChange={() => handleSelectOne(request.memberId)}
                         aria-label={`Chọn ${request.studentName}`}
                       />
                     </td>
-                    <td>{request.studentName}</td>
-                    <td>{request.studentEmail}</td>
-                    <td>{formatDateTime(request.requestTime)}</td>
+                    <td>
+                      <div className="student-cell">
+                        <div className="student-avatar">
+                          {request.avatarUrl ? (
+                            <img src={request.avatarUrl} alt={request.studentName} />
+                          ) : (
+                            <span>{getInitials(request.studentName)}</span>
+                          )}
+                        </div>
+                        <span className="student-name">{request.studentName}</span>
+                      </div>
+                    </td>
+                    <td className="cell-email">{request.studentEmail}</td>
+                    <td className="cell-date">{formatDateTime(request.requestedAt)}</td>
+                    <td className="cell-row-actions">
+                      <button
+                        className="row-btn-approve"
+                        title="Duyệt"
+                        disabled={actionLoading}
+                        onClick={() => openApprove([request.memberId])}
+                      >
+                        <CheckCircle size={15} />
+                        Duyệt
+                      </button>
+                      <button
+                        className="row-btn-reject"
+                        title="Từ chối"
+                        disabled={actionLoading}
+                        onClick={() => openReject([request.memberId])}
+                      >
+                        <XCircle size={15} />
+                        Từ chối
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -224,19 +273,19 @@ const PendingRequests = () => {
           </div>
         )}
 
+        {/* Modals */}
         {showApproveModal && (
           <ApproveRequestsModal
-            count={selectedIds.length}
+            count={pendingAction?.ids.length ?? 0}
             onConfirm={handleApproveConfirm}
-            onCancel={() => setShowApproveModal(false)}
+            onCancel={() => { setShowApproveModal(false); setPendingAction(null); }}
           />
         )}
-
         {showRejectModal && (
           <RejectRequestsModal
-            count={selectedIds.length}
+            count={pendingAction?.ids.length ?? 0}
             onConfirm={handleRejectConfirm}
-            onCancel={() => setShowRejectModal(false)}
+            onCancel={() => { setShowRejectModal(false); setPendingAction(null); }}
           />
         )}
       </div>
@@ -245,3 +294,4 @@ const PendingRequests = () => {
 };
 
 export default PendingRequests;
+
