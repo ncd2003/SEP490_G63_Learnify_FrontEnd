@@ -234,43 +234,6 @@
   color: #6b7280;
 }
 
-.event-actions {
-  display: none;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.event-item:hover .event-actions {
-  display: flex;
-}
-
-.event-action-btn {
-  padding: 0.25rem;
-  background: transparent;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.event-action-btn.edit {
-  color: #3b82f6;
-}
-
-.event-action-btn.edit:hover {
-  background: #3b82f6;
-  color: #ffffff;
-}
-
-.event-action-btn.delete {
-  color: #ef4444;
-}
-
-.event-action-btn.delete:hover {
-  background: #ef4444;
-  color: #ffffff;
-}
-
 .more-events-btn {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
@@ -435,16 +398,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.week-event-actions {
-  display: none;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.week-event-item:hover .week-event-actions {
-  display: flex;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════

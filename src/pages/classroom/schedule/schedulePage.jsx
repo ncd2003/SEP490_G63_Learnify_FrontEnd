@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, Edit, Trash2, MapPin, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Video } from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
+import EventDetailModal from '@/components/EventDetailModal';
 import useSchedule from '@/hooks/useSchedule';
 import { SESSION_TYPE } from '@/schema/scheduleSchema';
 import '@/assets/css/pages/classroom/classroomSchedule.css';
+import '@/assets/css/components/eventDetailModal.css';
 
 const VIEW_MODES = {
   MONTH: 'month',
@@ -79,6 +81,8 @@ const SchedulePage = () => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isDayDetailOpen, setIsDayDetailOpen] = useState(false);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
+  const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
+  const [selectedEventForDetail, setSelectedEventForDetail] = useState(null);
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
 
@@ -152,6 +156,28 @@ const SchedulePage = () => {
     setSelectedDayDate(null);
   };
 
+  // ─── Event Detail Modal Handlers ─────────────────────────────────────────
+
+  const handleEventClick = (session) => {
+    setSelectedEventForDetail(session);
+    setIsEventDetailOpen(true);
+  };
+
+  const handleCloseEventDetail = () => {
+    setIsEventDetailOpen(false);
+    setSelectedEventForDetail(null);
+  };
+
+  const handleEventEdit = (session) => {
+    handleCloseEventDetail();
+    handleEdit(session);
+  };
+
+  const handleEventDelete = async (sessionId) => {
+    handleCloseEventDetail();
+    await handleDelete(sessionId);
+  };
+
   // ─── Auto scroll to current time on mount (Google Calendar style) ───────
 
   useEffect(() => {
@@ -209,17 +235,6 @@ const SchedulePage = () => {
     <span className="event-type-badge" title={session.type === SESSION_TYPE.ONLINE ? 'Trực tuyến' : 'Trực tiếp'}>
       {session.type === SESSION_TYPE.ONLINE ? <Video size={10} /> : <MapPin size={10} />}
     </span>
-  );
-
-  const renderSessionActions = (session, iconSize = 14) => (
-    <div className="event-actions">
-      <button className="event-action-btn edit" onClick={(e) => { e.stopPropagation(); handleEdit(session); }} title="Chỉnh sửa">
-        <Edit size={iconSize} />
-      </button>
-      <button className="event-action-btn delete" onClick={(e) => { e.stopPropagation(); handleDelete(session.id); }} title="Xóa">
-        <Trash2 size={iconSize} />
-      </button>
-    </div>
   );
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -302,13 +317,12 @@ const SchedulePage = () => {
                             <div 
                               key={s.id} 
                               className="event-item"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => { e.stopPropagation(); handleEventClick(s); }}
                             >
                               <div className="event-content">
                                 <span className="event-time">{s.startTime} {renderSessionBadge(s)}</span>
                                 <span className="event-title">{s.title}</span>
                               </div>
-                              {renderSessionActions(s)}
                             </div>
                           ))}
                           {remainingCount > 0 && (
@@ -371,13 +385,14 @@ const SchedulePage = () => {
                                     </div>
                                   )}
                                   {slotSessions.map((s) => (
-                                    <div key={s.id} className="week-event-item">
+                                    <div 
+                                      key={s.id} 
+                                      className="week-event-item"
+                                      onClick={() => handleEventClick(s)}
+                                    >
                                       <div className="week-event-content">
                                         <div className="week-event-time">{s.startTime} - {s.endTime}</div>
                                         <div className="week-event-title">{s.title}</div>
-                                      </div>
-                                      <div className="week-event-actions">
-                                        {renderSessionActions(s, 12)}
                                       </div>
                                     </div>
                                   ))}
@@ -426,11 +441,14 @@ const SchedulePage = () => {
                               </div>
                             )}
                             {slotSessions.map((s) => (
-                              <div key={s.id} className="day-event-item">
+                              <div 
+                                key={s.id} 
+                                className="day-event-item"
+                                onClick={() => handleEventClick(s)}
+                              >
                                 <div className="day-event-header">
                                   <div className="day-event-time">{s.startTime} - {s.endTime} {renderSessionBadge(s)}</div>
                                   <div className="day-event-title">{s.title}</div>
-                                  {renderSessionActions(s)}
                                 </div>
                                 {s.description && <div className="day-event-description">{s.description}</div>}
                                 {s.type === SESSION_TYPE.OFFLINE && s.location && (
@@ -464,6 +482,15 @@ const SchedulePage = () => {
         session={selectedSession}
       />
 
+      {/* Event Detail Modal – Google Calendar style */}
+      <EventDetailModal
+        isOpen={isEventDetailOpen}
+        onClose={handleCloseEventDetail}
+        session={selectedEventForDetail}
+        onEdit={handleEventEdit}
+        onDelete={handleEventDelete}
+      />
+
       {/* Day Detail Modal */}
       {isDayDetailOpen && selectedDayDate && (
         <div className="modal-overlay" onClick={handleCloseDayDetail}>
@@ -486,7 +513,11 @@ const SchedulePage = () => {
                   {getSessionsForDate(selectedDayDate)
                     .sort((a, b) => a.startTime.localeCompare(b.startTime))
                     .map((s) => (
-                      <div key={s.id} className="day-detail-event-item">
+                      <div 
+                        key={s.id} 
+                        className="day-detail-event-item"
+                        onClick={() => { handleCloseDayDetail(); handleEventClick(s); }}
+                      >
                         <div className="day-detail-event-header">
                           <div>
                             <div className="day-detail-event-time">
@@ -494,7 +525,6 @@ const SchedulePage = () => {
                             </div>
                             <div className="day-detail-event-title">{s.title}</div>
                           </div>
-                          {renderSessionActions(s, 16)}
                         </div>
                         {s.description && (
                           <div className="day-detail-event-description">{s.description}</div>
@@ -507,7 +537,7 @@ const SchedulePage = () => {
                         {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
                           <div className="day-detail-event-location">
                             <Video size={14} /> 
-                            <a href={s.meetingLink} target="_blank" rel="noopener noreferrer">
+                            <a href={s.meetingLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                               Tham gia cuộc họp
                             </a>
                           </div>
