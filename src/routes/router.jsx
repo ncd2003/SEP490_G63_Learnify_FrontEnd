@@ -4,6 +4,7 @@ import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Loadable = (Component) => (props) => (
   <Suspense fallback={<LoadingScreen />}>
@@ -24,14 +25,22 @@ const HomePage              = Loadable(lazy(() => import("@/pages/Home")));
 const OAuth2RedirectPage    = Loadable(lazy(() => import("@/pages/OAuth2Redirect")));
 
 // ─── Teacher / User pages ─────────────────────────────────────────────────────
-const UserProfilePage       = Loadable(lazy(() => import("@/pages/UserProfile")));
-const ClassroomListPage     = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
-const ClassroomPostPage     = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
+const UserProfilePage           = Loadable(lazy(() => import("@/pages/UserProfile")));
+const ClassroomListPage         = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
+const StudentClassroomListPage  = Loadable(lazy(() => import("@/pages/classroom/list/student-classroom-page")));
+const ClassroomPostPage         = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
 const PendingRequestsPage   = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
 const SchedulePage          = Loadable(lazy(() => import("@/pages/classroom/schedule/schedulePage")));
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
 const NotFoundPage          = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
+
+// ─── Role-aware classroom list ────────────────────────────────────────────────
+const ClassroomListOrStudentPage = () => {
+  const { user } = useAuth();
+  if (user?.role === "ROLE_STUDENT") return <StudentClassroomListPage />;
+  return <ClassroomListPage />;
+};
 
 const AppRoutes = () =>
   useRoutes([
@@ -109,7 +118,7 @@ const AppRoutes = () =>
       children: [
         {
           path: "classrooms",
-          element: <ClassroomListPage />,
+          element: <ClassroomListOrStudentPage />,
         },
       ],
     },

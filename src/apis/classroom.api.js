@@ -67,6 +67,13 @@ const updateClassroom = (id, data, file = null) => {
 const deleteClassroom = (id) =>
   apiRequest.delete(`${BASE}/${id}`);
 
+/**
+ * @param {string} code
+ * @returns {Promise<import("axios").AxiosResponse<ClassroomResponse>>}
+ */
+const searchByCode = (code) =>
+  apiRequest.get(`${BASE}/search`, { params: { code } });
+
 /* ─── Export ─────────────────────────────────────────────────────────────── */
 export const classroomApi = {
   getClassroomsByTeacher,
@@ -74,4 +81,5 @@ export const classroomApi = {
   createClassroom,
   updateClassroom,
   deleteClassroom,
+  searchByCode,
 };

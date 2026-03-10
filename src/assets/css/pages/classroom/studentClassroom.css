@@ -1,0 +1,442 @@
+/* ==========================================
+   STUDENT CLASSROOM PAGE
+   ========================================== */
+
+.student-classroom-container {
+  min-height: 100%;
+  background: #f9fafb;
+}
+
+/* Header */
+.student-classroom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px 16px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.student-classroom-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.btn-join-class {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-join-class:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+/* Toolbar */
+.student-classroom-toolbar {
+  padding: 16px 28px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.student-classroom-toolbar .search-box {
+  position: relative;
+  max-width: 360px;
+}
+
+.student-classroom-toolbar .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.student-classroom-toolbar .search-input {
+  width: 100%;
+  padding: 9px 12px 9px 38px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.student-classroom-toolbar .search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Content area */
+.student-classroom-content {
+  padding: 28px;
+}
+
+/* Grid */
+.student-classroom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+/* Card */
+.student-classroom-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.student-classroom-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+}
+
+.student-classroom-card:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.student-card-cover {
+  width: 100%;
+  height: 120px;
+  background: #dbeafe;
+  overflow: hidden;
+}
+
+.student-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.student-card-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #3b82f6;
+}
+
+.student-card-body {
+  padding: 14px 16px;
+}
+
+.student-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-card-subject {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 4px 0;
+}
+
+.student-card-teacher {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 4px 0;
+}
+
+.student-card-code {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Loading */
+.student-classroom-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Error */
+.student-classroom-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+  color: #ef4444;
+  font-size: 14px;
+}
+
+.btn-retry {
+  padding: 8px 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.2s;
+}
+
+.btn-retry:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+/* Empty state */
+.student-classroom-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #6b7280;
+  text-align: center;
+}
+
+.empty-icon {
+  color: #d1d5db;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.empty-desc {
+  font-size: 14px;
+  color: #9ca3af;
+  max-width: 360px;
+  margin: 0;
+}
+
+/* Spinner */
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Card header row (name + three-dot menu) ── */
+.student-card-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.student-card-header-row .student-card-name {
+  margin: 0;
+  cursor: pointer;
+  flex: 1;
+}
+
+/* Three-dot button */
+.student-card-menu-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.student-card-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+}
+
+.student-card-menu-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Dropdown */
+.student-card-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 140px;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.student-card-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: #374151;
+}
+
+.student-card-dropdown-item:hover {
+  background: #f9fafb;
+}
+
+.student-card-dropdown-item.danger {
+  color: #ef4444;
+}
+
+.student-card-dropdown-item.danger:hover {
+  background: #fef2f2;
+}
+
+/* ── Leave confirmation modal ── */
+.leave-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.leave-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px 28px 28px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.leave-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: #fef2f2;
+  border-radius: 50%;
+  color: #ef4444;
+  margin: 0 auto 16px;
+}
+
+.leave-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 12px;
+}
+
+.leave-modal-desc {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+
+.leave-modal-error {
+  font-size: 13px;
+  color: #ef4444;
+  background: #fef2f2;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0 0;
+}
+
+.leave-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: center;
+}
+
+.btn-leave-cancel {
+  flex: 1;
+  padding: 10px 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-leave-cancel:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.btn-leave-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-leave-confirm {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  background: #ef4444;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-leave-confirm:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-leave-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
