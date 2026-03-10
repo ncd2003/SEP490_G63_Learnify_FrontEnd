@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { useRoutes } from "react-router-dom";
+import { Navigate, useRoutes } from "react-router-dom";
 import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -12,34 +12,41 @@ const Loadable = (Component) => (props) => (
 );
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
-const LoginPage           = Loadable(lazy(() => import("@/pages/Login")));
-const RegisterPage        = Loadable(lazy(() => import("@/pages/Register")));
-const OtpVerificationPage = Loadable(lazy(() => import("@/pages/OtpVerification")));
-const HomePage            = Loadable(lazy(() => import("@/pages/Home")));
-const OAuth2RedirectPage  = Loadable(lazy(() => import("@/pages/OAuth2Redirect")));
+const LoginPage             = Loadable(lazy(() => import("@/pages/Login")));
+const RegisterPage          = Loadable(lazy(() => import("@/pages/Register")));
+const OtpVerificationPage   = Loadable(lazy(() => import("@/pages/OtpVerification")));
+const ForgotPasswordPage    = Loadable(lazy(() => import("@/pages/ForgotPassword")));
+const ForgotPasswordOtpPage = Loadable(lazy(() => import("@/pages/ForgotPasswordOtp")));
+const ResetPasswordPage     = Loadable(lazy(() => import("@/pages/ResetPassword")));
+const RoleSelectionPage     = Loadable(lazy(() => import("@/pages/RoleSelection")));
 
-// ─── Teacher pages ────────────────────────────────────────────────────────────
-const UserProfilePage     = Loadable(lazy(() => import("@/pages/UserProfile")));
-const ClassroomListPage   = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
-const ClassroomPostPage   = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
-const PendingRequestsPage = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
+const HomePage              = Loadable(lazy(() => import("@/pages/Home")));
+const OAuth2RedirectPage    = Loadable(lazy(() => import("@/pages/OAuth2Redirect")));
+
+// ─── Teacher / User pages ─────────────────────────────────────────────────────
+const UserProfilePage       = Loadable(lazy(() => import("@/pages/UserProfile")));
+const ClassroomListPage     = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
+const ClassroomPostPage     = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
+const PendingRequestsPage   = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
-const NotFoundPage        = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
+const NotFoundPage          = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
 
 const AppRoutes = () =>
   useRoutes([
-    // ── Root / Home ────────────────────────────────────────────────────────────
+    // ── Root redirect ─────────────────────────────────────────────────────────
     {
       path: "/",
-      element: <HomePage />,
+      element: <Navigate to="/home" replace />,
     },
+
+    // ── Public routes ─────────────────────────────────────────────────────────
     {
-      path: "/home",
+      path: "home",
       element: <HomePage />,
     },
 
-    // ── Auth routes ────────────────────────────────────────────────────────────
+    // ── Auth routes ───────────────────────────────────────────────────────────
     {
       path: "login",
       element: (
@@ -61,11 +68,27 @@ const AppRoutes = () =>
       element: <OtpVerificationPage />,
     },
     {
+      path: "forgot-password",
+      element: <ForgotPasswordPage />,
+    },
+    {
+      path: "forgot-password-otp",
+      element: <ForgotPasswordOtpPage />,
+    },
+    {
+      path: "reset-password",
+      element: <ResetPasswordPage />,
+    },
+    {
+      path: "select-role",
+      element: <RoleSelectionPage />,
+    },
+    {
       path: "oauth2/redirect",
       element: <OAuth2RedirectPage />,
     },
 
-    // ── User Profile (All authenticated users) ─────────────────────────────────
+    // ── User Profile (Authenticated) ──────────────────────────────────────────
     {
       path: "profile",
       element: (
@@ -75,7 +98,7 @@ const AppRoutes = () =>
       ),
     },
 
-    // ── Classroom routes (Teacher & Student with DashboardLayout) ──────────────
+    // ── Classroom routes ──────────────────────────────────────────────────────
     {
       element: (
         <AuthGuard>
@@ -98,7 +121,7 @@ const AppRoutes = () =>
       ],
     },
 
-    // ── Catch-all ──────────────────────────────────────────────────────────────
+    // ── Catch-all ─────────────────────────────────────────────────────────────
     {
       path: "*",
       element: <NotFoundPage />,
@@ -106,4 +129,3 @@ const AppRoutes = () =>
   ]);
 
 export default AppRoutes;
-

@@ -24,9 +24,10 @@ import {
 
 const mapRole = (role) => {
   const roleMap = {
-    STUDENT: "Học sinh",
-    TEACHER: "Giáo viên",
-    ADMIN: "Quản trị viên",
+    ROLE_STUDENT: "Học sinh",
+    ROLE_TEACHER: "Giáo viên",
+    ROLE_ADMIN: "Quản trị viên",
+    ROLE_GUEST: "Khách",
   };
   return roleMap[role] || role || "Học sinh";
 };
@@ -156,14 +157,12 @@ const UserProfile = () => {
         const updateData = {
           fullName: profileData.fullName,
         };
-        if (profileData.phoneNumber) updateData.phoneNumber = profileData.phoneNumber;
+        if (profileData.phoneNumber)
+          updateData.phoneNumber = profileData.phoneNumber;
         if (profileData.birthDate) updateData.birthDate = profileData.birthDate;
         if (profileData.address) updateData.address = profileData.address;
-        
-        const response = await userApi.updateProfile(
-          updateData,
-          file,
-        );
+
+        const response = await userApi.updateProfile(updateData, file);
         const updated = response.result;
         if (updated?.avatarUrl) setAvatarUrl(updated.avatarUrl);
         setAvatarFile(null);
@@ -172,7 +171,8 @@ const UserProfile = () => {
       } catch (error) {
         console.error("Avatar upload failed:", error);
         setErrorMessage(
-          error.response?.data?.message || "Upload ảnh thất bại. Vui lòng thử lại.",
+          error.response?.data?.message ||
+            "Upload ảnh thất bại. Vui lòng thử lại.",
         );
         setAvatarPreview(null);
         setAvatarFile(null);
@@ -209,10 +209,11 @@ const UserProfile = () => {
       const updateData = {
         fullName: profileData.fullName,
       };
-      if (profileData.phoneNumber) updateData.phoneNumber = profileData.phoneNumber;
+      if (profileData.phoneNumber)
+        updateData.phoneNumber = profileData.phoneNumber;
       if (profileData.birthDate) updateData.birthDate = profileData.birthDate;
       if (profileData.address) updateData.address = profileData.address;
-      
+
       const response = await userApi.updateProfile(
         updateData,
         avatarFile, // null nếu không chọn ảnh mới
@@ -240,7 +241,7 @@ const UserProfile = () => {
     } catch (error) {
       console.error("Update profile failed:", error);
       setErrorMessage(
-        error.response?.data?.message || "Cập nhật thất bại. Vui lòng thử lại."
+        error.response?.data?.message || "Cập nhật thất bại. Vui lòng thử lại.",
       );
       clearMessages();
     } finally {
@@ -273,12 +274,17 @@ const UserProfile = () => {
       });
       setSuccessMessage("Đổi mật khẩu thành công!");
       setShowChangePassword(false);
-      setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordData({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       clearMessages();
     } catch (error) {
       console.error("Change password failed:", error);
       setErrorMessage(
-        error.response?.data?.message || "Đổi mật khẩu thất bại. Vui lòng thử lại."
+        error.response?.data?.message ||
+          "Đổi mật khẩu thất bại. Vui lòng thử lại.",
       );
       clearMessages();
     } finally {
@@ -335,7 +341,10 @@ const UserProfile = () => {
       {/* Avatar Section */}
       <div className="profile-card">
         <div className="avatar-section">
-          <div className="avatar-container" onClick={() => fileInputRef.current?.click()}>
+          <div
+            className="avatar-container"
+            onClick={() => fileInputRef.current?.click()}
+          >
             {avatarPreview || avatarUrl ? (
               <img
                 src={avatarPreview || avatarUrl}
@@ -359,7 +368,9 @@ const UserProfile = () => {
             />
           </div>
           <div className="avatar-info">
-            <h3 className="avatar-name">{profileData.fullName || "Người dùng"}</h3>
+            <h3 className="avatar-name">
+              {profileData.fullName || "Người dùng"}
+            </h3>
             <p className="avatar-hint">Ảnh đại diện</p>
             <p className="avatar-hint">Kích thước tối đa: 5MB</p>
             <p className="avatar-hint">Định dạng: JPG, PNG</p>
@@ -383,7 +394,9 @@ const UserProfile = () => {
                 type="text"
                 className="info-input"
                 value={profileData.fullName}
-                onChange={(e) => handleProfileChange("fullName", e.target.value)}
+                onChange={(e) =>
+                  handleProfileChange("fullName", e.target.value)
+                }
                 placeholder="Nhập họ và tên"
               />
             ) : (
@@ -411,7 +424,9 @@ const UserProfile = () => {
                 type="tel"
                 className="info-input"
                 value={profileData.phoneNumber}
-                onChange={(e) => handleProfileChange("phoneNumber", e.target.value)}
+                onChange={(e) =>
+                  handleProfileChange("phoneNumber", e.target.value)
+                }
                 placeholder="Nhập số điện thoại"
               />
             ) : (
@@ -430,7 +445,9 @@ const UserProfile = () => {
                 type="date"
                 className="info-input"
                 value={profileData.birthDate}
-                onChange={(e) => handleProfileChange("birthDate", e.target.value)}
+                onChange={(e) =>
+                  handleProfileChange("birthDate", e.target.value)
+                }
               />
             ) : (
               <div className="info-value">
@@ -466,7 +483,9 @@ const UserProfile = () => {
               <Shield size={16} />
               <span>Vai trò:</span>
             </div>
-            <div className="info-value role-badge">{profileData.role || "—"}</div>
+            <div className="info-value role-badge">
+              {profileData.role || "—"}
+            </div>
           </div>
         </div>
 
@@ -527,7 +546,10 @@ const UserProfile = () => {
                   type={showOldPassword ? "text" : "password"}
                   value={passwordData.oldPassword}
                   onChange={(e) =>
-                    setPasswordData((prev) => ({ ...prev, oldPassword: e.target.value }))
+                    setPasswordData((prev) => ({
+                      ...prev,
+                      oldPassword: e.target.value,
+                    }))
                   }
                   placeholder="Nhập mật khẩu hiện tại"
                   required
@@ -549,7 +571,10 @@ const UserProfile = () => {
                   type={showNewPassword ? "text" : "password"}
                   value={passwordData.newPassword}
                   onChange={(e) =>
-                    setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))
+                    setPasswordData((prev) => ({
+                      ...prev,
+                      newPassword: e.target.value,
+                    }))
                   }
                   placeholder="Nhập mật khẩu mới (tối thiểu 8 ký tự)"
                   required
@@ -586,13 +611,21 @@ const UserProfile = () => {
                   className="toggle-password"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showConfirmPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="password-actions">
-              <button type="submit" className="btn btn-primary" disabled={isSaving}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isSaving}
+              >
                 {isSaving ? (
                   <div className="spinner"></div>
                 ) : (
@@ -607,7 +640,11 @@ const UserProfile = () => {
                 className="btn btn-secondary"
                 onClick={() => {
                   setShowChangePassword(false);
-                  setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+                  setPasswordData({
+                    oldPassword: "",
+                    newPassword: "",
+                    confirmPassword: "",
+                  });
                 }}
               >
                 <X size={16} />

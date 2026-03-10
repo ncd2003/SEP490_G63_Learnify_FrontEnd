@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import { authApi } from "@/apis/auth.api";
+import { userApi } from "@/apis/user.api";
 
 const AuthContext = createContext(null);
 
@@ -91,6 +92,28 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
+  const updateUserRole = async (role) => {
+    console.log('[AuthContext] updateUserRole called with:', role);
+    console.log('[AuthContext] Current token:', localStorage.getItem('accessToken')?.substring(0, 30) + '...');
+    
+    const res = await userApi.chooseRole(role);
+    console.log('[AuthContext] chooseRole response:', res);
+    
+    // Backend trả về JWT mới trong result — lưu lại để các request sau dùng token có role
+    const newToken = res.result;
+    if (newToken) {
+      localStorage.setItem("accessToken", newToken);
+      console.log('[AuthContext] New token saved:', newToken.substring(0, 30) + '...');
+    }
+    // Refresh user data từ server để lấy role mới
+    const response = await authApi.getCurrentUser();
+    const updatedUser = response.result;
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    console.log('[AuthContext] User updated with role:', updatedUser.role);
+    return updatedUser;
+  };
+
   const handleOAuth2Login = useCallback(async (token) => {
     try {
       // Xóa dữ liệu user cũ trước khi xử lý token mới
@@ -135,6 +158,7 @@ export const AuthProvider = ({ children }) => {
         verifyOtp,
         resendOtp,
         handleOAuth2Login,
+        updateUserRole,
       }}
     >
       {children}

@@ -15,4 +15,12 @@ export const authApi = {
   resendOtp: (data) => apiRequest.post(`${BASE}/resend-otp`, data),
 
   getCurrentUser: () => apiRequest.get("/users/me"),
+
+  forgotPassword: (email) =>
+    apiRequest.post(`${BASE}/forgot-password`, { email }),
+
+  verifyForgotPasswordOtp: (data) =>
+    apiRequest.post(`${BASE}/forgot-password/verify-otp`, data),
+
+  resetPassword: (data) => apiRequest.post(`${BASE}/reset-password`, data),
 };

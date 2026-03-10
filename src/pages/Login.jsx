@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, BookOpen, Sparkles } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { PATH_AUTH } from "../routes/paths";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +15,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
   const [error, setError] = useState("");
+  const [successMessage] = useState(location.state?.message || "");
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,14 +24,13 @@ const LoginPage = () => {
 
     try {
       const userData = await login({ email, password });
-      
+
       // Get user role from userData and redirect accordingly
       const userRole = userData?.role?.toUpperCase();
-      
-      if (userRole === "TEACHER" || userRole === "STUDENT") {
+
+      if (userRole === "ROLE_TEACHER") {
         navigate("/classrooms");
-      } else if (userRole === "ADMIN") {
-        // Redirect to classrooms for now until admin pages are ready
+      } else if (userRole === "ROLE_STUDENT") {
         navigate("/classrooms");
       } else {
         // Fallback to home if role is not recognized
@@ -170,11 +172,14 @@ const LoginPage = () => {
                   <span className="checkbox-custom"></span>
                   <span className="checkbox-text">Ghi nhớ đăng nhập</span>
                 </label>
-                <a href="#" className="forgot-link">
+                <Link to={PATH_AUTH.forgotPassword} className="forgot-link">
                   Quên mật khẩu?
-                </a>
+                </Link>
               </div>
 
+              {successMessage && (
+                <div className="success-message">{successMessage}</div>
+              )}
               {error && <div className="error-message">{error}</div>}
 
               <button
@@ -608,6 +613,17 @@ const LoginPage = () => {
           background: #fef2f2;
           border: 1px solid #fecaca;
           color: #dc2626;
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          margin-bottom: 16px;
+          text-align: center;
+        }
+
+        .success-message {
+          background: #f0fdf4;
+          border: 1px solid #86efac;
+          color: #16a34a;
           padding: 12px 16px;
           border-radius: 8px;
           font-size: 14px;

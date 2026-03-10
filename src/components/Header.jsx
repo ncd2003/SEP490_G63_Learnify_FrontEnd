@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import "@/assets/css/components/header.css";
-import { BookOpen, Menu, X, LogOut, User, Settings } from "lucide-react";
+import { BookOpen, Menu, X, LogOut, User } from "lucide-react";
 import { PATH_AUTH, PATH_COMMON } from "@/routes/paths";
 
 const Header = () => {
@@ -22,10 +22,7 @@ const Header = () => {
 
   const handleDashboardClick = () => {
     const userRole = user?.role?.toUpperCase();
-    if (userRole === "TEACHER" || userRole === "STUDENT") {
-      navigate("/classrooms");
-    } else if (userRole === "ADMIN") {
-      // Redirect to classrooms for now until admin pages are ready
+    if (userRole === "ROLE_TEACHER" || userRole === "ROLE_STUDENT" || userRole === "ROLE_ADMIN") {
       navigate("/classrooms");
     }
   };
@@ -145,16 +142,6 @@ const Header = () => {
                       >
                         <User size={16} />
                         <span>Tài khoản</span>
-                      </button>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          navigate("/settings");
-                        }}
-                      >
-                        <Settings size={16} />
-                        <span>Cài đặt</span>
                       </button>
                       <div className="dropdown-divider"></div>
                       <button
