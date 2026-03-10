@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, AlertCircle } from "lucide-react";
+import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import usePosts from "@/hooks/use-posts";
 import usePostMutations from "@/hooks/use-post";
 import PostCard from "@/pages/post/list/post-card";
@@ -44,7 +45,8 @@ const ClassroomFeedPage = () => {
 
   /* ── Render ───────────────────────────────────────────────────────────── */
   return (
-    <div className="classroom-feed">
+    <ClassroomDetailLayout>
+      <div className="classroom-feed">
       {/* Create post form */}
       <div className="post-form-wrapper">
         <PostForm
@@ -123,7 +125,8 @@ const ClassroomFeedPage = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ClassroomDetailLayout>
   );
 };
 

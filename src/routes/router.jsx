@@ -28,6 +28,7 @@ const UserProfilePage       = Loadable(lazy(() => import("@/pages/UserProfile"))
 const ClassroomListPage     = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
 const ClassroomPostPage     = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
 const PendingRequestsPage   = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
+const SchedulePage          = Loadable(lazy(() => import("@/pages/classroom/schedule/schedulePage")));
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
 const NotFoundPage          = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
@@ -98,7 +99,7 @@ const AppRoutes = () =>
       ),
     },
 
-    // ── Classroom routes ──────────────────────────────────────────────────────
+    // ── Classroom list route (with DashboardLayout) ──────────────────────────
     {
       element: (
         <AuthGuard>
@@ -110,15 +111,33 @@ const AppRoutes = () =>
           path: "classrooms",
           element: <ClassroomListPage />,
         },
-        {
-          path: "classrooms/:id",
-          element: <ClassroomPostPage />,
-        },
-        {
-          path: "classrooms/:id/pending-requests",
-          element: <PendingRequestsPage />,
-        },
       ],
+    },
+
+    // ── Classroom detail routes (without DashboardLayout, uses ClassroomDetailLayout inside) ───
+    {
+      path: "classrooms/:id",
+      element: (
+        <AuthGuard>
+          <ClassroomPostPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/pending-requests",
+      element: (
+        <AuthGuard>
+          <PendingRequestsPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/schedule",
+      element: (
+        <AuthGuard>
+          <SchedulePage />
+        </AuthGuard>
+      ),
     },
 
     // ── Catch-all ─────────────────────────────────────────────────────────────
