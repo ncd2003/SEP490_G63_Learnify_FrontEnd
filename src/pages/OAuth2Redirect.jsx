@@ -13,22 +13,22 @@ const OAuth2Redirect = () => {
   useEffect(() => {
     // Prevent double execution (React StrictMode in dev)
     if (hasProcessed.current) {
-      console.log("[OAuth2Redirect] Already processed, skipping");
+      //console.log("[OAuth2Redirect] Already processed, skipping");
       return;
     }
 
     const handleRedirect = async () => {
       try {
         hasProcessed.current = true;
-        console.log("[OAuth2Redirect] Starting redirect handling");
+        //console.log("[OAuth2Redirect] Starting redirect handling");
 
         // Lấy token từ URL params
         const params = new URLSearchParams(window.location.search);
         const token = params.get("token");
         const error = params.get("error");
 
-        console.log("[OAuth2Redirect] Token present:", !!token);
-        console.log("[OAuth2Redirect] Error present:", !!error);
+        //console.log("[OAuth2Redirect] Token present:", !!token);
+        //console.log("[OAuth2Redirect] Error present:", !!error);
 
         if (error) {
           const decodedError = decodeURIComponent(error);
@@ -42,16 +42,12 @@ const OAuth2Redirect = () => {
         }
 
         if (token) {
-          console.log("[OAuth2Redirect] Processing OAuth2 login");
+          //console.log("[OAuth2Redirect] Processing OAuth2 login");
 
           // Đợi handleOAuth2Login hoàn tất
           const result = await handleOAuth2Login(token);
 
           if (result.success) {
-            console.log(
-              "[OAuth2Redirect] Login completed, redirecting based on role",
-            );
-
             // Get user role and redirect accordingly
             const userRole = result.user?.role?.toUpperCase();
 

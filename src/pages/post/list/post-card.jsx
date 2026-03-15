@@ -28,10 +28,11 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(3);
 
   // Comment hooks
   const { comments, setComments, loading: loadingComments, refetch } = useComments(post.id);
-  const { createComment, submitting } = useCommentMutations(post.id, setComments);
+  const { createComment, updateComment, deleteComment, submitting } = useCommentMutations(post.id, setComments);
 
   // Count total comments including all nested replies
   const countTotalComments = (commentsList) => {
@@ -53,6 +54,19 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
     if (result?.success && data.parentId) {
       await refetch();
     }
+    return result;
+  };
+
+  const handleCommentUpdate = async (commentId, content) => {
+    const data = { content, postId: post.id };
+    const result = await updateComment(commentId, data);
+    if (result?.success) await refetch(); // Always refetch to be safe with nested
+    return result;
+  };
+
+  const handleCommentDelete = async (commentId) => {
+    const result = await deleteComment(commentId);
+    if (result?.success) await refetch(); // Always refetch to be safe with nested
     return result;
   };
 
@@ -97,14 +111,14 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
                   onClick={() => { setMenuOpen(false); onEdit(post); }}
                 >
                   <Pencil size={14} />
-                  Chỉnh sửa
+                  <span>Chỉnh sửa</span>
                 </button>
                 <button
                   className="action-menu-item danger"
                   onClick={() => { setMenuOpen(false); onDelete(post); }}
                 >
                   <Trash2 size={14} />
-                  Xóa bài đăng
+                  <span>Xóa bài đăng</span>
                 </button>
               </div>
             </>
@@ -156,15 +170,26 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
             ) : comments.length > 0 ? (
               <div className="comments-list">
                 <div className="comments-header">Bình luận ({totalCommentCount})</div>
-                {comments.map((comment) => (
+                {comments.slice(0, visibleCount).map((comment) => (
                   <CommentCard 
                     key={comment.id} 
                     comment={comment}
                     postId={post.id}
                     onReply={handleCommentSubmit}
+                    onEdit={handleCommentUpdate}
+                    onDelete={handleCommentDelete}
                     submitting={submitting}
                   />
                 ))}
+                
+                {visibleCount < comments.length && (
+                  <button 
+                    className="comments-load-more" 
+                    onClick={() => setVisibleCount(prev => prev + 3)}
+                  >
+                    Xem thêm bình luận
+                  </button>
+                )}
               </div>
             ) : null}
 
@@ -173,6 +198,7 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
               postId={post.id}
               onSubmit={handleCommentSubmit}
               submitting={submitting}
+              onCancel={() => setShowComments(false)}
             />
           </div>
         )}

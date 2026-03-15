@@ -1,25 +1,49 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ImagePlus, X, Paperclip, Pin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { PostSchema } from "@/schema/post.schema";
 
 /**
  * @param {{
  *   classroomId: number,
- *   onSubmit: (data: { classroomId: number, content: string, pinned: boolean }, files: File[]) => Promise<{ success: boolean, message?: string }>,
+ *   onSubmit: (data: { classroomId: number, content: string, pinned: boolean, removedAttachmentIds?: number[] }, files: File[]) => Promise<{ success: boolean, message?: string }>,
  *   submitting: boolean,
- *   initialPost?: { id: number, content: string, pinned?: boolean } | null,
+ *   initialPost?: { id: number, content: string, pinned?: boolean, attachments?: { id: number, fileName: string, fileUrl: string, fileSize: number, fileType: string }[] } | null,
  *   onCancel?: () => void,
  * }} props
  */
 const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCancel }) => {
   const { user } = useAuth();
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   const [content, setContent] = useState(initialPost?.content ?? "");
   const [pinned, setPinned] = useState(initialPost?.pinned ?? false);
+
   const [files, setFiles] = useState([]);
+  const [existingAttachments, setExistingAttachments] = useState(initialPost?.attachments ?? []);
+  const [deleteAttachmentIds, setDeleteAttachmentIds] = useState([]);
   const [error, setError] = useState("");
 
   const isEditing = !!initialPost;
+
+  useEffect(() => {
+    setContent(initialPost?.content ?? "");
+    setPinned(initialPost?.pinned ?? false);
+    setFiles([]);
+    setExistingAttachments(initialPost?.attachments ?? []);
+    setDeleteAttachmentIds([]);
+    setError("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"; 
+    }
+  }, [initialPost, classroomId]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [content]);
 
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files ?? []);
@@ -32,20 +56,42 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const removeExistingAttachment = (id) => {
+    setExistingAttachments((prev) => prev.filter((att) => att.id !== id));
+    setDeleteAttachmentIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const formatFileSize = (size) => {
+    if (typeof size !== "number") return "";
+    return size < 1024 ? `${size.toFixed(1)} KB` : `${(size / 1024).toFixed(1)} MB`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!content.trim()) {
-      setError("Nội dung bài đăng không được để trống.");
+    const payload = {
+      classroomId: Number(classroomId),
+      content: content.trim(),
+      pinned,
+      deleteAttachmentIds: isEditing && deleteAttachmentIds.length > 0 ? deleteAttachmentIds : undefined,
+    };
+
+    const validated = PostSchema.safeParse(payload);
+
+    if (!validated.success) {
+      setError(validated.error.errors[0]?.message ?? "Dữ liệu không hợp lệ.");
       return;
     }
 
-    const result = await onSubmit({ classroomId, content: content.trim(), pinned }, files);
+    const result = await onSubmit(payload, files);
     if (result?.success) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setContent("");
       setPinned(false);
       setFiles([]);
+      setExistingAttachments([]);
+      setDeleteAttachmentIds([]);
       onCancel?.();
     } else {
       setError(result?.message ?? "Không thể đăng bài. Vui lòng thử lại.");
@@ -64,16 +110,59 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
           )}
         </div>
         <textarea
+          ref={textareaRef}
           className="post-form-textarea"
           placeholder={isEditing ? "Chỉnh sửa nội dung bài đăng..." : "Nhập nội dung thảo luận với lớp học..."}
           value={content}
-          onChange={(e) => { setContent(e.target.value); setError(""); }}
-          rows={2}
+          onInput={(e) => {
+            e.target.style.height = "auto";
+            e.target.style.height = `${e.target.scrollHeight}px`;
+            setContent(e.target.value);
+            setError("");
+          }}
+          rows={3}
+          maxLength={500}
           disabled={submitting}
         />
       </div>
 
+      <div style={{ fontSize: "12px", color: "#6b7280", textAlign: "right", paddingRight: "16px", marginBottom: "4px" }}>
+        {content.length}/500
+      </div>
+
       {error && <p className="post-form-error">{error}</p>}
+
+      {isEditing && (existingAttachments.length > 0 || deleteAttachmentIds.length > 0) && (
+        <div className="post-form-existing-attachments">
+          <div className="post-form-existing-title">Tài liệu hiện có</div>
+          {existingAttachments.length === 0 ? (
+            <p className="post-form-no-attachments">Đã gỡ tất cả tệp đính kèm.</p>
+          ) : (
+            <div className="post-form-existing-list">
+              {existingAttachments.map((att) => (
+                <div key={att.id} className="post-form-existing-chip">
+                  <div className="post-form-existing-info">
+                    <Paperclip size={14} />
+                    <a href={att.fileUrl} target="_blank" rel="noopener noreferrer">
+                      {att.fileName}
+                    </a>
+                    <span className="post-form-existing-size">{formatFileSize(att.fileSize)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="post-form-existing-remove"
+                    onClick={() => removeExistingAttachment(att.id)}
+                    disabled={submitting}
+                  >
+                    <X size={12} />
+                    <span>Gỡ</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* File chips */}
       {files.length > 0 && (
@@ -131,7 +220,7 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
             <button
               type="button"
               className="btn-cancel"
-              onClick={() => { setContent(initialPost.content); setPinned(initialPost.pinned ?? false); setFiles([]); setError(""); onCancel?.(); }}
+              onClick={() => { setContent(initialPost?.content ?? ""); setPinned(initialPost?.pinned ?? false); setFiles([]); setError(""); setExistingAttachments(initialPost?.attachments ?? []); setDeleteAttachmentIds([]); onCancel?.(); }}
               disabled={submitting}
             >
               Hủy

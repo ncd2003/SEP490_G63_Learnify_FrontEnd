@@ -18,7 +18,7 @@ const CommentForm = ({ postId, onSubmit, submitting, initialComment = null, onCa
 
   const isEditing = !!initialComment;
   const charCount = content.length;
-  const maxChars = 1000;
+  const maxChars = 500;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

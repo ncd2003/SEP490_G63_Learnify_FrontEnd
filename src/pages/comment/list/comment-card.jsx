@@ -1,7 +1,10 @@
 import { memo, useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatRelativeTime } from "@/lib/utils";
 import CommentForm from "@/pages/comment/create/comment-form";
+import EditCommentForm from "@/pages/comment/edit/comment-edit-form";
+import DeleteCommentDialog from "@/pages/comment/delete/delete-comment-dialog";
 
 /**
  * @param {{
@@ -13,16 +16,29 @@ import CommentForm from "@/pages/comment/create/comment-form";
  *     authorRole?: string,
  *     createdAt?: string,
  *     replies?: Array,
+ *     user: { id: number, name: string }
  *   },
  *   postId: number,
  *   onReply: (data: { content: string, parentId: number }) => Promise<{ success: boolean, message?: string }>,
+ *   onEdit?: (commentId: number, content: string) => Promise<{ success: boolean, message?: string }>,
+ *   onDelete?: (commentId: number) => Promise<{ success: boolean, message?: string }>,
  *   submitting: boolean,
  *   depth?: number,
  * }} props
  */
-const CommentCard = memo(({ comment, postId, onReply, submitting, depth = 0 }) => {
+const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitting, depth = 0 }) => {
+  const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
+  const [visibleRepliesCount, setVisibleRepliesCount] = useState(3);
   const maxDepth = 3; // Giới hạn độ sâu nested comments
+
+  const isAuthor = user?.id === comment.user?.id;
+
 
   const handleReplySubmit = async (data) => {
     const result = await onReply(data);
@@ -32,7 +48,31 @@ const CommentCard = memo(({ comment, postId, onReply, submitting, depth = 0 }) =
     return result;
   };
 
-  const displayName = comment.authorName || "Người dùng";
+  const handleEditSubmit = async (content) => {
+    if (!onEdit) return { success: false };
+    const result = await onEdit(comment.id, content);
+    if (result?.success) {
+      setIsEditing(false);
+    }
+    return result;
+  };
+
+  const handleOpenDelete = () => {
+    setMenuOpen(false);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    await onDelete(comment.id);
+    // Modal will close automatically due to unmounting or parent state change, 
+    // but better to manage local state cleanly
+    setIsDeleting(false);
+    setIsDeleteModalOpen(false);
+  };
+
+  const displayName = comment.authorName || comment.user?.name || "Người dùng";
   const role = comment.authorRole || null;
   const hasReplies = comment.replies && comment.replies.length > 0;
 
@@ -46,19 +86,66 @@ const CommentCard = memo(({ comment, postId, onReply, submitting, depth = 0 }) =
             <span className="comment-date">{formatRelativeTime(comment.createdAt)}</span>
           )}
         </div>
+        
+        {/* Actions Menu */}
+        {isAuthor && !isEditing && (
+          <div className="comment-actions">
+            <button className="comment-menu-trigger" onClick={() => setMenuOpen(!menuOpen)}>
+              <MoreVertical size={14} />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
+                <div className="action-menu">
+                  <button 
+                    className="action-menu-item"
+                    onClick={() => { setMenuOpen(false); setIsEditing(true); }}
+                  >
+                    <Pencil size={14} />
+                    <span>Chỉnh sửa</span>
+                  </button>
+                  <button 
+                    className="action-menu-item danger"
+                    onClick={() => { setMenuOpen(false); handleOpenDelete(); }}
+                  >
+                    <Trash2 size={14} />
+                    <span>Xóa</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
-      <div className="comment-content">
-        {comment.content}
-      </div>
+
+      <DeleteCommentDialog
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
+
+      {isEditing ? (
+        <EditCommentForm
+          comment={comment}
+          submitting={submitting}
+          onSubmit={handleEditSubmit}
+          onCancel={() => setIsEditing(false)}
+        />
+      ) : (
+        <div className="comment-content">
+          {comment.content}
+        </div>
+      )}
       
       {/* Reply button */}
-      {depth < maxDepth && (
+      {!isEditing && depth < maxDepth && (
         <button 
           className="comment-reply-btn"
           onClick={() => setShowReplyForm(!showReplyForm)}
         >
           <MessageCircle size={14} />
-          Trả lời
+          <span>Trả lời</span>
         </button>
       )}
 
@@ -68,7 +155,7 @@ const CommentCard = memo(({ comment, postId, onReply, submitting, depth = 0 }) =
           <CommentForm
             postId={postId}
             parentId={comment.id}
-            parentAuthorName={displayName}
+            parentAuthorName={displayName || null}
             onSubmit={handleReplySubmit}
             submitting={submitting}
             onCancel={() => setShowReplyForm(false)}
@@ -78,17 +165,63 @@ const CommentCard = memo(({ comment, postId, onReply, submitting, depth = 0 }) =
 
       {/* Nested replies */}
       {hasReplies && (
-        <div className="comment-replies">
-          {comment.replies.map((reply) => (
-            <CommentCard
-              key={reply.id}
-              comment={reply}
-              postId={postId}
-              onReply={onReply}
-              submitting={submitting}
-              depth={depth + 1}
-            />
-          ))}
+        <div style={{ marginTop: '8px' }}>
+          <button 
+            className="comment-replies-toggle"
+            onClick={() => {
+              if (!showReplies) setVisibleRepliesCount(3);
+              setShowReplies(!showReplies);
+            }}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: '#6366f1', 
+              fontSize: '13px', 
+              cursor: 'pointer', 
+              padding: '0',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {showReplies ? "Ẩn câu trả lời" : `Xem ${comment.replies.length} câu trả lời`}
+          </button>
+
+          {showReplies && (
+            <div className="comment-replies" style={{ marginTop: '12px' }}>
+              {comment.replies.slice(0, visibleRepliesCount).map((reply) => (
+                <CommentCard
+                  key={reply.id}
+                  comment={reply}
+                  postId={postId}
+                  onReply={onReply}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  submitting={submitting}
+                  depth={depth + 1}
+                />
+              ))}
+
+              {visibleRepliesCount < comment.replies.length && (
+                <button 
+                  onClick={() => setVisibleRepliesCount(prev => prev + 3)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#6b7280',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    marginTop: '8px',
+                    padding: '4px',
+                    fontWeight: 500
+                  }}
+                >
+                  Xem thêm câu trả lời...
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

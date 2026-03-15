@@ -41,10 +41,28 @@ const usePostMutations = (setPosts) => {
   };
 
   const updatePost = async (id, data, files = []) => {
+      console.log("Updated post response:", files);
+
     setSubmitting(true);
     try {
       const response = await postApi.updatePost(id, data, files);
-      setPosts((prev) => sortPosts(prev.map((p) => (p.id === id ? response.result : p))));
+      setPosts((prev) =>
+        sortPosts(
+          prev.map((p) => {
+            if (p.id !== id) return p;
+
+            const updated = response.result ?? {};
+            const hasAttachments = Object.prototype.hasOwnProperty.call(updated, "attachments");
+
+            return {
+              ...p,
+              ...updated,
+              // If API omits attachments, preserve previous ones; otherwise trust the API response
+              attachments: hasAttachments ? updated.attachments : p.attachments,
+            };
+          })
+        )
+      );
       return { success: true };
     } catch (err) {
       return {

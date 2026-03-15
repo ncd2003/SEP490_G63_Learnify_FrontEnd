@@ -19,7 +19,7 @@ const usePosts = (classroomId) => {
     try {
       const response = await postApi.findPostsByClassroomId(classroomId);
       const fetchedPosts = response.result ?? [];
-      
+      console.log("Fetched posts:", fetchedPosts);
       // Sort posts: pinned posts first, then by creation date (newest first)
       const sortedPosts = fetchedPosts.sort((a, b) => {
         // Pinned posts come first
