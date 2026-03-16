@@ -16,7 +16,7 @@ export const userApi = {
     const formData = new FormData();
     formData.append(
       "profile",
-      new Blob([JSON.stringify(profileData)], { type: "application/json" })
+      new Blob([JSON.stringify(profileData)], { type: "application/json" }),
     );
     if (avatarFile) formData.append("avatar", avatarFile);
     return apiRequest.put(`${BASE}/profile`, formData);
@@ -31,5 +31,12 @@ export const userApi = {
   /**
    * @param {FormData} formData
    */
-  uploadAvatar: (formData) => apiRequest.post(`${BASE}/upload-avatar`, formData),
+  uploadAvatar: (formData) =>
+    apiRequest.post(`${BASE}/upload-avatar`, formData),
+
+  /**
+   * @param {string} roleName - "ROLE_STUDENT" | "ROLE_TEACHER"
+   */
+  chooseRole: (roleName) =>
+    apiRequest.patch(`${BASE}/choose-role`, { roleName }),
 };

@@ -51,19 +51,19 @@ const OAuth2Redirect = () => {
             console.log(
               "[OAuth2Redirect] Login completed, redirecting based on role",
             );
-            
+
             // Get user role and redirect accordingly
             const userRole = result.user?.role?.toUpperCase();
-            
+
             // Đợi một chút để đảm bảo state được update
             setTimeout(() => {
-              if (userRole === "TEACHER") {
+              if (userRole === "ROLE_TEACHER") {
                 navigate("/teacher/classrooms", { replace: true });
-              } else if (userRole === "STUDENT") {
+              } else if (userRole === "ROLE_STUDENT") {
                 navigate("/student/classrooms", { replace: true });
               } else {
-                // Fallback to home if role is not recognized
-                navigate("/home", { replace: true });
+                // New Google user — no role set yet, go to role selection
+                navigate("/select-role", { replace: true });
               }
             }, 200);
           }

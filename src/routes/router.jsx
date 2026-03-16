@@ -13,20 +13,40 @@ const Loadable = (Component) => (props) => (
 );
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
-const LoginPage           = Loadable(lazy(() => import("@/pages/Login")));
-const RegisterPage        = Loadable(lazy(() => import("@/pages/Register")));
-const OtpVerificationPage = Loadable(lazy(() => import("@/pages/OtpVerification")));
-const HomePage            = Loadable(lazy(() => import("@/pages/Home")));
-const OAuth2RedirectPage  = Loadable(lazy(() => import("@/pages/OAuth2Redirect")));
+const LoginPage = Loadable(lazy(() => import("@/pages/Login")));
+const RegisterPage = Loadable(lazy(() => import("@/pages/Register")));
+const OtpVerificationPage = Loadable(
+  lazy(() => import("@/pages/OtpVerification")),
+);
+const ForgotPasswordPage = Loadable(
+  lazy(() => import("@/pages/ForgotPassword")),
+);
+const ForgotPasswordOtpPage = Loadable(
+  lazy(() => import("@/pages/ForgotPasswordOtp")),
+);
+const ResetPasswordPage = Loadable(lazy(() => import("@/pages/ResetPassword")));
+const HomePage = Loadable(lazy(() => import("@/pages/Home")));
+const OAuth2RedirectPage = Loadable(
+  lazy(() => import("@/pages/OAuth2Redirect")),
+);
+const RoleSelectionPage = Loadable(lazy(() => import("@/pages/RoleSelection")));
 
 // ─── Teacher pages ────────────────────────────────────────────────────────────
-const UserProfilePage     = Loadable(lazy(() => import("@/pages/UserProfile")));
-const ClassroomListPage   = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
-const ClassroomPostPage   = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
-const PendingRequestsPage = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
+const UserProfilePage = Loadable(lazy(() => import("@/pages/UserProfile")));
+const ClassroomListPage = Loadable(
+  lazy(() => import("@/pages/classroom/list/classroom-page")),
+);
+const ClassroomPostPage = Loadable(
+  lazy(() => import("@/pages/classroom/feed/post-page")),
+);
+const PendingRequestsPage = Loadable(
+  lazy(() => import("@/pages/classroom/PendingRequests")),
+);
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
-const NotFoundPage        = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
+const NotFoundPage = Loadable(
+  lazy(() => import("@/pages/not-found/not-found-page")),
+);
 
 const AppRoutes = () =>
   useRoutes([
@@ -61,8 +81,24 @@ const AppRoutes = () =>
           element: <OtpVerificationPage />,
         },
         {
+          path: PATH_AUTH.forgotPassword,
+          element: <ForgotPasswordPage />,
+        },
+        {
+          path: PATH_AUTH.forgotPasswordOtp,
+          element: <ForgotPasswordOtpPage />,
+        },
+        {
+          path: PATH_AUTH.resetPassword,
+          element: <ResetPasswordPage />,
+        },
+        {
           path: PATH_AUTH.oauth2Redirect,
           element: <OAuth2RedirectPage />,
+        },
+        {
+          path: PATH_AUTH.selectRole,
+          element: <RoleSelectionPage />,
         },
       ],
     },
@@ -113,4 +149,3 @@ const AppRoutes = () =>
   ]);
 
 export default AppRoutes;
-
