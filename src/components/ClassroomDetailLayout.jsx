@@ -39,9 +39,9 @@ const ClassroomDetailLayout = ({ children }) => {
     try {
       setLoading(true);
       const response = await classroomApi.getClassroomById(id);
-      console.log('Classroom detail response:', response);
+      //console.log('Classroom detail response:', response);
       if (response.code === 1000) {
-        console.log('Classroom data:', response.result);
+        //console.log('Classroom data:', response.result);
         setClassroom(response.result);
       }
     } catch (err) {

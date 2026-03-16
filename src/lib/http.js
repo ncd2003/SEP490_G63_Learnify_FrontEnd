@@ -1,5 +1,6 @@
 import axios from "axios";
 import envConfig from "@/schema/config.schema";
+import toast from "react-hot-toast";
 
 /* ─── Public endpoints (no auth token needed) ───────────────────────────── */
 const PUBLIC_ENDPOINTS = [
@@ -58,6 +59,9 @@ const createHttp = () => {
       const token = localStorage.getItem("accessToken");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        // //console.log(`[HTTP] ${method?.toUpperCase()} ${config.url} - Token: ${token.substring(0, 30)}...`);
+      } else {
+        console.warn(`[HTTP] ${method?.toUpperCase()} ${config.url} - NO TOKEN!`);
       }
     }
 
@@ -66,10 +70,36 @@ const createHttp = () => {
 
   /* ── Response interceptor ────────────────────────────────────────────── */
   instance.interceptors.response.use(
-    (response) => response.data,
+    (response) => {
+      // Show success toast if message exists and code is 1000 (success)
+      // Check if it's a mutation request (POST, PUT, DELETE) to avoid spamming toasts on GET
+      const method = response.config.method?.toLowerCase();
+      const isMutation = ["post", "put", "delete", "patch"].includes(method);
+      
+      if (isMutation && response.data?.code === 1000 && response.data?.message) {
+        toast.success(response.data.message);
+      }
+      
+      return response.data;
+    },
     (error) => {
       if (error.response) {
-        const { status, config: reqConfig } = error.response;
+        const { status, config: reqConfig, data } = error.response;
+
+        // Show error toast
+        const errorMessage = data?.message || "Đã có lỗi xảy ra";
+        // Avoid showing toast for 401/403 errors that might be handled differently (redirects)
+        // or for specific endpoints if needed.
+        // Generally good to show error toast for failures.
+        if (status !== 401) {
+            toast.error(errorMessage);
+        }
+
+        console.error(`[HTTP Error] ${status} ${reqConfig?.method?.toUpperCase()} ${reqConfig?.url}`, {
+          status,
+          errorData: data,
+          message: data?.message || error.message,
+        });
 
         if (status === 401) {
           // Don't auto-redirect from auth or /users/me endpoints
@@ -78,6 +108,7 @@ const createHttp = () => {
             reqConfig?.url?.includes("/users/me");
 
           if (!isAuthCall) {
+            console.warn('[HTTP] 401 Unauthorized - Clearing auth');
             localStorage.removeItem("accessToken");
             localStorage.removeItem("user");
             window.location.href = "/login";
@@ -85,7 +116,10 @@ const createHttp = () => {
         }
 
         if (status === 403) {
-          console.error("403 Forbidden");
+          console.error("[HTTP] 403 Forbidden - Access denied", {
+            url: reqConfig?.url,
+            errorMessage: data?.message || 'No error message from backend',
+          });
         }
       }
 

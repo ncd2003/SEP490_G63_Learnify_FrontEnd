@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import userApi from "../apis/userApi";
+import { userApi } from "../apis/user.api.js";
 import "@/assets/css/pages/userProfile.css";
 import {
   ArrowLeft,
@@ -73,7 +73,7 @@ const UserProfile = () => {
   // Redirect if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      navigate("/login");
+      navigate("/");
     }
   }, [loading, isAuthenticated, navigate]);
 

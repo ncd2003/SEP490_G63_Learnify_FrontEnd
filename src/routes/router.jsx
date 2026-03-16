@@ -1,8 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, useRoutes } from "react-router-dom";
-import { PATH_AUTH, PATH_TEACHER } from "./paths";
+import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
-import RoleBasedGuard from "@/guards/role-base-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 
@@ -13,135 +12,135 @@ const Loadable = (Component) => (props) => (
 );
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
-const LoginPage = Loadable(lazy(() => import("@/pages/Login")));
-const RegisterPage = Loadable(lazy(() => import("@/pages/Register")));
-const OtpVerificationPage = Loadable(
-  lazy(() => import("@/pages/OtpVerification")),
-);
-const ForgotPasswordPage = Loadable(
-  lazy(() => import("@/pages/ForgotPassword")),
-);
-const ForgotPasswordOtpPage = Loadable(
-  lazy(() => import("@/pages/ForgotPasswordOtp")),
-);
-const ResetPasswordPage = Loadable(lazy(() => import("@/pages/ResetPassword")));
-const HomePage = Loadable(lazy(() => import("@/pages/Home")));
-const OAuth2RedirectPage = Loadable(
-  lazy(() => import("@/pages/OAuth2Redirect")),
-);
-const RoleSelectionPage = Loadable(lazy(() => import("@/pages/RoleSelection")));
+const LoginPage             = Loadable(lazy(() => import("@/pages/Login")));
+const RegisterPage          = Loadable(lazy(() => import("@/pages/Register")));
+const OtpVerificationPage   = Loadable(lazy(() => import("@/pages/OtpVerification")));
+const ForgotPasswordPage    = Loadable(lazy(() => import("@/pages/ForgotPassword")));
+const ForgotPasswordOtpPage = Loadable(lazy(() => import("@/pages/ForgotPasswordOtp")));
+const ResetPasswordPage     = Loadable(lazy(() => import("@/pages/ResetPassword")));
+const RoleSelectionPage     = Loadable(lazy(() => import("@/pages/RoleSelection")));
 
-// ─── Teacher pages ────────────────────────────────────────────────────────────
-const UserProfilePage = Loadable(lazy(() => import("@/pages/UserProfile")));
-const ClassroomListPage = Loadable(
-  lazy(() => import("@/pages/classroom/list/classroom-page")),
-);
-const ClassroomPostPage = Loadable(
-  lazy(() => import("@/pages/classroom/feed/post-page")),
-);
-const PendingRequestsPage = Loadable(
-  lazy(() => import("@/pages/classroom/PendingRequests")),
-);
+const HomePage              = Loadable(lazy(() => import("@/pages/Home")));
+const OAuth2RedirectPage    = Loadable(lazy(() => import("@/pages/OAuth2Redirect")));
+
+// ─── Teacher / User pages ─────────────────────────────────────────────────────
+const UserProfilePage       = Loadable(lazy(() => import("@/pages/UserProfile")));
+const ClassroomListPage     = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
+const ClassroomPostPage     = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
+const PendingRequestsPage   = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
+const SchedulePage          = Loadable(lazy(() => import("@/pages/classroom/schedule/schedulePage")));
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
-const NotFoundPage = Loadable(
-  lazy(() => import("@/pages/not-found/not-found-page")),
-);
+const NotFoundPage          = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
 
 const AppRoutes = () =>
   useRoutes([
-    // ── Root redirect ──────────────────────────────────────────────────────────
+    // ── Root redirect ─────────────────────────────────────────────────────────
     {
       path: "/",
-      element: <Navigate to={PATH_AUTH.home} replace />,
+      element: <Navigate to="/home" replace />,
     },
 
-    // ── Auth routes ────────────────────────────────────────────────────────────
+    // ── Public routes ─────────────────────────────────────────────────────────
     {
-      path: PATH_AUTH.root,
-      children: [
-        {
-          path: PATH_AUTH.login,
-          element: (
-            <GuestGuard>
-              <LoginPage />
-            </GuestGuard>
-          ),
-        },
-        {
-          path: PATH_AUTH.register,
-          element: (
-            <GuestGuard>
-              <RegisterPage />
-            </GuestGuard>
-          ),
-        },
-        {
-          path: PATH_AUTH.verifyOtp,
-          element: <OtpVerificationPage />,
-        },
-        {
-          path: PATH_AUTH.forgotPassword,
-          element: <ForgotPasswordPage />,
-        },
-        {
-          path: PATH_AUTH.forgotPasswordOtp,
-          element: <ForgotPasswordOtpPage />,
-        },
-        {
-          path: PATH_AUTH.resetPassword,
-          element: <ResetPasswordPage />,
-        },
-        {
-          path: PATH_AUTH.oauth2Redirect,
-          element: <OAuth2RedirectPage />,
-        },
-        {
-          path: PATH_AUTH.selectRole,
-          element: <RoleSelectionPage />,
-        },
-      ],
-    },
-
-    // ── Public routes ──────────────────────────────────────────────────────────
-    {
-      path: PATH_AUTH.home,
+      path: "home",
       element: <HomePage />,
     },
 
-    // ── Teacher routes ─────────────────────────────────────────────────────────
+    // ── Auth routes ───────────────────────────────────────────────────────────
     {
-      path: PATH_TEACHER.root,
+      path: "login",
       element: (
-        <RoleBasedGuard role="ROLE_TEACHER">
+        <GuestGuard>
+          <LoginPage />
+        </GuestGuard>
+      ),
+    },
+    {
+      path: "register",
+      element: (
+        <GuestGuard>
+          <RegisterPage />
+        </GuestGuard>
+      ),
+    },
+    {
+      path: "verify-otp",
+      element: <OtpVerificationPage />,
+    },
+    {
+      path: "forgot-password",
+      element: <ForgotPasswordPage />,
+    },
+    {
+      path: "forgot-password-otp",
+      element: <ForgotPasswordOtpPage />,
+    },
+    {
+      path: "reset-password",
+      element: <ResetPasswordPage />,
+    },
+    {
+      path: "select-role",
+      element: <RoleSelectionPage />,
+    },
+    {
+      path: "oauth2/redirect",
+      element: <OAuth2RedirectPage />,
+    },
+
+    // ── User Profile (Authenticated) ──────────────────────────────────────────
+    {
+      path: "profile",
+      element: (
+        <AuthGuard>
+          <UserProfilePage />
+        </AuthGuard>
+      ),
+    },
+
+    // ── Classroom list route (with DashboardLayout) ──────────────────────────
+    {
+      element: (
+        <AuthGuard>
           <DashboardLayout />
-        </RoleBasedGuard>
+        </AuthGuard>
       ),
       children: [
         {
-          index: true,
-          element: <Navigate to={PATH_TEACHER.classroom.root} replace />,
-        },
-        {
-          path: PATH_TEACHER.profile,
-          element: <UserProfilePage />,
-        },
-        {
-          path: PATH_TEACHER.classroom.root,
+          path: "classrooms",
           element: <ClassroomListPage />,
-        },
-        {
-          path: PATH_TEACHER.classroom.detail(":id"),
-          element: <ClassroomPostPage />,
-        },
-        {
-          path: PATH_TEACHER.classroom.pendingRequests(":id"),
-          element: <PendingRequestsPage />,
         },
       ],
     },
 
-    // ── Catch-all ──────────────────────────────────────────────────────────────
+    // ── Classroom detail routes (without DashboardLayout, uses ClassroomDetailLayout inside) ───
+    {
+      path: "classrooms/:id",
+      element: (
+        <AuthGuard>
+          <ClassroomPostPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/pending-requests",
+      element: (
+        <AuthGuard>
+          <PendingRequestsPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/schedule",
+      element: (
+        <AuthGuard>
+          <SchedulePage />
+        </AuthGuard>
+      ),
+    },
+
+    // ── Catch-all ─────────────────────────────────────────────────────────────
     {
       path: "*",
       element: <NotFoundPage />,

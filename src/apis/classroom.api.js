@@ -15,11 +15,10 @@ const BASE = API_SUFFIX.CLASSROOM;
 /* ─── Classroom CRUD ─────────────────────────────────────────────────────── */
 
 /**
- * @param {number} teacherId
  * @returns {Promise<import("axios").AxiosResponse<ClassroomListResponse>>}
  */
-const getClassroomsByTeacher = (teacherId) =>
-  apiRequest.get(`${BASE}/teacher/${teacherId}`);
+const getClassroomsByTeacher = () =>
+  apiRequest.get(`${BASE}/teacher`);
 
 /**
  * @param {number} id

@@ -1,16 +1,35 @@
 import { useState, useRef } from "react";
 import { X, ImagePlus, Upload } from "lucide-react";
+import toast from "react-hot-toast";
 import { classroomApi } from "@/apis/classroom.api";
 import { CreateClassroomSchema } from "@/schema/classroom.schema";
 import "@/assets/css/pages/classroom/modals.css";
 
-const INITIAL_FIELDS = { name: "", subject: "", description: "" };
+const SUBJECT_OPTIONS = [
+  "Toán",
+  "Ngữ văn",
+  "Tiếng Anh",
+  "Vật lý",
+  "Hóa học",
+  "Sinh học",
+  "Lịch sử",
+  "Địa lý",
+  "Tin học",
+  "GDCD",
+  "OTHER",
+];
+
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+
+const INITIAL_FIELDS = { name: "", description: "" };
 const INITIAL_ERRORS = { name: "", subject: "", description: "" };
 
 const CreateClassroomDialog = ({ onClose, onSuccess }) => {
   const fileInputRef = useRef(null);
 
   const [fields, setFields] = useState(INITIAL_FIELDS);
+  const [subjectOption, setSubjectOption] = useState("");
+  const [subjectOther, setSubjectOther] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [errors, setErrors] = useState(INITIAL_ERRORS);
@@ -25,9 +44,33 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     }
   };
 
+  const handleSubjectOptionChange = (e) => {
+    const value = e.target.value;
+    setSubjectOption(value);
+    if (value !== "OTHER") {
+      setSubjectOther("");
+    }
+    if (errors.subject) {
+      setErrors((prev) => ({ ...prev, subject: "" }));
+    }
+  };
+
+  const handleSubjectOtherChange = (e) => {
+    setSubjectOther(e.target.value);
+    if (errors.subject) {
+      setErrors((prev) => ({ ...prev, subject: "" }));
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.");
+      return;
+    }
+
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -36,6 +79,12 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.");
+      return;
+    }
+
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -44,7 +93,18 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     e.preventDefault();
     setServerError("");
 
-    const result = CreateClassroomSchema.safeParse(fields);
+    const finalSubject = subjectOption === "OTHER" ? subjectOther.trim() : subjectOption;
+
+    if (!finalSubject) {
+      setErrors((prev) => ({ ...prev, subject: "Vui lòng chọn môn học" }));
+      return;
+    }
+
+    const result = CreateClassroomSchema.safeParse({
+      name: fields.name,
+      subject: finalSubject,
+      description: fields.description,
+    });
     if (!result.success) {
       const fieldErrors = result.error.flatten().fieldErrors;
       setErrors((prev) => ({
@@ -111,14 +171,35 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
             <label className="form-label">
               Môn học <span className="form-label-required">*</span>
             </label>
-            <input
-              type="text"
+            <select
               name="subject"
-              value={fields.subject}
-              onChange={handleFieldChange}
-              placeholder="Ví dụ: Toán, Văn, Tiếng Anh... (3–50 ký tự)"
+              value={subjectOption}
+              onChange={handleSubjectOptionChange}
               className={`form-input ${errors.subject ? "has-error" : ""}`}
-            />
+            >
+              <option value="" disabled>
+                Chọn môn học
+              </option>
+              {SUBJECT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option === "OTHER" ? "Khác" : option}
+                </option>
+              ))}
+            </select>
+
+            {subjectOption === "OTHER" && (
+              <div style={{ marginTop: 8 }}>
+                <input
+                  type="text"
+                  name="subjectOther"
+                  value={subjectOther}
+                  onChange={handleSubjectOtherChange}
+                  placeholder="Nhập tên môn học khác"
+                  className={`form-input ${errors.subject ? "has-error" : ""}`}
+                />
+              </div>
+            )}
+
             {errors.subject && <p className="form-error-text">{errors.subject}</p>}
           </div>
 
@@ -132,8 +213,9 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               name="description"
               value={fields.description}
               onChange={handleFieldChange}
-              placeholder="Mô tả ngắn về lớp học (3–500 ký tự nếu điền)..."
+              placeholder="Mô tả ngắn về lớp học (tối đa 200 ký tự)..."
               rows={3}
+              maxLength={200}
               className={`form-textarea ${errors.description ? "has-error" : ""}`}
             />
             {errors.description && <p className="form-error-text">{errors.description}</p>}

@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import "@/assets/css/components/header.css";
-import { BookOpen, Menu, X, LogOut, User, Settings } from "lucide-react";
-import { PATH_AUTH, PATH_TEACHER, PATH_STUDENT } from "@/routes/paths";
+import { BookOpen, Menu, X, LogOut, User } from "lucide-react";
+import { PATH_AUTH, PATH_COMMON } from "@/routes/paths";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -21,10 +21,9 @@ const Header = () => {
   };
 
   const handleDashboardClick = () => {
-    if (user?.role?.toUpperCase() === "ROLE_TEACHER") {
-      navigate(PATH_TEACHER.classroom.root);
-    } else if (user?.role?.toUpperCase() === "ROLE_STUDENT") {
-      navigate(PATH_STUDENT.classroom.root);
+    const userRole = user?.role?.toUpperCase();
+    if (userRole === "ROLE_TEACHER" || userRole === "ROLE_STUDENT" || userRole === "ROLE_ADMIN") {
+      navigate("/classrooms");
     }
   };
 
@@ -138,25 +137,11 @@ const Header = () => {
                         className="dropdown-item"
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          navigate(
-                            user?.role?.toUpperCase() === "TEACHER"
-                              ? PATH_TEACHER.profile
-                              : PATH_STUDENT.profile,
-                          );
+                          navigate(PATH_COMMON.profile);
                         }}
                       >
                         <User size={16} />
                         <span>Tài khoản</span>
-                      </button>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          navigate("/settings");
-                        }}
-                      >
-                        <Settings size={16} />
-                        <span>Cài đặt</span>
                       </button>
                       <div className="dropdown-divider"></div>
                       <button

@@ -80,6 +80,44 @@ const formatDateTime = (dateStr) => {
   const time = formatTime(dateStr);
   return `${date} ${time}`;
 };
+
+/**
+ * Format relative time:
+ * - If less than 24h: Show relative time (e.g., "2 giờ trước", "30 phút trước")
+ * - If more than 24h: Show date in format dd/mm/yyyy h:m
+ */
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return "";
+  
+  const now = new Date();
+  const date = new Date(isoString);
+  const diffMs = now - date;
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  // If less than 24 hours, show relative time
+  if (diffHours < 24) {
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMinutes < 1) {
+      return "Vừa xong";
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes} phút trước`;
+    } else {
+      const hours = Math.floor(diffMinutes / 60);
+      return `${hours} giờ trước`;
+    }
+  }
+  
+  // If more than 24 hours, show formatted date
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+};
+
 const allowedExtensions = [".jpeg", ".png", ".jpg", ".gif", ".bmp", ".webp"];
 const fileValidator = z.any().refine(
   (file) => {
@@ -101,6 +139,7 @@ export {
   formatDateTime,
   formatLocaleDate,
   formatPrice,
+  formatRelativeTime,
   formatTime,
   getImagePreviewUrl,
   validateImageFile

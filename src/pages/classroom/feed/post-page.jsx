@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, AlertCircle } from "lucide-react";
+import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import usePosts from "@/hooks/use-posts";
 import usePostMutations from "@/hooks/use-post";
 import PostCard from "@/pages/post/list/post-card";
 import PostForm from "@/pages/post/create/post-form";
+import DeletePostDialog from "@/pages/post/delete/delete-post-dialog";
 import "@/assets/css/pages/classroom/classroomFeed.css";
 import "@/assets/css/pages/classroom/modals.css";
 
@@ -12,42 +14,42 @@ const ClassroomFeedPage = () => {
   const { id: classroomId } = useParams();
 
   const { posts, setPosts, loading, error, refetch } = usePosts(Number(classroomId));
-  const { createPost, updatePost, deletePost, submitting } = usePostMutations(setPosts);
+  const { createPost, updatePost, submitting } = usePostMutations(setPosts);
 
   const [editingPost, setEditingPost] = useState(null);
   const [deleteConfirmPost, setDeleteConfirmPost] = useState(null);
-  const [deleteError, setDeleteError] = useState("");
-  const [deleting, setDeleting] = useState(false);
 
   /* ── Handlers ─────────────────────────────────────────────────────────── */
   const handleCreate = async (data, files) => {
-    return await createPost(data, files);
+    const result = await createPost(data, files);
+    if (result.success) {
+      refetch();
+    }
+    return result;
   };
 
   const handleUpdate = async (data, files) => {
     const result = await updatePost(editingPost.id, data, files);
-    if (result.success) setEditingPost(null);
+    if (result.success) {
+      setEditingPost(null);
+      refetch();
+    }
     return result;
   };
 
-  const handleDeleteConfirm = async () => {
-    setDeleting(true);
-    setDeleteError("");
-    const result = await deletePost(deleteConfirmPost.id);
-    if (result.success) {
-      setDeleteConfirmPost(null);
-    } else {
-      setDeleteError(result.message ?? "Xóa bài đăng thất bại.");
-    }
-    setDeleting(false);
+  const handleDeleteSuccess = () => {
+    setPosts((prev) => prev.filter((p) => p.id !== deleteConfirmPost?.id));
+    setDeleteConfirmPost(null);
   };
 
   /* ── Render ───────────────────────────────────────────────────────────── */
   return (
-    <div className="classroom-feed">
+    <ClassroomDetailLayout>
+      <div className="classroom-feed">
       {/* Create post form */}
       <div className="post-form-wrapper">
         <PostForm
+          key={classroomId}
           classroomId={Number(classroomId)}
           onSubmit={handleCreate}
           submitting={submitting}
@@ -97,33 +99,14 @@ const ClassroomFeedPage = () => {
 
       {/* Delete confirm dialog */}
       {deleteConfirmPost && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setDeleteConfirmPost(null)}>
-          <div className="modal-container modal-small">
-            <div className="modal-header">
-              <h2 className="modal-title">Xóa bài đăng</h2>
-            </div>
-            <div className="modal-body">
-              <p className="delete-message">
-                Bạn có chắc muốn xóa bài đăng này không? Hành động này không thể hoàn tác.
-              </p>
-              {deleteError && <p className="modal-error-alert">{deleteError}</p>}
-            </div>
-            <div className="modal-actions">
-              <button
-                className="btn-cancel"
-                onClick={() => { setDeleteConfirmPost(null); setDeleteError(""); }}
-                disabled={deleting}
-              >
-                Hủy
-              </button>
-              <button className="btn-danger" onClick={handleDeleteConfirm} disabled={deleting}>
-                {deleting ? "Đang xóa..." : "Xóa"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeletePostDialog
+          post={deleteConfirmPost}
+          onClose={() => setDeleteConfirmPost(null)}
+          onSuccess={handleDeleteSuccess}
+        />
       )}
-    </div>
+      </div>
+    </ClassroomDetailLayout>
   );
 };
 
