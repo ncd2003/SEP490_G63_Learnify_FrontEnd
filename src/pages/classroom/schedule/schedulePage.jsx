@@ -317,10 +317,15 @@ const SchedulePage = () => {
                   return (
                     <div key={di} className={`week-board-day ${isDayToday ? 'today' : ''}`}>
                       <div className="week-board-header">
-                        <div>
-                          <div className="week-board-day-name">
-                            {WEEKDAYS[day.getDay()]}{isDayToday ? ' - Hôm nay' : ''}
+                        <div className="week-board-day-heading">
+                          <div className="week-board-day-name-row">
+                            <span className="week-board-day-name">{WEEKDAYS[day.getDay()]}</span>
                           </div>
+                          {isDayToday && (
+                            <div className="week-board-day-subrow">
+                              <span className="week-board-today-badge">Hôm nay</span>
+                            </div>
+                          )}
                           <div className="week-board-day-date">
                             {String(day.getDate()).padStart(2, '0')}/{String(day.getMonth() + 1).padStart(2, '0')}
                           </div>
@@ -351,6 +356,19 @@ const SchedulePage = () => {
                               <span className="week-board-event-type-icon">{renderSessionBadge(s)}</span>
                               <span className="week-board-event-type-text">{s.type === SESSION_TYPE.ONLINE ? 'Trực tuyến' : (s.location || 'Tại lớp')}</span>
                             </div>
+                            {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
+                              <div className="week-board-event-actions">
+                                <a
+                                  href={s.meetingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="week-board-join-btn"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Tham gia
+                                </a>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
