@@ -54,6 +54,15 @@ const scheduleApi = {
    */
   deleteSession: (classId, sessionId) =>
     apiRequest.delete(`/classrooms/${classId}/sessions/${sessionId}`),
+
+  /**
+   * Generate Jitsi meeting link and token for a room
+   * POST /api/integrations/jitsi/meeting-link
+   * @param {{ roomName: string, role: string }} data
+   * @returns {Promise<{ code: number, message: string, result: { roomName: string, token: string | null, meetingLink: string } }>}
+   */
+  generateJitsiMeetingLink: (data) =>
+    apiRequest.post('/integrations/jitsi/meeting-link', data),
 };
 
 export default scheduleApi;

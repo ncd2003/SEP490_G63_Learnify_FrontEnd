@@ -31,6 +31,8 @@ const StudentClassroomListPage  = Loadable(lazy(() => import("@/pages/classroom/
 const ClassroomPostPage         = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
 const PendingRequestsPage   = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
 const SchedulePage          = Loadable(lazy(() => import("@/pages/classroom/schedule/schedulePage")));
+const AttendanceListPage    = Loadable(lazy(() => import("@/pages/classroom/attendance/attendance-list-page")));
+const AttendancePage        = Loadable(lazy(() => import("@/pages/classroom/attendance/attendance-page")));
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
 const NotFoundPage          = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
@@ -145,6 +147,22 @@ const AppRoutes = () =>
       element: (
         <AuthGuard>
           <SchedulePage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/attendance",
+      element: (
+        <AuthGuard>
+          <AttendanceListPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/attendance/:sessionId",
+      element: (
+        <AuthGuard>
+          <AttendancePage />
         </AuthGuard>
       ),
     },
