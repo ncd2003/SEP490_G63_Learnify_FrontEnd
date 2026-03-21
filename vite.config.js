@@ -18,6 +18,24 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:8081",
         changeOrigin: true,
+        secure: false,
+        ws: true,
+        headers: {
+          'Origin': 'http://localhost:8081',
+        },
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            //console.log('[Proxy Error]', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            //console.log('[Proxy Request]', req.method, req.url);
+            // Set origin to backend URL to avoid CORS issues
+            proxyReq.setHeader('origin', 'http://localhost:8081');
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            //console.log('[Proxy Response]', proxyRes.statusCode, req.url);
+          });
+        },
       },
     },
   },

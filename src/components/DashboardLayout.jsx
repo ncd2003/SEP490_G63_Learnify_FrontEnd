@@ -17,7 +17,13 @@ import {
   Database,
   BarChart2,
 } from "lucide-react";
-import { PATH_AUTH, PATH_TEACHER, PATH_STUDENT } from "@/routes/paths";
+import {
+  PATH_AUTH,
+  PATH_COMMON,
+  PATH_TEACHER,
+  PATH_STUDENT,
+  PATH_ADMIN,
+} from "@/routes/paths";
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -28,6 +34,7 @@ const DashboardLayout = () => {
 
   const isTeacher = user?.role === "ROLE_TEACHER";
   const isStudent = user?.role === "ROLE_STUDENT";
+  const isAdmin = user?.role === "ROLE_ADMIN";
 
   const handleLogout = async () => {
     try {

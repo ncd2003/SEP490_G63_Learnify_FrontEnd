@@ -5,16 +5,23 @@ export const CommentSchema = z.object({
   id:          z.number(),
   content:     z.string().trim().min(1, "Nội dung bình luận không được để trống").max(1000, "Bình luận tối đa 1000 ký tự"),
   active:      z.boolean().optional(),
-  authorName:  z.string().optional(),
+  user:        z.object({
+    id:   z.number(),
+    name: z.string(),
+  }).optional(),
+  authorName:  z.string().optional(), // transformed from user.name
   authorRole:  z.string().optional(),
   createdAt:   z.string().optional(),
   updatedAt:   z.string().optional(),
+  parentId:    z.number().optional(),
+  replies:     z.array(z.lazy(() => CommentSchema)).optional(), // nested replies from API
 });
 
 // ─── Create Comment Schema (mirrors CreateCommentRequestDTO) ──────────────────
 export const CreateCommentSchema = z.object({
   postId:  z.number({ required_error: "Post ID không được để trống" }),
   content: z.string().trim().min(1, "Nội dung bình luận không được để trống").max(1000, "Bình luận tối đa 1000 ký tự"),
+  parentId: z.number().optional(), // optional for reply comments
 });
 
 // ─── Update Comment Schema ────────────────────────────────────────────────────

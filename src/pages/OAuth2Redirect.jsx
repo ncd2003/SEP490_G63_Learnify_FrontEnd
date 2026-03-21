@@ -13,22 +13,22 @@ const OAuth2Redirect = () => {
   useEffect(() => {
     // Prevent double execution (React StrictMode in dev)
     if (hasProcessed.current) {
-      console.log("[OAuth2Redirect] Already processed, skipping");
+      //console.log("[OAuth2Redirect] Already processed, skipping");
       return;
     }
 
     const handleRedirect = async () => {
       try {
         hasProcessed.current = true;
-        console.log("[OAuth2Redirect] Starting redirect handling");
+        //console.log("[OAuth2Redirect] Starting redirect handling");
 
         // Lấy token từ URL params
         const params = new URLSearchParams(window.location.search);
         const token = params.get("token");
         const error = params.get("error");
 
-        console.log("[OAuth2Redirect] Token present:", !!token);
-        console.log("[OAuth2Redirect] Error present:", !!error);
+        //console.log("[OAuth2Redirect] Token present:", !!token);
+        //console.log("[OAuth2Redirect] Error present:", !!error);
 
         if (error) {
           const decodedError = decodeURIComponent(error);
@@ -36,31 +36,29 @@ const OAuth2Redirect = () => {
           setErrorMessage(decodedError);
           setStatus("error");
           setTimeout(() => {
-            navigate("/login");
+            navigate("/");
           }, 5000);
           return;
         }
 
         if (token) {
-          console.log("[OAuth2Redirect] Processing OAuth2 login");
+          //console.log("[OAuth2Redirect] Processing OAuth2 login");
 
           // Đợi handleOAuth2Login hoàn tất
           const result = await handleOAuth2Login(token);
 
           if (result.success) {
-            console.log(
-              "[OAuth2Redirect] Login completed, redirecting based on role",
-            );
-
             // Get user role and redirect accordingly
             const userRole = result.user?.role?.toUpperCase();
 
             // Đợi một chút để đảm bảo state được update
             setTimeout(() => {
-              if (userRole === "ROLE_TEACHER") {
-                navigate("/teacher/classrooms", { replace: true });
-              } else if (userRole === "ROLE_STUDENT") {
-                navigate("/student/classrooms", { replace: true });
+              if (userRole === "ROLE_TEACHER" || userRole === "ROLE_STUDENT") {
+                // Redirect to classrooms for now until admin pages are ready
+                navigate("/classrooms", { replace: true });
+              } else if (userRole === "ROLE_ADMIN") {
+                // Redirect to classrooms for now until admin pages are ready
+                navigate("/classrooms", { replace: true });
               } else {
                 // New Google user — no role set yet, go to role selection
                 navigate("/select-role", { replace: true });
@@ -72,7 +70,7 @@ const OAuth2Redirect = () => {
           setErrorMessage("Không nhận được token từ server");
           setStatus("error");
           setTimeout(() => {
-            navigate("/login");
+            navigate("/");
           }, 5000);
         }
       } catch (err) {
@@ -80,7 +78,7 @@ const OAuth2Redirect = () => {
         setErrorMessage(err.message || "Đã xảy ra lỗi không xác định");
         setStatus("error");
         setTimeout(() => {
-          navigate("/login");
+          navigate("/");
         }, 3000);
       }
     };

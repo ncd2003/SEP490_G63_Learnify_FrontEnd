@@ -76,7 +76,7 @@ const ForgotPasswordOtpPage = () => {
 
     try {
       const payload = { email, otp: otpCode };
-      console.log("[ForgotPasswordOtp] Sending payload:", payload);
+      //console.log("[ForgotPasswordOtp] Sending payload:", payload);
       const response = await authApi.verifyForgotPasswordOtp(payload);
       const resetToken = response.result;
 

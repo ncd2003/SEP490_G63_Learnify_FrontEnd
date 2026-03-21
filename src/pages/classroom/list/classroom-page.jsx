@@ -20,6 +20,20 @@ const SORT_OPTIONS = [
   { value: "name_desc", label: "Tên Z → A" },
 ];
 
+const SUBJECT_FILTER_OPTIONS = [
+  { value: "", label: "Tất cả môn học" },
+  { value: "Toán", label: "Toán" },
+  { value: "Ngữ văn", label: "Ngữ văn" },
+  { value: "Tiếng Anh", label: "Tiếng Anh" },
+  { value: "Vật lý", label: "Vật lý" },
+  { value: "Hóa học", label: "Hóa học" },
+  { value: "Sinh học", label: "Sinh học" },
+  { value: "Lịch sử", label: "Lịch sử" },
+  { value: "Địa lý", label: "Địa lý" },
+  { value: "Tin học", label: "Tin học" },
+  { value: "GDCD", label: "GDCD" },
+];
+
 const TABS = {
   ACTIVE: "active",
   HIDDEN: "hidden",
@@ -40,6 +54,7 @@ const ClassroomPage = () => {
   const [activeTab, setActiveTab] = useState(TABS.ACTIVE);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortValue, setSortValue] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("");
   const [activeMenu, setActiveMenu] = useState(null);
   const [editingClassroom, setEditingClassroom] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -50,6 +65,12 @@ const ClassroomPage = () => {
   const filteredClassrooms = useMemo(() => {
     let result = [...classrooms];
 
+    // Filter by Subject
+    if (subjectFilter) {
+      result = result.filter((c) => c.subject === subjectFilter);
+    }
+
+    // Filter by Search
     if (debouncedSearch.trim()) {
       const query = debouncedSearch.toLowerCase();
       result = result.filter(
@@ -66,7 +87,7 @@ const ClassroomPage = () => {
     }
 
     return result;
-  }, [classrooms, debouncedSearch, sortValue]);
+  }, [classrooms, debouncedSearch, sortValue, subjectFilter]);
 
   const handleMenuClick = (id) => setActiveMenu((prev) => (prev === id ? null : id));
   const handleMenuClose = () => setActiveMenu(null);
@@ -97,22 +118,22 @@ const ClassroomPage = () => {
                 ? `(${filteredClassrooms.length})`
                 : ""}
             </button>
-            <button
+            {/* <button
               onClick={() => setActiveTab(TABS.HIDDEN)}
               className={`tab-button ${activeTab === TABS.HIDDEN ? "active" : ""}`}
             >
               Lớp đã ẩn
-            </button>
+            </button> */}
           </div>
 
           <div className="header-actions">
-            <button className="btn-secondary">
+            {/* <button className="btn-secondary">
               <Trash2 size={15} />
               <span>Thùng rác</span>
-            </button>
-            <button className="btn-icon">
+            </button> */}
+            {/* <button className="btn-icon">
               <LayoutList size={18} />
-            </button>
+            </button> */}
             <button onClick={handleCreateOpen} className="btn-create">
               <Plus size={16} />
               Tạo lớp học
@@ -132,6 +153,18 @@ const ClassroomPage = () => {
               className="search-input"
             />
           </div>
+          <select
+            value={subjectFilter}
+            onChange={(e) => setSubjectFilter(e.target.value)}
+            className="sort-select"
+            style={{ marginRight: "8px" }}
+          >
+            {SUBJECT_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
           <select
             value={sortValue}
             onChange={(e) => setSortValue(e.target.value)}

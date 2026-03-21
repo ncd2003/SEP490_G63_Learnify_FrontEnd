@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { Paperclip, Pin, MoreVertical, Pencil, Trash2, FileText, Image, Film, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatRelativeTime } from "@/lib/utils";
 import useComments from "@/hooks/use-comments";
 import useCommentMutations from "@/hooks/use-comment";
 import CommentCard from "@/pages/comment/list/comment-card";
@@ -27,13 +28,46 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(3);
 
   // Comment hooks
-  const { comments, setComments, loading: loadingComments } = useComments(post.id);
-  const { createComment, submitting } = useCommentMutations(post.id, setComments);
+  const { comments, setComments, loading: loadingComments, refetch } = useComments(post.id);
+  const { createComment, updateComment, deleteComment, submitting } = useCommentMutations(post.id, setComments);
+
+  // Count total comments including all nested replies
+  const countTotalComments = (commentsList) => {
+    let total = 0;
+    commentsList.forEach(comment => {
+      total += 1; // Count this comment
+      if (comment.replies && comment.replies.length > 0) {
+        total += countTotalComments(comment.replies); // Recursively count replies
+      }
+    });
+    return total;
+  };
+
+  const totalCommentCount = countTotalComments(comments);
 
   const handleCommentSubmit = async (data) => {
-    return await createComment(data);
+    const result = await createComment(data);
+    // If it's a reply, refetch to get updated nested structure
+    if (result?.success && data.parentId) {
+      await refetch();
+    }
+    return result;
+  };
+
+  const handleCommentUpdate = async (commentId, content) => {
+    const data = { content, postId: post.id };
+    const result = await updateComment(commentId, data);
+    if (result?.success) await refetch(); // Always refetch to be safe with nested
+    return result;
+  };
+
+  const handleCommentDelete = async (commentId) => {
+    const result = await deleteComment(commentId);
+    if (result?.success) await refetch(); // Always refetch to be safe with nested
+    return result;
   };
 
   return (
@@ -48,7 +82,12 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
             }
           </div>
           <div className="post-author-info">
-            <span className="post-author-name">{user?.fullName ?? "Giáo viên"}</span>
+            <div className="post-author-header">
+              <span className="post-author-name">{user?.fullName ?? "Giáo viên"}</span>
+              {post.createdAt && (
+                <span className="post-created-time">{formatRelativeTime(post.createdAt)}</span>
+              )}
+            </div>
             {post.pinned && (
               <span className="post-pinned-badge">
                 <Pin size={11} />
@@ -72,14 +111,14 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
                   onClick={() => { setMenuOpen(false); onEdit(post); }}
                 >
                   <Pencil size={14} />
-                  Chỉnh sửa
+                  <span>Chỉnh sửa</span>
                 </button>
                 <button
                   className="action-menu-item danger"
                   onClick={() => { setMenuOpen(false); onDelete(post); }}
                 >
                   <Trash2 size={14} />
-                  Xóa bài đăng
+                  <span>Xóa bài đăng</span>
                 </button>
               </div>
             </>
@@ -120,7 +159,7 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
           onClick={() => setShowComments(!showComments)}
         >
           <MessageCircle size={16} />
-          {comments.length} bình luận
+          {totalCommentCount} bình luận
         </button>
 
         {showComments && (
@@ -130,10 +169,27 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
               <div className="comments-loading">Đang tải bình luận...</div>
             ) : comments.length > 0 ? (
               <div className="comments-list">
-                <div className="comments-header">Bình luận ({comments.length})</div>
-                {comments.map((comment) => (
-                  <CommentCard key={comment.id} comment={comment} />
+                <div className="comments-header">Bình luận ({totalCommentCount})</div>
+                {comments.slice(0, visibleCount).map((comment) => (
+                  <CommentCard 
+                    key={comment.id} 
+                    comment={comment}
+                    postId={post.id}
+                    onReply={handleCommentSubmit}
+                    onEdit={handleCommentUpdate}
+                    onDelete={handleCommentDelete}
+                    submitting={submitting}
+                  />
                 ))}
+                
+                {visibleCount < comments.length && (
+                  <button 
+                    className="comments-load-more" 
+                    onClick={() => setVisibleCount(prev => prev + 3)}
+                  >
+                    Xem thêm bình luận
+                  </button>
+                )}
               </div>
             ) : null}
 
@@ -142,6 +198,7 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
               postId={post.id}
               onSubmit={handleCommentSubmit}
               submitting={submitting}
+              onCancel={() => setShowComments(false)}
             />
           </div>
         )}
