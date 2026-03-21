@@ -9,23 +9,31 @@ const PUBLIC_ENDPOINTS = [
   "/auth/resend-otp",
 ];
 
-const isPublic = (url = "") =>
-  PUBLIC_ENDPOINTS.some((ep) => url.includes(ep));
+const isPublic = (url = "") => PUBLIC_ENDPOINTS.some((ep) => url.includes(ep));
 
 /* ─── Params serializer (supports array params) ─────────────────────────── */
 const parseParams = (params) => {
+  if (!params || typeof params !== "object") return "";
+
   const keys = Object.keys(params);
   let options = "";
 
   keys.forEach((key) => {
-    const isObject = typeof params[key] === "object";
-    const isArray  = isObject && Array.isArray(params[key]);
+    const value = params[key];
+
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+
+    const isObject = typeof value === "object";
+    const isArray = isObject && Array.isArray(value);
 
     if (!isObject) {
-      options += `${key}=${params[key]}&`;
+      options += `${encodeURIComponent(key)}=${encodeURIComponent(value)}&`;
     } else if (isArray) {
-      params[key].forEach((el) => {
-        options += `${key}=${el}&`;
+      value.forEach((el) => {
+        if (el === undefined || el === null || el === "") return;
+        options += `${encodeURIComponent(key)}=${encodeURIComponent(el)}&`;
       });
     }
   });
@@ -74,8 +82,7 @@ const createHttp = () => {
         if (status === 401) {
           // Don't auto-redirect from auth or /users/me endpoints
           const isAuthCall =
-            isPublic(reqConfig?.url) ||
-            reqConfig?.url?.includes("/users/me");
+            isPublic(reqConfig?.url) || reqConfig?.url?.includes("/users/me");
 
           if (!isAuthCall) {
             localStorage.removeItem("accessToken");

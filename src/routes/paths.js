@@ -41,6 +41,18 @@ export const PATH_TEACHER = {
   students: path(ROOTS_TEACHER, "/students"),
   documents: path(ROOTS_TEACHER, "/documents"),
   questionBank: path(ROOTS_TEACHER, "/question-bank"),
+  questionBankDetail: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}`),
+  questionBankEdit: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/edit`),
+  questionBankMethod: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/questions/create-method`),
+  questionBankImport: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/import`),
+  questionBankAi: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/ai`),
+  questionBankManual: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/manual`),
   reports: path(ROOTS_TEACHER, "/reports"),
 };
 

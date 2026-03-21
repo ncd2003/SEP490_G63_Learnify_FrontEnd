@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import "@/assets/css/components/dashboardLayout.css";
 import {
   BookOpen,
-  LayoutDashboard,
+  Home,
   Users,
   FileText,
   Settings,
@@ -13,8 +13,9 @@ import {
   Menu,
   X,
   ChevronDown,
-  BookMarked,
-  ClipboardList,
+  ChevronRight,
+  Database,
+  BarChart2,
 } from "lucide-react";
 import { PATH_AUTH, PATH_TEACHER, PATH_STUDENT } from "@/routes/paths";
 
@@ -40,13 +41,13 @@ const DashboardLayout = () => {
   // Teacher menu items
   const teacherMenuItems = [
     {
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      path: PATH_TEACHER.root,
+      icon: Home,
+      label: "Trang chủ",
+      path: PATH_AUTH.home,
     },
     {
-      icon: BookOpen,
-      label: "Lớp học",
+      icon: Users,
+      label: "Quản lý lớp học",
       path: PATH_TEACHER.classroom.root,
     },
     {
@@ -60,12 +61,12 @@ const DashboardLayout = () => {
       path: PATH_TEACHER.documents,
     },
     {
-      icon: ClipboardList,
-      label: "Ngân hàng câu hỏi",
+      icon: Database,
+      label: "Ngân hàng đề",
       path: PATH_TEACHER.questionBank,
     },
     {
-      icon: BookMarked,
+      icon: BarChart2,
       label: "Báo cáo",
       path: PATH_TEACHER.reports,
     },
@@ -74,7 +75,7 @@ const DashboardLayout = () => {
   // Student menu items
   const studentMenuItems = [
     {
-      icon: LayoutDashboard,
+      icon: Home,
       label: "Dashboard",
       path: PATH_STUDENT.root,
     },
@@ -86,9 +87,16 @@ const DashboardLayout = () => {
   ];
 
   const menuItems = isTeacher ? teacherMenuItems : studentMenuItems;
+  const activeMenuItem = menuItems.find(
+    (item) =>
+      location.pathname === item.path ||
+      location.pathname.startsWith(item.path + "/"),
+  );
 
   const isActive = (path) => {
-    return location.pathname === path || location.pathname.startsWith(path + "/");
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
   return (
@@ -110,10 +118,12 @@ const DashboardLayout = () => {
           </button>
         </div>
 
+        {isSidebarOpen && <div className="sidebar-role-chip">Giao vien</div>}
+
         <nav className="sidebar-nav">
-          {menuItems.map((item, index) => (
+          {menuItems.map((item) => (
             <button
-              key={index}
+              key={item.label}
               className={`nav-item ${isActive(item.path) ? "active" : ""}`}
               onClick={() => navigate(item.path)}
               title={!isSidebarOpen ? item.label : ""}
@@ -122,6 +132,9 @@ const DashboardLayout = () => {
               <span className={`nav-label ${!isSidebarOpen ? "hidden" : ""}`}>
                 {item.label}
               </span>
+              {isSidebarOpen && isActive(item.path) && (
+                <ChevronRight size={14} className="nav-item-chevron" />
+              )}
             </button>
           ))}
         </nav>
@@ -130,9 +143,7 @@ const DashboardLayout = () => {
           <button
             className="nav-item"
             onClick={() =>
-              navigate(
-                isTeacher ? PATH_TEACHER.profile : PATH_STUDENT.profile
-              )
+              navigate(isTeacher ? PATH_TEACHER.profile : PATH_STUDENT.profile)
             }
             title={!isSidebarOpen ? "Cài đặt" : ""}
           >
@@ -165,6 +176,13 @@ const DashboardLayout = () => {
             >
               <Menu size={24} />
             </button>
+            <div className="page-context">
+              <div className="page-context-label">Khu vực làm việc</div>
+              <div className="page-context-title">
+                {activeMenuItem?.label ||
+                  (isTeacher ? "Giáo viên" : "Học sinh")}
+              </div>
+            </div>
           </div>
 
           <div className="header-right">
@@ -229,7 +247,9 @@ const DashboardLayout = () => {
                       onClick={() => {
                         setIsUserMenuOpen(false);
                         navigate(
-                          isTeacher ? PATH_TEACHER.profile : PATH_STUDENT.profile
+                          isTeacher
+                            ? PATH_TEACHER.profile
+                            : PATH_STUDENT.profile,
                         );
                       }}
                     >
@@ -247,7 +267,10 @@ const DashboardLayout = () => {
                       <span>Về trang chủ</span>
                     </button>
                     <div className="dropdown-divider"></div>
-                    <button className="dropdown-item danger" onClick={handleLogout}>
+                    <button
+                      className="dropdown-item danger"
+                      onClick={handleLogout}
+                    >
                       <LogOut size={16} />
                       <span>Đăng xuất</span>
                     </button>
@@ -259,7 +282,9 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="dashboard-content"><Outlet /></main>
+        <main className="dashboard-content">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

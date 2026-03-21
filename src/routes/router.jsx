@@ -42,6 +42,29 @@ const ClassroomPostPage = Loadable(
 const PendingRequestsPage = Loadable(
   lazy(() => import("@/pages/classroom/PendingRequests")),
 );
+const QuestionBankPage = Loadable(
+  lazy(() => import("@/pages/question-bank/list/question-bank-page")),
+);
+const ResourceBankDetailPage = Loadable(
+  lazy(() => import("@/pages/question-bank/detail/resource-bank-detail-page")),
+);
+const EditResourceBankPage = Loadable(
+  lazy(() => import("@/pages/question-bank/edit/edit-resource-bank-page")),
+);
+const ImportQuestionPage = Loadable(
+  lazy(() => import("@/pages/question-bank/import/import-question-page")),
+);
+const AddQuestionMethodPage = Loadable(
+  lazy(() => import("@/pages/question-bank/method/add-question-method-page")),
+);
+const CreateQuestionAiPage = Loadable(
+  lazy(() => import("@/pages/question-bank/ai/create-question-ai-page")),
+);
+const CreateQuestionManualPage = Loadable(
+  lazy(
+    () => import("@/pages/question-bank/manual/create-question-manual-page"),
+  ),
+);
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
 const NotFoundPage = Loadable(
@@ -137,6 +160,34 @@ const AppRoutes = () =>
         {
           path: PATH_TEACHER.classroom.pendingRequests(":id"),
           element: <PendingRequestsPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBank,
+          element: <QuestionBankPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankDetail(":bankId"),
+          element: <ResourceBankDetailPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankEdit(":bankId"),
+          element: <EditResourceBankPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankMethod(":bankId"),
+          element: <AddQuestionMethodPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankImport(":bankId"),
+          element: <ImportQuestionPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankAi(":bankId"),
+          element: <CreateQuestionAiPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankManual(":bankId"),
+          element: <CreateQuestionManualPage />,
         },
       ],
     },
