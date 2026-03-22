@@ -4,6 +4,8 @@ import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
+import { PATH_AUTH } from "@/routes/paths";
+import { PATH_TEACHER } from "@/routes/paths";
 
 const Loadable = (Component) => (props) => (
   <Suspense fallback={<LoadingScreen />}>
@@ -33,6 +35,9 @@ const OAuth2RedirectPage = Loadable(
 
 // ─── Teacher pages ────────────────────────────────────────────────────────────
 const UserProfilePage = Loadable(lazy(() => import("@/pages/UserProfile")));
+const ChangePasswordPage = Loadable(
+  lazy(() => import("@/pages/ChangePassword")),
+);
 const ClassroomListPage = Loadable(
   lazy(() => import("@/pages/classroom/list/classroom-page")),
 );
@@ -87,7 +92,7 @@ const AppRoutes = () =>
 
     // ── Auth routes ───────────────────────────────────────────────────────────
     {
-      path: "login",
+      path: PATH_AUTH.login,
       element: (
         <GuestGuard>
           <LoginPage />
@@ -95,7 +100,7 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "register",
+      path: PATH_AUTH.register,
       element: (
         <GuestGuard>
           <RegisterPage />
@@ -103,27 +108,27 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "verify-otp",
+      path: PATH_AUTH.verifyOtp,
       element: <OtpVerificationPage />,
     },
     {
-      path: "forgot-password",
+      path: PATH_AUTH.forgotPassword,
       element: <ForgotPasswordPage />,
     },
     {
-      path: "forgot-password-otp",
+      path: PATH_AUTH.forgotPasswordOtp,
       element: <ForgotPasswordOtpPage />,
     },
     {
-      path: "reset-password",
+      path: PATH_AUTH.resetPassword,
       element: <ResetPasswordPage />,
     },
     {
-      path: "select-role",
+      path: PATH_AUTH.selectRole,
       element: <RoleSelectionPage />,
     },
     {
-      path: "oauth2/redirect",
+      path: PATH_AUTH.oauth2Redirect,
       element: <OAuth2RedirectPage />,
     },
 
@@ -133,6 +138,14 @@ const AppRoutes = () =>
       element: (
         <AuthGuard>
           <UserProfilePage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "change-password",
+      element: (
+        <AuthGuard>
+          <ChangePasswordPage />
         </AuthGuard>
       ),
     },

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { X, ImagePlus, Upload } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { classroomApi } from "@/apis/classroom.api";
 import { CreateClassroomSchema } from "@/schema/classroom.schema";
 import "@/assets/css/pages/classroom/modals.css";
@@ -19,7 +19,12 @@ const SUBJECT_OPTIONS = [
   "OTHER",
 ];
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg",
+];
 
 const INITIAL_FIELDS = { name: "", description: "" };
 const INITIAL_ERRORS = { name: "", subject: "", description: "" };
@@ -67,7 +72,9 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.");
+      toast.error(
+        "Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.",
+      );
       return;
     }
 
@@ -81,7 +88,9 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.");
+      toast.error(
+        "Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.",
+      );
       return;
     }
 
@@ -93,7 +102,8 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     e.preventDefault();
     setServerError("");
 
-    const finalSubject = subjectOption === "OTHER" ? subjectOther.trim() : subjectOption;
+    const finalSubject =
+      subjectOption === "OTHER" ? subjectOther.trim() : subjectOption;
 
     if (!finalSubject) {
       setErrors((prev) => ({ ...prev, subject: "Vui lòng chọn môn học" }));
@@ -128,7 +138,8 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
       onClose?.();
     } catch (err) {
       setServerError(
-        err.response?.data?.message ?? "Tạo lớp học thất bại. Vui lòng thử lại."
+        err.response?.data?.message ??
+          "Tạo lớp học thất bại. Vui lòng thử lại.",
       );
     } finally {
       setSubmitting(false);
@@ -136,7 +147,10 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose?.()}
+    >
       <div className="modal-container">
         {/* Header */}
         <div className="modal-header">
@@ -200,7 +214,9 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               </div>
             )}
 
-            {errors.subject && <p className="form-error-text">{errors.subject}</p>}
+            {errors.subject && (
+              <p className="form-error-text">{errors.subject}</p>
+            )}
           </div>
 
           {/* Mô tả */}
@@ -218,7 +234,9 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               maxLength={200}
               className={`form-textarea ${errors.description ? "has-error" : ""}`}
             />
-            {errors.description && <p className="form-error-text">{errors.description}</p>}
+            {errors.description && (
+              <p className="form-error-text">{errors.description}</p>
+            )}
           </div>
 
           {/* Ảnh đại diện */}
@@ -235,7 +253,11 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
             >
               {imagePreview ? (
                 <>
-                  <img src={imagePreview} alt="Xem trước" className="image-preview" />
+                  <img
+                    src={imagePreview}
+                    alt="Xem trước"
+                    className="image-preview"
+                  />
                   <div className="image-overlay">
                     <Upload size={20} className="image-overlay-icon" />
                     <span className="image-overlay-text">Đổi ảnh</span>
@@ -244,7 +266,9 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               ) : (
                 <div className="image-placeholder">
                   <ImagePlus className="image-placeholder-icon" />
-                  <span className="image-placeholder-text">Kéo thả hoặc nhấn để chọn ảnh</span>
+                  <span className="image-placeholder-text">
+                    Kéo thả hoặc nhấn để chọn ảnh
+                  </span>
                 </div>
               )}
             </div>
@@ -255,12 +279,19 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               className="hidden-file-input"
               onChange={handleFileChange}
             />
-            {imageFile && <p className="form-hint-text">Đã chọn: {imageFile.name}</p>}
+            {imageFile && (
+              <p className="form-hint-text">Đã chọn: {imageFile.name}</p>
+            )}
           </div>
 
           {/* Actions */}
           <div className="modal-actions with-padding-top">
-            <button type="button" onClick={onClose} disabled={submitting} className="btn-cancel">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="btn-cancel"
+            >
               Hủy
             </button>
             <button type="submit" disabled={submitting} className="btn-primary">

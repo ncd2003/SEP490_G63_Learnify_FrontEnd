@@ -1,6 +1,6 @@
 import axios from "axios";
 import envConfig from "@/schema/config.schema";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 /* ─── Public endpoints (no auth token needed) ───────────────────────────── */
 const PUBLIC_ENDPOINTS = [
@@ -69,7 +69,9 @@ const createHttp = () => {
         config.headers.Authorization = `Bearer ${token}`;
         // //console.log(`[HTTP] ${method?.toUpperCase()} ${config.url} - Token: ${token.substring(0, 30)}...`);
       } else {
-        console.warn(`[HTTP] ${method?.toUpperCase()} ${config.url} - NO TOKEN!`);
+        console.warn(
+          `[HTTP] ${method?.toUpperCase()} ${config.url} - NO TOKEN!`,
+        );
       }
     }
 
@@ -83,31 +85,49 @@ const createHttp = () => {
       // Check if it's a mutation request (POST, PUT, DELETE) to avoid spamming toasts on GET
       const method = response.config.method?.toLowerCase();
       const isMutation = ["post", "put", "delete", "patch"].includes(method);
-      
-      if (isMutation && response.data?.code === 1000 && response.data?.message) {
+      const isChangePassword = response.config?.url?.includes(
+        "/users/change-password",
+      );
+
+      if (
+        isMutation &&
+        !isChangePassword &&
+        response.data?.code === 1000 &&
+        response.data?.message
+      ) {
         toast.success(response.data.message);
       }
-      
+
       return response.data;
     },
     (error) => {
       if (error.response) {
         const { status, config: reqConfig, data } = error.response;
+        const shouldHandleInlineError =
+          reqConfig?.url?.includes("/auth/login") ||
+          reqConfig?.url?.includes("/auth/register") ||
+          reqConfig?.url?.includes("/auth/verify-otp") ||
+          reqConfig?.url?.includes("/auth/forgot-password") ||
+          reqConfig?.url?.includes("/auth/reset-password") ||
+          reqConfig?.url?.includes("/users/change-password");
 
         // Show error toast
         const errorMessage = data?.message || "Đã có lỗi xảy ra";
         // Avoid showing toast for 401/403 errors that might be handled differently (redirects)
         // or for specific endpoints if needed.
         // Generally good to show error toast for failures.
-        if (status !== 401) {
-            toast.error(errorMessage);
+        if (status !== 401 && !shouldHandleInlineError) {
+          toast.error(errorMessage);
         }
 
-        console.error(`[HTTP Error] ${status} ${reqConfig?.method?.toUpperCase()} ${reqConfig?.url}`, {
-          status,
-          errorData: data,
-          message: data?.message || error.message,
-        });
+        console.error(
+          `[HTTP Error] ${status} ${reqConfig?.method?.toUpperCase()} ${reqConfig?.url}`,
+          {
+            status,
+            errorData: data,
+            message: data?.message || error.message,
+          },
+        );
 
         if (status === 401) {
           // Don't auto-redirect from auth or /users/me endpoints
@@ -115,7 +135,7 @@ const createHttp = () => {
             isPublic(reqConfig?.url) || reqConfig?.url?.includes("/users/me");
 
           if (!isAuthCall) {
-            console.warn('[HTTP] 401 Unauthorized - Clearing auth');
+            console.warn("[HTTP] 401 Unauthorized - Clearing auth");
             localStorage.removeItem("accessToken");
             localStorage.removeItem("user");
             window.location.href = "/login";
@@ -125,7 +145,7 @@ const createHttp = () => {
         if (status === 403) {
           console.error("[HTTP] 403 Forbidden - Access denied", {
             url: reqConfig?.url,
-            errorMessage: data?.message || 'No error message from backend',
+            errorMessage: data?.message || "No error message from backend",
           });
         }
       }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import LogoutDialog from "@/components/LogoutDialog";
 import "@/assets/css/components/dashboardLayout.css";
 import {
   BookOpen,
@@ -31,17 +32,33 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
-  const isTeacher = user?.role === "ROLE_TEACHER";
-  const isStudent = user?.role === "ROLE_STUDENT";
-  const isAdmin = user?.role === "ROLE_ADMIN";
+  const normalizedRole = user?.role?.toUpperCase?.() || "";
+  const isTeacher = normalizedRole === "ROLE_TEACHER";
+  const isStudent = normalizedRole === "ROLE_STUDENT";
+  const isAdmin = normalizedRole === "ROLE_ADMIN";
+  const roleLabel = isTeacher
+    ? "Giáo viên"
+    : isStudent
+      ? "Học sinh"
+      : isAdmin
+        ? "Quản trị viên"
+        : "Người dùng";
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setIsUserMenuOpen(false);
+    setIsLogoutDialogOpen(true);
+  };
+
+  const handleConfirmLogout = async () => {
     try {
       await logout();
       navigate(PATH_AUTH.login);
     } catch (error) {
       console.error("Logout failed:", error);
+    } finally {
+      setIsLogoutDialogOpen(false);
     }
   };
 
@@ -125,7 +142,7 @@ const DashboardLayout = () => {
           </button>
         </div>
 
-        {isSidebarOpen && <div className="sidebar-role-chip">Giao vien</div>}
+        {isSidebarOpen && <div className="sidebar-role-chip">{roleLabel}</div>}
 
         <nav className="sidebar-nav">
           {menuItems.map((item) => (
@@ -149,9 +166,7 @@ const DashboardLayout = () => {
         <div className="sidebar-footer">
           <button
             className="nav-item"
-            onClick={() =>
-              navigate(isTeacher ? PATH_TEACHER.profile : PATH_STUDENT.profile)
-            }
+            onClick={() => navigate(PATH_COMMON.profile)}
             title={!isSidebarOpen ? "Cài đặt" : ""}
           >
             <Settings size={20} />
@@ -161,7 +176,7 @@ const DashboardLayout = () => {
           </button>
           <button
             className="nav-item logout"
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             title={!isSidebarOpen ? "Đăng xuất" : ""}
           >
             <LogOut size={20} />
@@ -213,9 +228,7 @@ const DashboardLayout = () => {
                 </div>
                 <div className="user-info-header">
                   <span className="user-name">{user?.fullName || "User"}</span>
-                  <span className="user-role">
-                    {isTeacher ? "Giáo viên" : "Học sinh"}
-                  </span>
+                  <span className="user-role">{roleLabel}</span>
                 </div>
                 <ChevronDown size={16} />
               </button>
@@ -253,11 +266,7 @@ const DashboardLayout = () => {
                       className="dropdown-item"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        navigate(
-                          isTeacher
-                            ? PATH_TEACHER.profile
-                            : PATH_STUDENT.profile,
-                        );
+                        navigate(PATH_COMMON.profile);
                       }}
                     >
                       <Settings size={16} />
@@ -276,7 +285,7 @@ const DashboardLayout = () => {
                     <div className="dropdown-divider"></div>
                     <button
                       className="dropdown-item danger"
-                      onClick={handleLogout}
+                      onClick={handleLogoutClick}
                     >
                       <LogOut size={16} />
                       <span>Đăng xuất</span>
@@ -293,6 +302,12 @@ const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      <LogoutDialog
+        isOpen={isLogoutDialogOpen}
+        onClose={() => setIsLogoutDialogOpen(false)}
+        onConfirm={handleConfirmLogout}
+      />
     </div>
   );
 };

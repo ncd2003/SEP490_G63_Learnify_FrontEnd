@@ -1,4 +1,8 @@
 // ─── GUEST / AUTH ─────────────────────────────────────────────────────────────
+const path = (root, sublink) => `${root}${sublink}`;
+
+const ROOTS_TEACHER = "/";
+
 export const PATH_AUTH = {
   root: "/",
   home: "/home",
@@ -15,6 +19,7 @@ export const PATH_AUTH = {
 // ─── COMMON (All authenticated users) ─────────────────────────────────────────
 export const PATH_COMMON = {
   profile: "/profile",
+  changePassword: "/change-password",
 };
 
 // ─── TEACHER ──────────────────────────────────────────────────────────────────

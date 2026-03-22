@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Upload, ImagePlus } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { classroomApi } from "@/apis/classroom.api";
 import { UpdateClassroomSchema } from "@/schema/classroom.schema";
 import "@/assets/css/pages/classroom/modals.css";
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"];
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/jpg",
+];
 
 const SUBJECT_OPTIONS = [
   "Toán",
@@ -44,7 +50,10 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
 
       // Handle subject initialization
       const existingSubject = classroom.subject ?? "";
-      if (SUBJECT_OPTIONS.includes(existingSubject) && existingSubject !== "OTHER") {
+      if (
+        SUBJECT_OPTIONS.includes(existingSubject) &&
+        existingSubject !== "OTHER"
+      ) {
         setSubjectOption(existingSubject);
         setSubjectOther("");
       } else {
@@ -114,7 +123,8 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
     e.preventDefault();
     setServerError("");
 
-    const finalSubject = subjectOption === "OTHER" ? subjectOther.trim() : subjectOption;
+    const finalSubject =
+      subjectOption === "OTHER" ? subjectOther.trim() : subjectOption;
 
     const result = UpdateClassroomSchema.safeParse({
       name: fields.name,
@@ -145,7 +155,8 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
       onClose?.();
     } catch (err) {
       setServerError(
-        err.response?.data?.message ?? "Cập nhật lớp học thất bại. Vui lòng thử lại."
+        err.response?.data?.message ??
+          "Cập nhật lớp học thất bại. Vui lòng thử lại.",
       );
     } finally {
       setSubmitting(false);
@@ -155,7 +166,10 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
   if (!classroom) return null;
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose?.()}
+    >
       <div className="modal-container">
         {/* Header */}
         <div className="modal-header">
@@ -196,14 +210,16 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
               onChange={handleSubjectOptionChange}
               className={`form-input ${errors.subject ? "has-error" : ""}`}
             >
-              <option value="" disabled>Chọn môn học</option>
+              <option value="" disabled>
+                Chọn môn học
+              </option>
               {SUBJECT_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option === "OTHER" ? "Khác" : option}
                 </option>
               ))}
             </select>
-            
+
             {subjectOption === "OTHER" && (
               <div style={{ marginTop: 8 }}>
                 <input
@@ -216,13 +232,17 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
                 />
               </div>
             )}
-            
-            {errors.subject && <p className="form-error-text">{errors.subject}</p>}
+
+            {errors.subject && (
+              <p className="form-error-text">{errors.subject}</p>
+            )}
           </div>
 
           {/* Mô tả */}
           <div className="form-group">
-            <label className="form-label">Mô tả<span className="form-label-optional">(tuỳ chọn)</span></label>
+            <label className="form-label">
+              Mô tả<span className="form-label-optional">(tuỳ chọn)</span>
+            </label>
             <textarea
               name="description"
               value={fields.description}
@@ -232,7 +252,9 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
               maxLength={200}
               className={`form-textarea ${errors.description ? "has-error" : ""}`}
             />
-            {errors.description && <p className="form-error-text">{errors.description}</p>}
+            {errors.description && (
+              <p className="form-error-text">{errors.description}</p>
+            )}
           </div>
 
           {/* Ảnh đại diện */}
@@ -249,7 +271,11 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
             >
               {imagePreview ? (
                 <>
-                  <img src={imagePreview} alt="Xem trước" className="image-preview" />
+                  <img
+                    src={imagePreview}
+                    alt="Xem trước"
+                    className="image-preview"
+                  />
                   <div className="image-overlay">
                     <Upload size={20} className="image-overlay-icon" />
                     <span className="image-overlay-text">Đổi ảnh</span>
@@ -258,7 +284,9 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
               ) : (
                 <div className="image-placeholder">
                   <ImagePlus className="image-placeholder-icon" />
-                  <span className="image-placeholder-text">Kéo thả hoặc nhấn để chọn ảnh</span>
+                  <span className="image-placeholder-text">
+                    Kéo thả hoặc nhấn để chọn ảnh
+                  </span>
                 </div>
               )}
             </div>
@@ -269,15 +297,23 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
               className="hidden-file-input"
               onChange={handleFileChange}
             />
-            {imageFile
-              ? <p className="form-hint-text">Đã chọn: {imageFile.name}</p>
-              : <p className="form-hint-text">Giữ nguyên ảnh hiện tại nếu không chọn ảnh mới.</p>
-            }
+            {imageFile ? (
+              <p className="form-hint-text">Đã chọn: {imageFile.name}</p>
+            ) : (
+              <p className="form-hint-text">
+                Giữ nguyên ảnh hiện tại nếu không chọn ảnh mới.
+              </p>
+            )}
           </div>
 
           {/* Actions */}
           <div className="modal-actions with-padding-top">
-            <button type="button" onClick={onClose} disabled={submitting} className="btn-cancel">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="btn-cancel"
+            >
               Hủy
             </button>
             <button type="submit" disabled={submitting} className="btn-primary">
