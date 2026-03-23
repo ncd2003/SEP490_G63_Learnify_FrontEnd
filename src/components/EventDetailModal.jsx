@@ -11,7 +11,7 @@ import '@/assets/css/components/eventDetailModal.css';
  * @param {Function} props.onEdit
  * @param {Function} props.onDelete
  */
-const EventDetailModal = ({ isOpen, onClose, session, onEdit, onDelete }) => {
+const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete }) => {
   if (!isOpen || !session) return null;
 
   const handleEdit = () => {
@@ -37,15 +37,14 @@ const EventDetailModal = ({ isOpen, onClose, session, onEdit, onDelete }) => {
       <div className="event-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="event-detail-toolbar">
           {session.type === SESSION_TYPE.ONLINE && session.meetingLink ? (
-            <a
-              href={session.meetingLink}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
               className="event-detail-join-btn"
+              onClick={(e) => onJoin?.(session, e)}
             >
               <Video size={16} />
               Vào phòng
-            </a>
+            </button>
           ) : (
             <span className="event-detail-pill">Buổi học trực tiếp</span>
           )}
@@ -101,14 +100,9 @@ const EventDetailModal = ({ isOpen, onClose, session, onEdit, onDelete }) => {
               <Video size={20} className="event-detail-icon" />
               <div className="event-detail-section-content">
                 <div className="event-detail-label">Loại phòng: Jitsi Meet</div>
-                <a
-                  href={session.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="event-detail-link"
-                >
+                <button type="button" className="event-detail-link event-detail-link-btn" onClick={(e) => onJoin?.(session, e)}>
                   Tham gia cuộc họp
-                </a>
+                </button>
               </div>
             </div>
           )}

@@ -455,6 +455,8 @@
   font-size: 0.78rem;
   font-weight: 600;
   text-decoration: none;
+  border: none;
+  cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
@@ -922,6 +924,21 @@
 }
 
 .day-detail-event-location a:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.day-detail-join-btn {
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.day-detail-join-btn:hover {
   color: #2563eb;
   text-decoration: underline;
 }

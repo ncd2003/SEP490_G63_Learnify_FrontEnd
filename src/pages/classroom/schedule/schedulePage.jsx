@@ -5,6 +5,7 @@ import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
 import EventDetailModal from '@/components/EventDetailModal';
 import useSchedule from '@/hooks/useSchedule';
+import scheduleApi from '@/apis/schedule.api';
 import { SESSION_TYPE } from '@/schema/scheduleSchema';
 import '@/assets/css/pages/classroom/classroomSchedule.css';
 import '@/assets/css/components/eventDetailModal.css';
@@ -67,6 +68,29 @@ const toYmd = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const extractRoomNameFromMeetingLink = (meetingLink) => {
+  if (!meetingLink) return null;
+
+  try {
+    const url = new URL(meetingLink);
+    const segments = url.pathname.split('/').filter(Boolean);
+    return segments.length ? decodeURIComponent(segments[segments.length - 1]) : null;
+  } catch {
+    const raw = meetingLink.split('?')[0];
+    const segments = raw.split('/').filter(Boolean);
+    return segments.length ? decodeURIComponent(segments[segments.length - 1]) : null;
+  }
+};
+
+const getCurrentUserRole = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user?.role || 'ROLE_STUDENT';
+  } catch {
+    return 'ROLE_STUDENT';
+  }
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -187,6 +211,36 @@ const SchedulePage = () => {
   const handleEventDelete = async (sessionId) => {
     handleCloseEventDetail();
     await handleDelete(sessionId);
+  };
+
+  const handleJoinMeeting = async (session, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
+    const roomName = extractRoomNameFromMeetingLink(session?.meetingLink);
+    if (!roomName) {
+      alert('Không tìm thấy thông tin phòng họp hợp lệ.');
+      return;
+    }
+
+    try {
+      const response = await scheduleApi.generateJitsiMeetingLink({
+        roomName,
+        role: getCurrentUserRole(),
+      });
+
+      const joinUrl = response?.result?.meetingLink;
+      if (!joinUrl) {
+        alert('Không thể tạo link tham gia cuộc họp.');
+        return;
+      }
+
+      window.open(joinUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      const msg = err.response?.data?.message ?? 'Không thể tham gia cuộc họp lúc này.';
+      alert(msg);
+    }
   };
 
   // ─── Derived data ──────────────────────────────────────────────────────────
@@ -358,15 +412,13 @@ const SchedulePage = () => {
                             </div>
                             {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
                               <div className="week-board-event-actions">
-                                <a
-                                  href={s.meetingLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <button
+                                  type="button"
                                   className="week-board-join-btn"
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e) => handleJoinMeeting(s, e)}
                                 >
                                   Tham gia
-                                </a>
+                                </button>
                               </div>
                             )}
                           </div>
@@ -400,6 +452,7 @@ const SchedulePage = () => {
         isOpen={isEventDetailOpen}
         onClose={handleCloseEventDetail}
         session={selectedEventForDetail}
+        onJoin={handleJoinMeeting}
         onEdit={handleEventEdit}
         onDelete={handleEventDelete}
       />
@@ -449,10 +502,10 @@ const SchedulePage = () => {
                         )}
                         {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
                           <div className="day-detail-event-location">
-                            <Video size={14} /> 
-                            <a href={s.meetingLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                            <Video size={14} />
+                            <button type="button" className="day-detail-join-btn" onClick={(e) => handleJoinMeeting(s, e)}>
                               Tham gia cuộc họp
-                            </a>
+                            </button>
                           </div>
                         )}
                       </div>
