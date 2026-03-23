@@ -1,8 +1,25 @@
 import React, { useState, useRef, useEffect } from "react";
 import { KeyRound, ArrowLeft } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
+import { toast } from "sonner";
 import { authApi } from "@/apis/auth.api";
 import { PATH_AUTH } from "@/routes/paths";
+
+const MSG04 = "Mã OTP đã nhập không chính xác hoặc đã hết hạn.";
+const TOAST_ID_MSG04 = "forgot-otp-msg04";
+const TOAST_ID_FORGOT_OTP_GENERIC = "forgot-otp-generic";
+
+const isInvalidOrExpiredOtp = (message = "") => {
+  const normalized = String(message).toLowerCase();
+  return (
+    normalized.includes("otp") &&
+    (normalized.includes("invalid") ||
+      normalized.includes("expired") ||
+      normalized.includes("không hợp lệ") ||
+      normalized.includes("không chính xác") ||
+      normalized.includes("hết hạn"))
+  );
+};
 
 const ForgotPasswordOtpPage = () => {
   const navigate = useNavigate();
@@ -15,7 +32,6 @@ const ForgotPasswordOtpPage = () => {
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const inputRefs = useRef([]);
 
@@ -71,12 +87,11 @@ const ForgotPasswordOtpPage = () => {
     if (otpCode.length !== 6) return;
 
     setIsLoading(true);
-    setError("");
     setSuccessMessage("");
 
     try {
       const payload = { email, otp: otpCode };
-      console.log("[ForgotPasswordOtp] Sending payload:", payload);
+      //console.log("[ForgotPasswordOtp] Sending payload:", payload);
       const response = await authApi.verifyForgotPasswordOtp(payload);
       const resetToken = response.result;
 
@@ -84,11 +99,12 @@ const ForgotPasswordOtpPage = () => {
         state: { resetToken, email },
       });
     } catch (err) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.";
-      setError(errorMessage);
+      const errorMessage = err.response?.data?.message || err.message || MSG04;
+      if (isInvalidOrExpiredOtp(errorMessage)) {
+        toast.error(MSG04, { id: TOAST_ID_MSG04 });
+      } else {
+        toast.error(errorMessage, { id: TOAST_ID_FORGOT_OTP_GENERIC });
+      }
       setIsLoading(false);
     }
   };
@@ -97,7 +113,6 @@ const ForgotPasswordOtpPage = () => {
     if (!canResend || isResending) return;
 
     setIsResending(true);
-    setError("");
     setSuccessMessage("");
     setOtp(["", "", "", "", "", ""]);
     inputRefs.current[0]?.focus();
@@ -113,7 +128,7 @@ const ForgotPasswordOtpPage = () => {
         err.response?.data?.message ||
         err.message ||
         "Không thể gửi lại mã. Vui lòng thử lại.";
-      setError(errorMessage);
+      toast.error(errorMessage, { id: TOAST_ID_FORGOT_OTP_GENERIC });
     } finally {
       setIsResending(false);
     }
@@ -157,7 +172,6 @@ const ForgotPasswordOtpPage = () => {
             {successMessage && (
               <div className="success-message">{successMessage}</div>
             )}
-            {error && <div className="error-message">{error}</div>}
 
             <div className="otp-inputs" onPaste={handlePaste}>
               {otp.map((digit, index) => (
@@ -318,6 +332,14 @@ const ForgotPasswordOtpPage = () => {
 
         .fp-otp-main {
           text-align: center;
+        }
+
+        .error-text {
+          color: #dc2626;
+          font-size: 14px;
+          font-weight: 500;
+          text-align: center;
+          margin-bottom: 16px;
         }
 
         .icon-wrapper {

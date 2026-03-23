@@ -17,7 +17,25 @@ const useCommentMutations = (postId, setComments) => {
       const newComment = await commentApi.createComment({ postId, ...data });
       const created = newComment?.result ?? newComment;
       
-      setComments((prev) => [...prev, created]);
+      // Transform to match UI format
+      const transformed = {
+        ...created,
+        authorName: created.user?.name || "Người dùng",
+        replies: created.replies?.map(r => ({
+          ...r,
+          authorName: r.user?.name || "Người dùng",
+          replies: r.replies || [],
+        })) || [],
+      };
+      
+      // If it's a reply (has parentId), need to refetch to get updated nested structure
+      // Otherwise, just append to the list
+      if (data.parentId) {
+        // Will be handled by parent component refetching
+        return { success: true, needsRefresh: true };
+      } else {
+        setComments((prev) => [...prev, transformed]);
+      }
       
       return { success: true };
     } catch (error) {

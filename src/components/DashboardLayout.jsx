@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import LogoutDialog from "@/components/LogoutDialog";
 import "@/assets/css/components/dashboardLayout.css";
 import {
   BookOpen,
+  Home,
   Users,
   FileText,
   Settings,
@@ -12,10 +14,17 @@ import {
   Menu,
   X,
   ChevronDown,
-  BookMarked,
-  ClipboardList,
+  ChevronRight,
+  Database,
+  BarChart2,
 } from "lucide-react";
-import { PATH_AUTH, PATH_COMMON, PATH_TEACHER, PATH_STUDENT, PATH_ADMIN } from "@/routes/paths";
+import {
+  PATH_AUTH,
+  PATH_COMMON,
+  PATH_TEACHER,
+  PATH_STUDENT,
+  PATH_ADMIN,
+} from "@/routes/paths";
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -23,25 +32,46 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
-  const isTeacher = user?.role === "ROLE_TEACHER";
-  const isStudent = user?.role === "ROLE_STUDENT";
-  const isAdmin = user?.role === "ROLE_ADMIN";
+  const normalizedRole = user?.role?.toUpperCase?.() || "";
+  const isTeacher = normalizedRole === "ROLE_TEACHER";
+  const isStudent = normalizedRole === "ROLE_STUDENT";
+  const isAdmin = normalizedRole === "ROLE_ADMIN";
+  const roleLabel = isTeacher
+    ? "Giáo viên"
+    : isStudent
+      ? "Học sinh"
+      : isAdmin
+        ? "Quản trị viên"
+        : "Người dùng";
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setIsUserMenuOpen(false);
+    setIsLogoutDialogOpen(true);
+  };
+
+  const handleConfirmLogout = async () => {
     try {
       await logout();
       navigate(PATH_AUTH.login);
     } catch (error) {
       console.error("Logout failed:", error);
+    } finally {
+      setIsLogoutDialogOpen(false);
     }
   };
 
   // Teacher menu items
   const teacherMenuItems = [
     {
-      icon: BookOpen,
-      label: "Lớp học",
+      icon: Home,
+      label: "Trang chủ",
+      path: PATH_AUTH.home,
+    },
+    {
+      icon: Users,
+      label: "Quản lý lớp học",
       path: PATH_TEACHER.classroom.root,
     },
     {
@@ -55,12 +85,12 @@ const DashboardLayout = () => {
       path: PATH_TEACHER.documents,
     },
     {
-      icon: ClipboardList,
-      label: "Ngân hàng câu hỏi",
+      icon: Database,
+      label: "Ngân hàng đề",
       path: PATH_TEACHER.questionBank,
     },
     {
-      icon: BookMarked,
+      icon: BarChart2,
       label: "Báo cáo",
       path: PATH_TEACHER.reports,
     },
@@ -69,40 +99,28 @@ const DashboardLayout = () => {
   // Student menu items
   const studentMenuItems = [
     {
+      icon: Home,
+      label: "Dashboard",
+      path: PATH_STUDENT.root,
+    },
+    {
       icon: BookOpen,
       label: "Lớp học của tôi",
       path: PATH_STUDENT.classroom.root,
     },
   ];
 
-  // Admin menu items
-  const adminMenuItems = [
-    {
-      icon: BookOpen,
-      label: "Lớp học",
-      path: "/classrooms",
-    },
-    {
-      icon: Users,
-      label: "Quản lý người dùng",
-      path: PATH_ADMIN.users.root,
-    },
-    {
-      icon: BookMarked,
-      label: "Báo cáo hệ thống",
-      path: PATH_ADMIN.reports,
-    },
-    {
-      icon: Settings,
-      label: "Cài đặt",
-      path: PATH_ADMIN.settings,
-    },
-  ];
-
-  const menuItems = isTeacher ? teacherMenuItems : isStudent ? studentMenuItems : adminMenuItems;
+  const menuItems = isTeacher ? teacherMenuItems : studentMenuItems;
+  const activeMenuItem = menuItems.find(
+    (item) =>
+      location.pathname === item.path ||
+      location.pathname.startsWith(item.path + "/"),
+  );
 
   const isActive = (path) => {
-    return location.pathname === path || location.pathname.startsWith(path + "/");
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
   return (
@@ -124,10 +142,12 @@ const DashboardLayout = () => {
           </button>
         </div>
 
+        {isSidebarOpen && <div className="sidebar-role-chip">{roleLabel}</div>}
+
         <nav className="sidebar-nav">
-          {menuItems.map((item, index) => (
+          {menuItems.map((item) => (
             <button
-              key={index}
+              key={item.label}
               className={`nav-item ${isActive(item.path) ? "active" : ""}`}
               onClick={() => navigate(item.path)}
               title={!isSidebarOpen ? item.label : ""}
@@ -136,6 +156,9 @@ const DashboardLayout = () => {
               <span className={`nav-label ${!isSidebarOpen ? "hidden" : ""}`}>
                 {item.label}
               </span>
+              {isSidebarOpen && isActive(item.path) && (
+                <ChevronRight size={14} className="nav-item-chevron" />
+              )}
             </button>
           ))}
         </nav>
@@ -153,7 +176,7 @@ const DashboardLayout = () => {
           </button>
           <button
             className="nav-item logout"
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             title={!isSidebarOpen ? "Đăng xuất" : ""}
           >
             <LogOut size={20} />
@@ -175,6 +198,13 @@ const DashboardLayout = () => {
             >
               <Menu size={24} />
             </button>
+            <div className="page-context">
+              <div className="page-context-label">Khu vực làm việc</div>
+              <div className="page-context-title">
+                {activeMenuItem?.label ||
+                  (isTeacher ? "Giáo viên" : "Học sinh")}
+              </div>
+            </div>
           </div>
 
           <div className="header-right">
@@ -198,9 +228,7 @@ const DashboardLayout = () => {
                 </div>
                 <div className="user-info-header">
                   <span className="user-name">{user?.fullName || "User"}</span>
-                  <span className="user-role">
-                    {isTeacher ? "Giáo viên" : "Học sinh"}
-                  </span>
+                  <span className="user-role">{roleLabel}</span>
                 </div>
                 <ChevronDown size={16} />
               </button>
@@ -255,7 +283,10 @@ const DashboardLayout = () => {
                       <span>Về trang chủ</span>
                     </button>
                     <div className="dropdown-divider"></div>
-                    <button className="dropdown-item danger" onClick={handleLogout}>
+                    <button
+                      className="dropdown-item danger"
+                      onClick={handleLogoutClick}
+                    >
                       <LogOut size={16} />
                       <span>Đăng xuất</span>
                     </button>
@@ -267,8 +298,16 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="dashboard-content"><Outlet /></main>
+        <main className="dashboard-content">
+          <Outlet />
+        </main>
       </div>
+
+      <LogoutDialog
+        isOpen={isLogoutDialogOpen}
+        onClose={() => setIsLogoutDialogOpen(false)}
+        onConfirm={handleConfirmLogout}
+      />
     </div>
   );
 };

@@ -5,6 +5,7 @@ import GuestGuard from "@/guards/guest-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
+import { PATH_AUTH, PATH_TEACHER } from "@/routes/paths";
 
 const Loadable = (Component) => (props) => (
   <Suspense fallback={<LoadingScreen />}>
@@ -12,32 +13,79 @@ const Loadable = (Component) => (props) => (
   </Suspense>
 );
 
-// ─── Auth pages ───────────────────────────────────────────────────────────────
-const LoginPage             = Loadable(lazy(() => import("@/pages/Login")));
-const RegisterPage          = Loadable(lazy(() => import("@/pages/Register")));
-const OtpVerificationPage   = Loadable(lazy(() => import("@/pages/OtpVerification")));
-const ForgotPasswordPage    = Loadable(lazy(() => import("@/pages/ForgotPassword")));
-const ForgotPasswordOtpPage = Loadable(lazy(() => import("@/pages/ForgotPasswordOtp")));
-const ResetPasswordPage     = Loadable(lazy(() => import("@/pages/ResetPassword")));
-const RoleSelectionPage     = Loadable(lazy(() => import("@/pages/RoleSelection")));
+// Auth pages
+const LoginPage = Loadable(lazy(() => import("@/pages/Login")));
+const RegisterPage = Loadable(lazy(() => import("@/pages/Register")));
+const OtpVerificationPage = Loadable(
+  lazy(() => import("@/pages/OtpVerification")),
+);
+const ForgotPasswordPage = Loadable(
+  lazy(() => import("@/pages/ForgotPassword")),
+);
+const ForgotPasswordOtpPage = Loadable(
+  lazy(() => import("@/pages/ForgotPasswordOtp")),
+);
+const ResetPasswordPage = Loadable(lazy(() => import("@/pages/ResetPassword")));
+const RoleSelectionPage = Loadable(lazy(() => import("@/pages/RoleSelection")));
+const HomePage = Loadable(lazy(() => import("@/pages/Home")));
+const OAuth2RedirectPage = Loadable(
+  lazy(() => import("@/pages/OAuth2Redirect")),
+);
 
-const HomePage              = Loadable(lazy(() => import("@/pages/Home")));
-const OAuth2RedirectPage    = Loadable(lazy(() => import("@/pages/OAuth2Redirect")));
+// User/Teacher pages
+const UserProfilePage = Loadable(lazy(() => import("@/pages/UserProfile")));
+const ChangePasswordPage = Loadable(
+  lazy(() => import("@/pages/ChangePassword")),
+);
+const ClassroomListPage = Loadable(
+  lazy(() => import("@/pages/classroom/list/classroom-page")),
+);
+const StudentClassroomListPage = Loadable(
+  lazy(() => import("@/pages/classroom/list/student-classroom-page")),
+);
+const ClassroomPostPage = Loadable(
+  lazy(() => import("@/pages/classroom/feed/post-page")),
+);
+const PendingRequestsPage = Loadable(
+  lazy(() => import("@/pages/classroom/PendingRequests")),
+);
+const SchedulePage = Loadable(
+  lazy(() => import("@/pages/classroom/schedule/schedulePage")),
+);
+const AttendanceListPage = Loadable(
+  lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
+);
+const AttendancePage = Loadable(
+  lazy(() => import("@/pages/classroom/attendance/attendance-page")),
+);
+const QuestionBankPage = Loadable(
+  lazy(() => import("@/pages/question-bank/list/question-bank-page")),
+);
+const ResourceBankDetailPage = Loadable(
+  lazy(() => import("@/pages/question-bank/detail/resource-bank-detail-page")),
+);
+const EditResourceBankPage = Loadable(
+  lazy(() => import("@/pages/question-bank/edit/edit-resource-bank-page")),
+);
+const ImportQuestionPage = Loadable(
+  lazy(() => import("@/pages/question-bank/import/import-question-page")),
+);
+const AddQuestionMethodPage = Loadable(
+  lazy(() => import("@/pages/question-bank/method/add-question-method-page")),
+);
+const CreateQuestionAiPage = Loadable(
+  lazy(() => import("@/pages/question-bank/ai/create-question-ai-page")),
+);
+const CreateQuestionManualPage = Loadable(
+  lazy(
+    () => import("@/pages/question-bank/manual/create-question-manual-page"),
+  ),
+);
 
-// ─── Teacher / User pages ─────────────────────────────────────────────────────
-const UserProfilePage           = Loadable(lazy(() => import("@/pages/UserProfile")));
-const ClassroomListPage         = Loadable(lazy(() => import("@/pages/classroom/list/classroom-page")));
-const StudentClassroomListPage  = Loadable(lazy(() => import("@/pages/classroom/list/student-classroom-page")));
-const ClassroomPostPage         = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
-const PendingRequestsPage   = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
-const SchedulePage          = Loadable(lazy(() => import("@/pages/classroom/schedule/schedulePage")));
-const AttendanceListPage    = Loadable(lazy(() => import("@/pages/classroom/attendance/attendance-list-page")));
-const AttendancePage        = Loadable(lazy(() => import("@/pages/classroom/attendance/attendance-page")));
+const NotFoundPage = Loadable(
+  lazy(() => import("@/pages/not-found/not-found-page")),
+);
 
-// ─── Not Found ────────────────────────────────────────────────────────────────
-const NotFoundPage          = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
-
-// ─── Role-aware classroom list ────────────────────────────────────────────────
 const ClassroomListOrStudentPage = () => {
   const { user } = useAuth();
   if (user?.role === "ROLE_STUDENT") return <StudentClassroomListPage />;
@@ -46,21 +94,16 @@ const ClassroomListOrStudentPage = () => {
 
 const AppRoutes = () =>
   useRoutes([
-    // ── Root redirect ─────────────────────────────────────────────────────────
     {
       path: "/",
       element: <Navigate to="/home" replace />,
     },
-
-    // ── Public routes ─────────────────────────────────────────────────────────
     {
       path: "home",
       element: <HomePage />,
     },
-
-    // ── Auth routes ───────────────────────────────────────────────────────────
     {
-      path: "login",
+      path: PATH_AUTH.login,
       element: (
         <GuestGuard>
           <LoginPage />
@@ -68,7 +111,7 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "register",
+      path: PATH_AUTH.register,
       element: (
         <GuestGuard>
           <RegisterPage />
@@ -76,31 +119,29 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "verify-otp",
+      path: PATH_AUTH.verifyOtp,
       element: <OtpVerificationPage />,
     },
     {
-      path: "forgot-password",
+      path: PATH_AUTH.forgotPassword,
       element: <ForgotPasswordPage />,
     },
     {
-      path: "forgot-password-otp",
+      path: PATH_AUTH.forgotPasswordOtp,
       element: <ForgotPasswordOtpPage />,
     },
     {
-      path: "reset-password",
+      path: PATH_AUTH.resetPassword,
       element: <ResetPasswordPage />,
     },
     {
-      path: "select-role",
+      path: PATH_AUTH.selectRole,
       element: <RoleSelectionPage />,
     },
     {
-      path: "oauth2/redirect",
+      path: PATH_AUTH.oauth2Redirect,
       element: <OAuth2RedirectPage />,
     },
-
-    // ── User Profile (Authenticated) ──────────────────────────────────────────
     {
       path: "profile",
       element: (
@@ -109,8 +150,14 @@ const AppRoutes = () =>
         </AuthGuard>
       ),
     },
-
-    // ── Classroom list route (with DashboardLayout) ──────────────────────────
+    {
+      path: "change-password",
+      element: (
+        <AuthGuard>
+          <ChangePasswordPage />
+        </AuthGuard>
+      ),
+    },
     {
       element: (
         <AuthGuard>
@@ -122,12 +169,38 @@ const AppRoutes = () =>
           path: "classrooms",
           element: <ClassroomListOrStudentPage />,
         },
+        {
+          path: PATH_TEACHER.questionBank,
+          element: <QuestionBankPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankDetail(":bankId"),
+          element: <ResourceBankDetailPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankEdit(":bankId"),
+          element: <EditResourceBankPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankMethod(":bankId"),
+          element: <AddQuestionMethodPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankImport(":bankId"),
+          element: <ImportQuestionPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankAi(":bankId"),
+          element: <CreateQuestionAiPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBankManual(":bankId"),
+          element: <CreateQuestionManualPage />,
+        },
       ],
     },
-
-    // ── Classroom detail routes (without DashboardLayout, uses ClassroomDetailLayout inside) ───
     {
-      path: "classrooms/:id",
+      path: PATH_TEACHER.classroom.detail(":id"),
       element: (
         <AuthGuard>
           <ClassroomPostPage />
@@ -135,7 +208,7 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "classrooms/:id/pending-requests",
+      path: PATH_TEACHER.classroom.pendingRequests(":id"),
       element: (
         <AuthGuard>
           <PendingRequestsPage />
@@ -143,7 +216,7 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "classrooms/:id/schedule",
+      path: PATH_TEACHER.classroom.schedule(":id"),
       element: (
         <AuthGuard>
           <SchedulePage />
@@ -151,7 +224,7 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "classrooms/:id/attendance",
+      path: PATH_TEACHER.classroom.attendance(":id"),
       element: (
         <AuthGuard>
           <AttendanceListPage />
@@ -159,15 +232,13 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "classrooms/:id/attendance/:sessionId",
+      path: PATH_TEACHER.classroom.attendanceSession(":id", ":sessionId"),
       element: (
         <AuthGuard>
           <AttendancePage />
         </AuthGuard>
       ),
     },
-
-    // ── Catch-all ─────────────────────────────────────────────────────────────
     {
       path: "*",
       element: <NotFoundPage />,

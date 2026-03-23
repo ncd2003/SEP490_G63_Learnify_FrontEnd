@@ -1,7 +1,39 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, BookOpen, Check, X } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
+
+const MSG02 =
+  "Các trường bắt buộc phải được điền đầy đủ và tất cả giá trị nhập vào phải hợp lệ.";
+const MSG03 = "Email đã tồn tại trong hệ thống";
+const MSG05 =
+  "Mật khẩu không khớp. Vui lòng đảm bảo cả hai trường mật khẩu đều giống nhau.";
+const TOAST_ID_MSG02 = "register-msg02";
+const TOAST_ID_MSG05 = "register-msg05";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isPasswordValid = (password = "") => {
+  return (
+    password.length >= 8 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^a-zA-Z0-9]/.test(password)
+  );
+};
+
+const isEmailExistsError = (message = "") => {
+  const normalized = String(message).toLowerCase();
+  return (
+    normalized.includes("email") &&
+    (normalized.includes("exist") || normalized.includes("tồn tại"))
+  );
+};
+
+const shouldShowInlineError = (message = "") =>
+  message && message !== MSG02 && message !== MSG05;
 
 const RegisterScreen = () => {
   const navigate = useNavigate();
@@ -20,15 +52,50 @@ const RegisterScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => ({ ...prev, [field]: "" }));
 
     if (field === "password") {
       calculatePasswordStrength(value);
+      if (formData.confirmPassword && value !== formData.confirmPassword) {
+        setFieldErrors((prev) => ({ ...prev, confirmPassword: MSG05 }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
+      }
     }
+
+    if (field === "confirmPassword") {
+      if (value && formData.password !== value) {
+        setFieldErrors((prev) => ({ ...prev, confirmPassword: MSG05 }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
+      }
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.role) errors.role = MSG02;
+    if (!formData.fullName.trim()) errors.fullName = MSG02;
+    if (!formData.email.trim() || !EMAIL_REGEX.test(formData.email.trim())) {
+      errors.email = MSG02;
+    }
+    if (!isPasswordValid(formData.password)) errors.password = MSG02;
+
+    if (
+      !formData.confirmPassword ||
+      formData.password !== formData.confirmPassword
+    ) {
+      errors.confirmPassword = MSG05;
+    }
+
+    if (!formData.agreeTerms) errors.agreeTerms = MSG02;
+
+    return errors;
   };
 
   const calculatePasswordStrength = (password) => {
@@ -62,18 +129,32 @@ const RegisterScreen = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
+    const errors = validateForm();
+    const priority = [
+      "role",
+      "fullName",
+      "email",
+      "password",
+      "confirmPassword",
+      "agreeTerms",
+    ];
 
-    // Validate password match
-    if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
-      return;
+    const firstErrorKey = priority.find((key) => errors[key]);
+    const firstErrorMessage = firstErrorKey ? errors[firstErrorKey] : "";
+
+    if (firstErrorMessage === MSG02) {
+      toast.error(MSG02, { id: TOAST_ID_MSG02 });
+      setFieldErrors({});
+    } else if (firstErrorMessage === MSG05) {
+      toast.error(MSG05, { id: TOAST_ID_MSG05 });
+      setFieldErrors({});
+    } else {
+      setFieldErrors(
+        firstErrorKey ? { [firstErrorKey]: errors[firstErrorKey] } : {},
+      );
     }
 
-    // Validate terms agreement
-    if (!formData.agreeTerms) {
-      setError("Vui lòng đồng ý với điều khoản sử dụng");
+    if (Object.keys(errors).length > 0) {
       return;
     }
 
@@ -99,12 +180,17 @@ const RegisterScreen = () => {
         },
       });
     } catch (err) {
-      // Get error message from backend response
       const errorMessage =
         err.response?.data?.message ||
         err.message ||
         "Đăng ký thất bại. Vui lòng thử lại.";
-      setError(errorMessage);
+
+      if (isEmailExistsError(errorMessage)) {
+        toast.error(MSG03);
+        setFieldErrors((prev) => ({ ...prev, email: MSG03 }));
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -199,10 +285,11 @@ const RegisterScreen = () => {
               <p>Miễn phí và chỉ mất vài phút</p>
             </div>
 
-            <form onSubmit={handleRegister} className="register-form">
-              {error && <div className="error-message">{error}</div>}
-              {success && <div className="success-message">{success}</div>}
-
+            <form
+              onSubmit={handleRegister}
+              className="register-form"
+              noValidate
+            >
               {/* Role Selection */}
               <div className="role-selection">
                 <label className="role-option">
@@ -217,7 +304,7 @@ const RegisterScreen = () => {
                     className={`role-card ${formData.role === "ROLE_STUDENT" ? "selected" : ""}`}
                   >
                     <div className="role-icon">🎓</div>
-                    <div className="role-name">Học viên</div>
+                    <div className="role-name">Học sinh</div>
                     <div className="role-desc">
                       Tìm kiếm và học các khóa học
                     </div>
@@ -241,6 +328,9 @@ const RegisterScreen = () => {
                   </div>
                 </label>
               </div>
+              {shouldShowInlineError(fieldErrors.role) && (
+                <div className="error-text">{fieldErrors.role}</div>
+              )}
 
               <div className="input-group">
                 <label
@@ -260,9 +350,11 @@ const RegisterScreen = () => {
                   onChange={(e) => handleChange("fullName", e.target.value)}
                   onFocus={() => setFocusedInput("fullName")}
                   onBlur={() => setFocusedInput(null)}
-                  required
                   className={focusedInput === "fullName" ? "focused" : ""}
                 />
+                {shouldShowInlineError(fieldErrors.fullName) && (
+                  <div className="error-text">{fieldErrors.fullName}</div>
+                )}
               </div>
 
               <div className="input-group">
@@ -281,9 +373,11 @@ const RegisterScreen = () => {
                   onChange={(e) => handleChange("email", e.target.value)}
                   onFocus={() => setFocusedInput("email")}
                   onBlur={() => setFocusedInput(null)}
-                  required
                   className={focusedInput === "email" ? "focused" : ""}
                 />
+                {shouldShowInlineError(fieldErrors.email) && (
+                  <div className="error-text">{fieldErrors.email}</div>
+                )}
               </div>
 
               <div className="input-group">
@@ -305,7 +399,6 @@ const RegisterScreen = () => {
                     onChange={(e) => handleChange("password", e.target.value)}
                     onFocus={() => setFocusedInput("password")}
                     onBlur={() => setFocusedInput(null)}
-                    required
                     className={focusedInput === "password" ? "focused" : ""}
                   />
                   <button
@@ -349,6 +442,9 @@ const RegisterScreen = () => {
                     </div>
                   </>
                 )}
+                {shouldShowInlineError(fieldErrors.password) && (
+                  <div className="error-text">{fieldErrors.password}</div>
+                )}
               </div>
 
               <div className="input-group">
@@ -373,7 +469,6 @@ const RegisterScreen = () => {
                     }
                     onFocus={() => setFocusedInput("confirmPassword")}
                     onBlur={() => setFocusedInput(null)}
-                    required
                     className={
                       focusedInput === "confirmPassword" ? "focused" : ""
                     }
@@ -393,10 +488,6 @@ const RegisterScreen = () => {
                     )}
                   </button>
                 </div>
-                {formData.confirmPassword &&
-                  formData.password !== formData.confirmPassword && (
-                    <div className="error-text">Mật khẩu không khớp</div>
-                  )}
               </div>
 
               <label className="checkbox-label">
@@ -411,11 +502,14 @@ const RegisterScreen = () => {
                   <a href="#">Chính sách bảo mật</a>
                 </span>
               </label>
+              {shouldShowInlineError(fieldErrors.agreeTerms) && (
+                <div className="error-text">{fieldErrors.agreeTerms}</div>
+              )}
 
               <button
                 type="submit"
                 className={`register-button ${isLoading ? "loading" : ""}`}
-                disabled={isLoading || !formData.role || !formData.agreeTerms}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <span className="spinner"></span>

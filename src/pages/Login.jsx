@@ -1,26 +1,103 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, BookOpen, Sparkles } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import { PATH_AUTH } from "../routes/paths";
+
+const MSG06 = "Email hoặc mật khẩu bạn nhập không chính xác. Vui lòng thử lại.";
+const MSG07 = "Tài khoản của bạn chưa được xác minh.";
+const MSG08 =
+  "Tài khoản của bạn đã bị khóa hoặc không hoạt động. Vui lòng liên hệ bộ phận hỗ trợ để được giúp đỡ.";
+
+const TOAST_ID_LOGIN_MSG06 = "login-msg06";
+const TOAST_ID_LOGIN_MSG07 = "login-msg07";
+const TOAST_ID_LOGIN_MSG08 = "login-msg08";
+const TOAST_ID_LOGIN_GENERIC = "login-msg-generic";
+const TOAST_ID_LOGIN_RESEND = "login-msg-resend";
+
+const getLoginErrorType = (message = "", status) => {
+  const normalized = String(message).toLowerCase();
+
+  if (
+    normalized.includes("not verified") ||
+    normalized.includes("unverified") ||
+    normalized.includes("chưa được xác minh") ||
+    normalized.includes("chưa được kích hoạt") ||
+    normalized.includes("xác thực otp")
+  ) {
+    return "not_verified";
+  }
+
+  if (
+    normalized.includes("locked") ||
+    normalized.includes("inactive") ||
+    normalized.includes("disabled") ||
+    normalized.includes("bị khóa") ||
+    normalized.includes("không hoạt động")
+  ) {
+    return "locked_or_inactive";
+  }
+
+  if (
+    status === 401 ||
+    normalized.includes("invalid credential") ||
+    normalized.includes("bad credentials") ||
+    normalized.includes("incorrect") ||
+    normalized.includes("không chính xác")
+  ) {
+    return "invalid_credentials";
+  }
+
+  return "unknown";
+};
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, resendOtp } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
-  const [error, setError] = useState("");
   const [successMessage] = useState(location.state?.message || "");
+
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      toast.error("Vui lòng nhập email để gửi lại mã xác minh.", {
+        id: TOAST_ID_LOGIN_RESEND,
+      });
+      return;
+    }
+
+    setIsResendingVerification(true);
+    try {
+      await resendOtp(email.trim(), null);
+      toast.success(
+        "Đã gửi lại mã xác minh. Vui lòng kiểm tra email của bạn.",
+        {
+          id: TOAST_ID_LOGIN_RESEND,
+        },
+      );
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Không thể gửi lại mã xác minh. Vui lòng thử lại.";
+      toast.error(errorMessage, { id: TOAST_ID_LOGIN_RESEND });
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setShowResendVerification(false);
 
     try {
       const userData = await login({ email, password });
@@ -37,12 +114,24 @@ const LoginPage = () => {
         navigate("/home");
       }
     } catch (err) {
-      // Get error message from backend response
-      const errorMessage =
+      const status = err.response?.status;
+      const backendMessage =
         err.response?.data?.message ||
         err.message ||
         "Đăng nhập thất bại. Vui lòng thử lại.";
-      setError(errorMessage);
+
+      const errorType = getLoginErrorType(backendMessage, status);
+
+      if (errorType === "invalid_credentials") {
+        toast.error(MSG06, { id: TOAST_ID_LOGIN_MSG06 });
+      } else if (errorType === "not_verified") {
+        toast.error(MSG07, { id: TOAST_ID_LOGIN_MSG07 });
+        setShowResendVerification(true);
+      } else if (errorType === "locked_or_inactive") {
+        toast.error(MSG08, { id: TOAST_ID_LOGIN_MSG08 });
+      } else {
+        toast.error(backendMessage, { id: TOAST_ID_LOGIN_GENERIC });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -180,7 +269,19 @@ const LoginPage = () => {
               {successMessage && (
                 <div className="success-message">{successMessage}</div>
               )}
-              {error && <div className="error-message">{error}</div>}
+
+              {showResendVerification && (
+                <button
+                  type="button"
+                  className="resend-verification-btn"
+                  onClick={handleResendVerification}
+                  disabled={isResendingVerification}
+                >
+                  {isResendingVerification
+                    ? "Đang gửi lại mã..."
+                    : "Gửi lại mã xác minh"}
+                </button>
+              )}
 
               <button
                 type="submit"
@@ -618,6 +719,29 @@ const LoginPage = () => {
           font-size: 14px;
           margin-bottom: 16px;
           text-align: center;
+        }
+
+        .resend-verification-btn {
+          width: 100%;
+          margin-bottom: 16px;
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .resend-verification-btn:hover:not(:disabled) {
+          background: #dbeafe;
+        }
+
+        .resend-verification-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .success-message {

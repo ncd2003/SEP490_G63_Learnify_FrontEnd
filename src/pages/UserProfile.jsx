@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import { userApi } from "../apis/user.api.js";
+import { PATH_AUTH, PATH_COMMON } from "@/routes/paths";
 import "@/assets/css/pages/userProfile.css";
 import {
   ArrowLeft,
@@ -32,9 +34,32 @@ const mapRole = (role) => {
   return roleMap[role] || role || "Học sinh";
 };
 
+const MSG16 =
+  "Mật khẩu đã được cập nhật. Tất cả các phiên đăng nhập đã bị xóa. Vui lòng đăng nhập lại.";
+const MSG17 = "Mật khẩu hiện tại bạn nhập không chính xác.";
+const MSG18 = "Mật khẩu mới không được trùng với mật khẩu hiện tại của bạn.";
+const MSG129 = "Mật khẩu mới và xác nhận mật khẩu chưa khớp.";
+
+const isPasswordCompliant = (password = "") => {
+  return (
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[!@#$%^&*]/.test(password)
+  );
+};
+
+const normalizeText = (value = "") =>
+  value
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
 const UserProfile = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth();
   const fileInputRef = useRef(null);
 
   // Profile state
@@ -69,6 +94,13 @@ const UserProfile = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  const isGoogleUser =
+    `${user?.provider || user?.authProvider || user?.loginProvider || ""}`
+      .toLowerCase()
+      .includes("google") || user?.isSocialLogin === true;
+  const hasLocalPassword = user?.hasLocalPassword !== false;
+  const canChangePassword = !isGoogleUser || hasLocalPassword;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -255,13 +287,29 @@ const UserProfile = () => {
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setErrorMessage("Mật khẩu xác nhận không khớp");
+    if (!canChangePassword) {
+      toast.error(
+        "Tài khoản Google chưa thiết lập mật khẩu cục bộ nên không thể đổi mật khẩu.",
+        { id: "change-password-disabled" },
+      );
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
-      setErrorMessage("Mật khẩu mới phải có ít nhất 8 ký tự");
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error(MSG129, { id: "change-password-msg129" });
+      return;
+    }
+
+    if (passwordData.oldPassword === passwordData.newPassword) {
+      toast.error(MSG18, { id: "change-password-msg18" });
+      return;
+    }
+
+    if (!isPasswordCompliant(passwordData.newPassword)) {
+      toast.error(
+        "Mật khẩu mới phải có tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt (!@#$%^&*).",
+        { id: "change-password-br17" },
+      );
       return;
     }
 
@@ -271,22 +319,62 @@ const UserProfile = () => {
       await userApi.changePassword({
         oldPassword: passwordData.oldPassword,
         newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword,
       });
-      setSuccessMessage("Đổi mật khẩu thành công!");
+      toast.success(MSG16, { id: "change-password-msg16" });
       setShowChangePassword(false);
       setPasswordData({
         oldPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
-      clearMessages();
+
+      await logout();
+      navigate(PATH_AUTH.login, { replace: true });
     } catch (error) {
       console.error("Change password failed:", error);
-      setErrorMessage(
-        error.response?.data?.message ||
-          "Đổi mật khẩu thất bại. Vui lòng thử lại.",
+      const backendMessage = normalizeText(
+        error?.response?.data?.message || "",
       );
-      clearMessages();
+      const backendCode = normalizeText(error?.response?.data?.code || "");
+      const status = error?.response?.status;
+
+      if (
+        backendMessage.includes("current password") ||
+        backendMessage.includes("old password") ||
+        backendMessage.includes("mat khau hien tai") ||
+        backendMessage.includes("mat khau cu") ||
+        backendCode.includes("current_password") ||
+        backendCode.includes("old_password") ||
+        backendCode.includes("wrong_password") ||
+        status === 401
+      ) {
+        toast.error(MSG17, { id: "change-password-msg17" });
+      } else if (
+        backendMessage.includes("same") ||
+        backendMessage.includes("giong") ||
+        backendMessage.includes("trùng") ||
+        backendMessage.includes("must be different") ||
+        backendCode.includes("same") ||
+        backendCode.includes("different")
+      ) {
+        toast.error(MSG18, { id: "change-password-msg18" });
+      } else if (
+        backendMessage.includes("confirm") ||
+        backendMessage.includes("khớp") ||
+        backendMessage.includes("mismatch") ||
+        backendMessage.includes("xac nhan") ||
+        backendCode.includes("confirm") ||
+        backendCode.includes("mismatch")
+      ) {
+        toast.error(MSG129, { id: "change-password-msg129" });
+      } else if (status && status < 500) {
+        toast.error(MSG17, { id: "change-password-msg17" });
+      } else {
+        toast.error("Đổi mật khẩu thất bại. Vui lòng thử lại.", {
+          id: "change-password-generic",
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -520,11 +608,7 @@ const UserProfile = () => {
               </button>
               <button
                 className="btn btn-secondary"
-                onClick={() => {
-                  setShowChangePassword(!showChangePassword);
-                  setErrorMessage("");
-                  setSuccessMessage("");
-                }}
+                onClick={() => navigate(PATH_COMMON.changePassword)}
               >
                 <Lock size={16} />
                 <span>Đổi mật khẩu</span>
@@ -532,6 +616,13 @@ const UserProfile = () => {
             </>
           )}
         </div>
+
+        {!canChangePassword && (
+          <p className="avatar-hint" style={{ marginTop: 10 }}>
+            Tài khoản đăng nhập bằng Google chưa thiết lập mật khẩu cục bộ nên
+            không thể đổi mật khẩu.
+          </p>
+        )}
       </div>
 
       {/* Change Password Section */}
