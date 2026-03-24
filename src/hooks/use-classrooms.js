@@ -1,24 +1,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { classroomApi } from "@/apis/classroom.api";
 
-const useClassrooms = (userId) => {
+const useClassrooms = () => {
   const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchClassrooms = useCallback(async () => {
-    if (!userId) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await classroomApi.getClassroomsByTeacher(userId);
+      const response = await classroomApi.getClassroomsByTeacher();
       setClassrooms(response.result ?? []);
     } catch (err) {
       setError(err.response?.data?.message ?? "Không thể tải danh sách lớp học.");
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     fetchClassrooms();

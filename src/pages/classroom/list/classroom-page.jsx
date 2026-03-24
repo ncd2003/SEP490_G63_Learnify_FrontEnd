@@ -5,7 +5,6 @@ import {
   Trash2,
   LayoutList,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import useClassrooms from "@/hooks/use-classrooms";
 import useDebounce from "@/hooks/use-debounce";
 import ClassroomRow from "./classroom-row";
@@ -48,8 +47,7 @@ const TABLE_HEADERS = [
 ];
 
 const ClassroomPage = () => {
-  const { user } = useAuth();
-  const { classrooms, loading, error, refetch } = useClassrooms(user?.id);
+  const { classrooms, loading, error, refetch } = useClassrooms();
 
   const [activeTab, setActiveTab] = useState(TABS.ACTIVE);
   const [searchQuery, setSearchQuery] = useState("");
