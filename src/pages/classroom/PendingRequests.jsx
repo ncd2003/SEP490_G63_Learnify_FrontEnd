@@ -1,19 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { CheckCircle, XCircle, Loader2, Users, Clock } from 'lucide-react';
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Search,
+  Printer,
+  UserPlus,
+  List,
+  ListFilter,
+} from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import { classroomApi } from '@/apis/classroom.api';
 import { enrollmentApi } from '@/apis/enrollment.api';
 import ApproveRequestsModal from './ApproveRequestsModal';
 import RejectRequestsModal from './RejectRequestsModal';
+import { copyToClipboard } from '@/lib/utils';
 import '@/assets/css/pages/classroom/pendingRequests.css';
 
 const PendingRequests = () => {
   const { id } = useParams();
 
   const [pendingRequests, setPendingRequests] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading]       = useState(true);
+  const [membersLoading, setMembersLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal]   = useState(false);
@@ -49,10 +62,25 @@ const PendingRequests = () => {
     }
   }, [id]);
 
+  const fetchAcceptedMembers = useCallback(async () => {
+    try {
+      setMembersLoading(true);
+      const response = await enrollmentApi.getAcceptedMembers(id);
+      if (response.code === 1000) {
+        setMembers(response.result ?? []);
+      }
+    } catch (err) {
+      console.error('Error fetching accepted members:', err);
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchClassroomInfo();
+    fetchAcceptedMembers();
     fetchPendingRequests();
-  }, [fetchClassroomInfo, fetchPendingRequests]);
+  }, [fetchClassroomInfo, fetchAcceptedMembers, fetchPendingRequests]);
 
   /* ── Selection helpers ─────────────────────────────────────────────── */
   const allSelected =
@@ -91,6 +119,8 @@ const PendingRequests = () => {
       if (response.code === 1000) {
         setSuccess('Đã phê duyệt yêu cầu tham gia thành công.');
         setSelectedIds([]);
+        await fetchAcceptedMembers();
+        await fetchClassroomInfo();
         await fetchPendingRequests();
         setTimeout(() => setSuccess(''), 4000);
       } else {
@@ -113,6 +143,8 @@ const PendingRequests = () => {
       if (response.code === 1000) {
         setSuccess('Đã từ chối các yêu cầu tham gia.');
         setSelectedIds([]);
+        await fetchAcceptedMembers();
+        await fetchClassroomInfo();
         await fetchPendingRequests();
         setTimeout(() => setSuccess(''), 4000);
       } else {
@@ -137,141 +169,219 @@ const PendingRequests = () => {
   const getInitials = (name) =>
     (name ?? '').split(' ').filter(Boolean).slice(-2).map((w) => w[0]).join('').toUpperCase() || '?';
 
+  const filteredMembers = members.filter((member) => {
+    const keyword = memberSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    const name = (member.studentName ?? '').toLowerCase();
+    const email = (member.studentEmail ?? '').toLowerCase();
+    const phone = (member.phoneNumber ?? '').toLowerCase();
+    return name.includes(keyword) || email.includes(keyword) || phone.includes(keyword);
+  });
+
+  const handleCopyClassCode = async () => {
+    if (!classroomInfo?.code) return;
+    await copyToClipboard(classroomInfo.code, 'Mã lớp');
+  };
+
+  const handlePrintMembers = () => {
+    window.print();
+  };
+
+  const classSize = members.length || classroomInfo?.studentCount || 0;
+
   return (
     <ClassroomDetailLayout>
       <div className="pending-requests-page">
-        <h1 className="pending-requests-title">Yêu cầu tham gia đang chờ duyệt</h1>
+        <section className="members-panel">
+          <header className="members-panel-header">
+            <h2>Thành viên lớp học ({classSize})</h2>
+          </header>
 
-        {/* Info box */}
-        <div className="pending-requests-info-box">
-          <div className="info-box-left">
-            <div className="info-box-class">
-              <span className="info-label">Lớp:</span>
-              <span className="info-value">{classroomInfo?.name || '—'}</span>
+          <div className="members-layout">
+            <div className="members-main">
+              <div className="members-toolbar">
+                <div className="members-view-toggle" aria-hidden="true">
+                  <button type="button" className="toggle-btn active">
+                    <List size={18} />
+                  </button>
+                  <button type="button" className="toggle-btn">
+                    <ListFilter size={18} />
+                  </button>
+                </div>
+
+                <label className="members-search-box">
+                  <Search size={18} />
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="Nhập và ấn enter để tìm kiếm"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="members-icon-btn"
+                  onClick={handlePrintMembers}
+                  title="In danh sách"
+                >
+                  <Printer size={18} />
+                </button>
+
+                <button
+                  type="button"
+                  className="members-add-btn"
+                  onClick={handleCopyClassCode}
+                  disabled={!classroomInfo?.code}
+                >
+                  <UserPlus size={16} />
+                  Thêm học sinh
+                </button>
+              </div>
+
+              {membersLoading ? (
+                <div className="class-members-loading">
+                  <Loader2 size={20} className="spin" />
+                  <span>Đang tải thành viên lớp học...</span>
+                </div>
+              ) : filteredMembers.length === 0 ? (
+                <div className="class-members-empty">
+                  {memberSearch.trim() ? 'Không tìm thấy thành viên phù hợp.' : 'Chưa có học sinh nào trong lớp.'}
+                </div>
+              ) : (
+                <div className="class-members-table-wrapper">
+                  <table className="class-members-table">
+                    <thead>
+                      <tr>
+                        <th>Họ và tên</th>
+                        <th>Email</th>
+                        <th>SĐT</th>
+                        <th>Tham gia lúc</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMembers.map((member) => (
+                        <tr key={member.memberId}>
+                          <td>
+                            <div className="student-cell">
+                              <div className="student-avatar">
+                                {member.avatarUrl ? (
+                                  <img src={member.avatarUrl} alt={member.studentName} />
+                                ) : (
+                                  <span>{getInitials(member.studentName)}</span>
+                                )}
+                              </div>
+                              <span className="student-name">{member.studentName}</span>
+                            </div>
+                          </td>
+                          <td className="cell-email">{member.studentEmail || '—'}</td>
+                          <td>{member.phoneNumber || '—'}</td>
+                          <td className="cell-date">{formatDateTime(member.joinedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            <div className="info-box-capacity">
-              <Users size={14} />
-              <span>Sĩ số: {classroomInfo?.studentCount ?? 0}{classroomInfo?.maxStudents ? ` / ${classroomInfo.maxStudents}` : ''}</span>
-              <span className="info-separator">•</span>
-              <Clock size={14} />
-              <span>Đang chờ: <strong>{pendingRequests.length}</strong></span>
-            </div>
-          </div>
-          <div className="info-box-right">
-            <span className="pending-badge">Yêu cầu đang chờ (Pending)</span>
-            <span className="info-hint">Chọn nhiều hàng để xử lý đồng thời</span>
-          </div>
-        </div>
 
-        {/* Bulk action buttons */}
-        <div className="pending-bulk-actions">
-          <button
-            className="btn-approve"
-            onClick={() => openApprove(selectedIds)}
-            disabled={selectedIds.length === 0 || actionLoading}
-          >
-            {actionLoading ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
-            Duyệt {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
-          </button>
-          <button
-            className="btn-reject"
-            onClick={() => openReject(selectedIds)}
-            disabled={selectedIds.length === 0 || actionLoading}
-          >
-            {actionLoading ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
-            Từ chối {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
-          </button>
-        </div>
+            <aside className="members-sidecard">
+              <h3>Chờ duyệt • {pendingRequests.length}</h3>
+              <p>
+                Yêu cầu vào lớp sẽ được hiển thị khi có học sinh tham gia bằng mã lớp
+                {' '}
+                <strong>{classroomInfo?.code || '—'}</strong>
+              </p>
 
-        {/* Alerts */}
-        {error && <div className="pending-requests-alert alert-error">{error}</div>}
-        {success && <div className="pending-requests-alert alert-success">{success}</div>}
+              {error && <div className="pending-requests-alert alert-error sidebar-alert">{error}</div>}
+              {success && <div className="pending-requests-alert alert-success sidebar-alert">{success}</div>}
 
-        {/* Table */}
-        {loading ? (
-          <div className="pending-requests-loading">
-            <Loader2 size={28} className="spin" />
-            <span>Đang tải danh sách yêu cầu...</span>
-          </div>
-        ) : pendingRequests.length === 0 ? (
-          <div className="pending-requests-empty">
-            <CheckCircle size={40} className="empty-check-icon" />
-            <p className="empty-title">Không có yêu cầu nào đang chờ duyệt</p>
-            <p className="empty-desc">Tất cả yêu cầu tham gia đã được xử lý.</p>
-          </div>
-        ) : (
-          <div className="pending-requests-table-wrapper">
-            <table className="pending-requests-table">
-              <thead>
-                <tr>
-                  <th>
+              {loading ? (
+                <div className="pending-side-loading">
+                  <Loader2 size={16} className="spin" />
+                  <span>Đang tải yêu cầu...</span>
+                </div>
+              ) : pendingRequests.length === 0 ? (
+                <div className="pending-side-empty">Hiện chưa có yêu cầu đang chờ duyệt.</div>
+              ) : (
+                <>
+                  <label className="pending-side-selectall">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={handleSelectAll}
-                      aria-label="Chọn tất cả"
+                      aria-label="Chọn tất cả yêu cầu"
                     />
-                  </th>
-                  <th>Học sinh</th>
-                  <th>Email</th>
-                  <th>Thời gian yêu cầu</th>
-                  <th className="col-actions">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingRequests.map((request) => (
-                  <tr
-                    key={request.memberId}
-                    className={selectedIds.includes(request.memberId) ? 'row-selected' : ''}
-                  >
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(request.memberId)}
-                        onChange={() => handleSelectOne(request.memberId)}
-                        aria-label={`Chọn ${request.studentName}`}
-                      />
-                    </td>
-                    <td>
-                      <div className="student-cell">
-                        <div className="student-avatar">
-                          {request.avatarUrl ? (
-                            <img src={request.avatarUrl} alt={request.studentName} />
-                          ) : (
-                            <span>{getInitials(request.studentName)}</span>
-                          )}
+                    <span>Chọn tất cả</span>
+                  </label>
+
+                  <div className="pending-side-list">
+                    {pendingRequests.map((request) => (
+                      <div
+                        key={request.memberId}
+                        className={`pending-side-item ${selectedIds.includes(request.memberId) ? 'selected' : ''}`}
+                      >
+                        <label className="pending-side-item-top">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(request.memberId)}
+                            onChange={() => handleSelectOne(request.memberId)}
+                            aria-label={`Chọn ${request.studentName}`}
+                          />
+                          <div className="pending-side-student">
+                            <span className="pending-side-name">{request.studentName}</span>
+                            <span className="pending-side-email">{request.studentEmail || '—'}</span>
+                            <span className="pending-side-time">{formatDateTime(request.requestedAt)}</span>
+                          </div>
+                        </label>
+
+                        <div className="pending-side-item-actions">
+                          <button
+                            className="row-btn-approve"
+                            title="Duyệt"
+                            disabled={actionLoading}
+                            onClick={() => openApprove([request.memberId])}
+                          >
+                            <CheckCircle size={13} />
+                            Duyệt
+                          </button>
+                          <button
+                            className="row-btn-reject"
+                            title="Từ chối"
+                            disabled={actionLoading}
+                            onClick={() => openReject([request.memberId])}
+                          >
+                            <XCircle size={13} />
+                            Từ chối
+                          </button>
                         </div>
-                        <span className="student-name">{request.studentName}</span>
                       </div>
-                    </td>
-                    <td className="cell-email">{request.studentEmail}</td>
-                    <td className="cell-date">{formatDateTime(request.requestedAt)}</td>
-                    <td className="cell-row-actions">
-                      <button
-                        className="row-btn-approve"
-                        title="Duyệt"
-                        disabled={actionLoading}
-                        onClick={() => openApprove([request.memberId])}
-                      >
-                        <CheckCircle size={15} />
-                        Duyệt
-                      </button>
-                      <button
-                        className="row-btn-reject"
-                        title="Từ chối"
-                        disabled={actionLoading}
-                        onClick={() => openReject([request.memberId])}
-                      >
-                        <XCircle size={15} />
-                        Từ chối
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    ))}
+                  </div>
+
+                  <div className="pending-side-actions">
+                    <button
+                      className="btn-approve"
+                      onClick={() => openApprove(selectedIds)}
+                      disabled={selectedIds.length === 0 || actionLoading}
+                    >
+                      {actionLoading ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
+                      Duyệt {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+                    </button>
+                    <button
+                      className="btn-reject"
+                      onClick={() => openReject(selectedIds)}
+                      disabled={selectedIds.length === 0 || actionLoading}
+                    >
+                      {actionLoading ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
+                      Từ chối {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+                    </button>
+                  </div>
+                </>
+              )}
+            </aside>
           </div>
-        )}
+        </section>
 
         {/* Modals */}
         {showApproveModal && (

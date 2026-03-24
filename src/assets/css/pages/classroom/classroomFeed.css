@@ -85,8 +85,8 @@
 .post-form-textarea {
   flex: 1;
   resize: none;
-  min-height: 48px;
-  max-height: 160px;
+  min-height: 72px;
+  max-height: 400px;
   padding: 8px 0;
   border: none;
   font-size: 14px;
@@ -109,6 +109,94 @@
   font-size: 12px;
   color: #dc2626;
   margin: 0 16px 6px;
+}
+
+/* Existing attachments (edit mode) */
+.post-form-existing-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 16px 8px;
+}
+
+.post-form-existing-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.post-form-existing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.post-form-existing-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.post-form-existing-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.post-form-existing-info a {
+  color: #2563eb;
+  font-weight: 500;
+  text-decoration: none;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-form-existing-info a:hover {
+  text-decoration: underline;
+}
+
+.post-form-existing-size {
+  font-size: 12px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.post-form-existing-remove {
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.post-form-existing-remove:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.post-form-existing-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.post-form-no-attachments {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+  padding: 0 2px;
 }
 
 /* File chips */
@@ -163,6 +251,12 @@
   gap: 8px;
 }
 
+.post-form-left-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .post-form-right-actions {
   display: flex;
   gap: 8px;
@@ -191,6 +285,36 @@
 .post-form-attach-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.post-form-pin-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: #6366f1;
+  user-select: none;
+}
+
+.post-form-pin-checkbox:hover {
+  background: #eff6ff;
+}
+
+.post-form-pin-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.post-form-pin-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .post-form-submit {
@@ -277,10 +401,22 @@
   gap: 2px;
 }
 
+.post-author-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .post-author-name {
   font-size: 14px;
   font-weight: 600;
   color: #111827;
+}
+
+.post-created-time {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 400;
 }
 
 .post-pinned-badge {
@@ -312,6 +448,54 @@
 .post-menu-trigger:hover {
   color: #374151;
   background: #f3f4f6;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  cursor: default;
+}
+
+.action-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  z-index: 20;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  padding: 4px 0;
+  min-width: 160px;
+}
+
+.action-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #374151;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+
+.action-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.action-menu-item.danger {
+  color: #dc2626;
+}
+
+.action-menu-item.danger:hover {
+  background: #fef2f2;
 }
 
 /* ── Post content ────────────────────────────────────────── */
@@ -431,14 +615,38 @@
 .comment-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between; /* Improve spacing */
   margin-bottom: 8px;
+}
+
+.comment-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.comment-menu-trigger {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.comment-menu-trigger:hover {
+  color: #374151;
+  background: #e5e7eb;
 }
 
 .comment-author-info {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .comment-author-name {
@@ -533,4 +741,130 @@
 .comment-form-actions {
   display: flex;
   gap: 8px;
+}
+
+/* ─── Reply Button ────────────────────────────────────────── */
+.comment-reply-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.comment-reply-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ─── Nested Replies ─────────────────────────────────────── */
+.comment-replies {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comment-reply-form {
+  margin-top: 12px;
+}
+
+/* Nested comment styling adjustments */
+.comment-card .comment-card {
+  background: #f3f4f6;
+  border-left: 2px solid #d1d5db;
+}
+
+.comment-card .comment-card .comment-card {
+  background: #e5e7eb;
+}
+
+/* Reply form inside comment */
+.comment-reply-form .comment-form {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  padding: 12px;
+}
+
+.comment-reply-form .comment-form-title {
+  font-size: 13px;
+  color: #6366f1;
+}
+
+/* ─── Buttons ────────────────────────────────────────────── */
+.btn-primary {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #4f46e5;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.comment-reply-form .comment-form-textarea {
+  min-height: 80px;
+}
+
+/* ─── Load More Button ───────────────────────────────────── */
+.comments-load-more {
+  width: 100%;
+  padding: 8px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.comments-load-more:hover {
+  background: #eff6ff;
+  border-color: #6366f1;
 }

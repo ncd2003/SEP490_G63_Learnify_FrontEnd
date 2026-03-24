@@ -18,6 +18,13 @@ const getPendingMembers = (classroomId) =>
   apiRequest.get(`${BASE}/${classroomId}/pending`);
 
 /**
+ * GET /api/enrollments/{classroomId}/members
+ * @param {number} classroomId
+ */
+const getAcceptedMembers = (classroomId) =>
+  apiRequest.get(`${BASE}/${classroomId}/members`);
+
+/**
  * POST /api/enrollments/{classroomId}/pending/approve
  * @param {number} classroomId
  * @param {number[]} memberIds
@@ -44,6 +51,7 @@ export const enrollmentApi = {
   joinClass,
   leaveClass,
   getPendingMembers,
+  getAcceptedMembers,
   approveRequests,
   rejectRequests,
   getMyClassrooms,

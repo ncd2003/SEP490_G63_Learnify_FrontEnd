@@ -10,7 +10,7 @@ import '@/assets/css/components/eventModal.css';
  * @param {{ isOpen, onClose, onSubmit, session }} props
  *   - session: ClassSessionResponseDTO | null (null = create mode)
  */
-const SessionModal = ({ isOpen, onClose, onSubmit, session }) => {
+const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -38,15 +38,15 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session }) => {
         meetingLink: session.meetingLink ?? '',
       });
     } else {
-      resetForm();
+      resetForm(presetDate);
     }
-  }, [session, isOpen]);
+  }, [session, isOpen, presetDate]);
 
-  const resetForm = () => {
+  const resetForm = (defaultDate = '') => {
     setFormData({
       title: '',
       description: '',
-      sessionDate: '',
+      sessionDate: defaultDate,
       startTime: '',
       endTime: '',
       type: SESSION_TYPE.OFFLINE,
@@ -94,7 +94,7 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session }) => {
   };
 
   const handleClose = () => {
-    resetForm();
+    resetForm(presetDate);
     onClose();
   };
 
@@ -233,13 +233,11 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session }) => {
               <div className="form-group">
                 <label>Link cuộc họp</label>
                 <input
-                  type="url"
+                  type="text"
                   name="meetingLink"
-                  value={formData.meetingLink}
-                  onChange={handleChange}
-                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  value={formData.meetingLink || 'Hệ thống sẽ tự động tạo link Jitsi khi lưu buổi học'}
+                  readOnly
                   className={errors.meetingLink ? 'error' : ''}
-                  maxLength={500}
                 />
                 {errors.meetingLink && <span className="error-message">{errors.meetingLink}</span>}
               </div>

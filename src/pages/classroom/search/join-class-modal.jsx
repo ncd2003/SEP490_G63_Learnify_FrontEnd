@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Search, BookOpen, Loader2, CheckCircle } from "lucide-react";
 import { classroomApi } from "@/apis/classroom.api";
 import { enrollmentApi } from "@/apis/enrollment.api";
+import "@/assets/css/pages/classroom/modals.css";
 import "@/assets/css/pages/classroom/joinClassModal.css";
 
 /**

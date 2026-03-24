@@ -12,6 +12,15 @@ const useComments = (postId) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Transform API response to UI format
+  const transformComment = (comment) => {
+    return {
+      ...comment,
+      authorName: comment.user?.name || "Người dùng",
+      replies: comment.replies?.map(transformComment) || [],
+    };
+  };
+
   const fetchComments = useCallback(async () => {
     if (!postId) return;
     try {
@@ -19,7 +28,8 @@ const useComments = (postId) => {
       setError(null);
       const data = await commentApi.getCommentsByPost(postId);
       const list = data?.result ?? data ?? [];
-      setComments(Array.isArray(list) ? list : []);
+      const transformed = Array.isArray(list) ? list.map(transformComment) : [];
+      setComments(transformed);
     } catch (err) {
       console.error("Failed to fetch comments:", err);
       setError(err.message ?? "Không thể tải bình luận.");

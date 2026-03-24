@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import LogoutDialog from "@/components/LogoutDialog";
 import "@/assets/css/components/header.css";
 import { BookOpen, Menu, X, LogOut, User } from "lucide-react";
 import { PATH_AUTH, PATH_COMMON } from "@/routes/paths";
@@ -10,19 +11,31 @@ const Header = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setIsUserMenuOpen(false);
+    setIsLogoutDialogOpen(true);
+  };
+
+  const handleConfirmLogout = async () => {
     try {
       await logout();
       navigate(PATH_AUTH.login);
     } catch (error) {
       console.error("Logout failed:", error);
+    } finally {
+      setIsLogoutDialogOpen(false);
     }
   };
 
   const handleDashboardClick = () => {
     const userRole = user?.role?.toUpperCase();
-    if (userRole === "ROLE_TEACHER" || userRole === "ROLE_STUDENT" || userRole === "ROLE_ADMIN") {
+    if (
+      userRole === "ROLE_TEACHER" ||
+      userRole === "ROLE_STUDENT" ||
+      userRole === "ROLE_ADMIN"
+    ) {
       navigate("/classrooms");
     }
   };
@@ -146,7 +159,7 @@ const Header = () => {
                       <div className="dropdown-divider"></div>
                       <button
                         className="dropdown-item danger"
-                        onClick={handleLogout}
+                        onClick={handleLogoutClick}
                       >
                         <LogOut size={16} />
                         <span>Đăng xuất</span>
@@ -166,6 +179,12 @@ const Header = () => {
           </div>
         </div>
       </div>
+
+      <LogoutDialog
+        isOpen={isLogoutDialogOpen}
+        onClose={() => setIsLogoutDialogOpen(false)}
+        onConfirm={handleConfirmLogout}
+      />
     </header>
   );
 };

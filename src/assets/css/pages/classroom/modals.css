@@ -21,6 +21,9 @@
   width: 100%;
   max-width: 512px;
   margin: 0 16px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -35,6 +38,7 @@
   justify-content: space-between;
   padding: 16px 24px;
   border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -67,6 +71,8 @@
 /* Modal body */
 .modal-body {
   padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 /* Modal form */
@@ -426,4 +432,154 @@
 
 .modal-btn-danger:hover {
   background: #dc2626;
+}
+
+/* Delete Classroom Modal */
+.modal-header.delete-header {
+  background-color: #000;
+  color: #fff;
+  border-bottom: none;
+}
+
+.modal-header.delete-header .modal-title,
+.modal-header.delete-header .modal-close-btn {
+  color: #fff;
+}
+
+.modal-header.delete-header .modal-close-btn:hover {
+  background-color: #333;
+}
+
+.delete-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.warning-icon-box {
+  width: 48px;
+  height: 48px;
+  border: 2px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #000;
+}
+
+.warning-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #000;
+}
+
+.warning-desc {
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.warning-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  color: #333;
+  text-align: left;
+}
+
+.warning-list li::before {
+  content: '- ';
+}
+
+.confirmation-box {
+  width: 100%;
+  border: 2px dashed #000;
+  padding: 16px;
+  text-align: left;
+  margin-bottom: 24px;
+  background-color: #fff;
+}
+
+.confirmation-label {
+  display: block;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #000;
+}
+
+.confirmation-subtext {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.confirmation-input-wrapper {
+  position: relative;
+}
+
+.confirmation-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #000;
+  border-radius: 0;
+  font-size: 14px;
+}
+
+.confirmation-input::placeholder {
+  color: #999;
+}
+
+.delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #eee;
+}
+
+.btn-delete-cancel {
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #ddd;
+  padding: 8px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete-cancel:hover {
+  background-color: #f9f9f9;
+}
+
+.btn-delete-confirm {
+  background-color: #000;
+  color: #fff;
+  border: none;
+  padding: 8px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete-confirm:hover {
+  background-color: #222;
+}
+
+.btn-delete-confirm:disabled {
+  background-color: #888;
+  cursor: not-allowed;
+}
+
+.delete-description {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 8px;
+  line-height: 1.5;
 }

@@ -10,6 +10,23 @@ import { userApi } from "@/apis/user.api";
 
 const AuthContext = createContext(null);
 
+const clearBrowserAuthData = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("user");
+
+  // Clear temporary/session auth data.
+  sessionStorage.clear();
+
+  // Attempt to clear client-accessible cookies related to auth/session.
+  document.cookie.split(";").forEach((cookie) => {
+    const [rawName] = cookie.split("=");
+    const name = rawName?.trim();
+    if (!name) return;
+
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+  });
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -105,8 +122,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
+      clearBrowserAuthData();
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -123,24 +139,24 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUserRole = async (role) => {
-    console.log('[AuthContext] updateUserRole called with:', role);
-    console.log('[AuthContext] Current token:', localStorage.getItem('accessToken')?.substring(0, 30) + '...');
-    
+    //console.log('[AuthContext] updateUserRole called with:', role);
+    //console.log('[AuthContext] Current token:', localStorage.getItem('accessToken')?.substring(0, 30) + '...');
+
     const res = await userApi.chooseRole(role);
-    console.log('[AuthContext] chooseRole response:', res);
-    
+    //console.log('[AuthContext] chooseRole response:', res);
+
     // Backend trả về JWT mới trong result — lưu lại để các request sau dùng token có role
     const newToken = res.result;
     if (newToken) {
       localStorage.setItem("accessToken", newToken);
-      console.log('[AuthContext] New token saved:', newToken.substring(0, 30) + '...');
+      //console.log('[AuthContext] New token saved:', newToken.substring(0, 30) + '...');
     }
     // Refresh user data từ server để lấy role mới
     const response = await authApi.getCurrentUser();
     const updatedUser = response.result;
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
-    console.log('[AuthContext] User updated with role:', updatedUser.role);
+    //console.log('[AuthContext] User updated with role:', updatedUser.role);
     return updatedUser;
   };
 

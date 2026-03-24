@@ -1,8 +1,24 @@
 import React, { useState } from "react";
 import { Mail, BookOpen, ArrowLeft } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { toast } from "sonner";
 import { authApi } from "@/apis/auth.api";
 import { PATH_AUTH } from "@/routes/paths";
+
+const MSG09 = "Địa chỉ email này chưa được đăng ký trong hệ thống.";
+const MSG10 = "Không thể gửi mã OTP. Vui lòng thử lại sau.";
+const TOAST_ID_MSG09 = "forgot-msg09";
+const TOAST_ID_MSG10 = "forgot-msg10";
+
+const isEmailNotFoundError = (message = "") => {
+  const normalized = String(message).toLowerCase();
+  return (
+    normalized.includes("email") &&
+    (normalized.includes("not found") ||
+      normalized.includes("không tồn tại") ||
+      normalized.includes("chưa được đăng ký"))
+  );
+};
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
@@ -10,12 +26,10 @@ const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
 
     const normalizedEmail = email.trim().toLowerCase();
     try {
@@ -24,11 +38,13 @@ const ForgotPasswordPage = () => {
         state: { email: normalizedEmail },
       });
     } catch (err) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Không thể gửi mã OTP. Vui lòng thử lại.";
-      setError(errorMessage);
+      const errorMessage = err.response?.data?.message || err.message || MSG10;
+
+      if (isEmailNotFoundError(errorMessage)) {
+        toast.error(MSG09, { id: TOAST_ID_MSG09 });
+      } else {
+        toast.error(errorMessage || MSG10, { id: TOAST_ID_MSG10 });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -66,8 +82,6 @@ const ForgotPasswordPage = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="forgot-form">
-            {error && <div className="error-message">{error}</div>}
-
             <div className="input-group">
               <label
                 htmlFor="email"
