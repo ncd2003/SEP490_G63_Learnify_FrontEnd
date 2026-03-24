@@ -11,7 +11,7 @@ const useClassrooms = (userId) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await classroomApi.getClassroomsByTeacher();
+      const response = await classroomApi.getClassroomsByTeacher(userId);
       setClassrooms(response.result ?? []);
     } catch (err) {
       setError(err.response?.data?.message ?? "Không thể tải danh sách lớp học.");
