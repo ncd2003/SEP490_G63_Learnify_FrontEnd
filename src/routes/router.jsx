@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Navigate, useRoutes } from "react-router-dom";
 import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
+import RoleBasedGuard from "@/guards/role-base-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,7 @@ const Loadable = (Component) => (props) => (
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 const LoginPage             = Loadable(lazy(() => import("@/pages/Login")));
+const AdminLoginPage        = Loadable(lazy(() => import("@/pages/AdminLogin")));
 const RegisterPage          = Loadable(lazy(() => import("@/pages/Register")));
 const OtpVerificationPage   = Loadable(lazy(() => import("@/pages/OtpVerification")));
 const ForgotPasswordPage    = Loadable(lazy(() => import("@/pages/ForgotPassword")));
@@ -23,6 +25,9 @@ const RoleSelectionPage     = Loadable(lazy(() => import("@/pages/RoleSelection"
 
 const HomePage              = Loadable(lazy(() => import("@/pages/Home")));
 const OAuth2RedirectPage    = Loadable(lazy(() => import("@/pages/OAuth2Redirect")));
+const AdminDashboardPage    = Loadable(lazy(() => import("@/pages/admin/AdminDashboard")));
+const AdminUserListPage     = Loadable(lazy(() => import("@/pages/admin/AdminUserList")));
+const AdminUserDetailPage   = Loadable(lazy(() => import("@/pages/admin/AdminUserDetail")));
 
 // ─── Teacher / User pages ─────────────────────────────────────────────────────
 const UserProfilePage           = Loadable(lazy(() => import("@/pages/UserProfile")));
@@ -62,6 +67,14 @@ const AppRoutes = () =>
       element: (
         <GuestGuard>
           <LoginPage />
+        </GuestGuard>
+      ),
+    },
+    {
+      path: "admin/login",
+      element: (
+        <GuestGuard>
+          <AdminLoginPage />
         </GuestGuard>
       ),
     },
@@ -119,6 +132,31 @@ const AppRoutes = () =>
         {
           path: "classrooms",
           element: <ClassroomListOrStudentPage />,
+        },
+      ],
+    },
+
+    // ── Admin routes (with DashboardLayout) ─────────────────────────────────
+    {
+      element: (
+        <AuthGuard>
+          <RoleBasedGuard role="ROLE_ADMIN">
+            <DashboardLayout />
+          </RoleBasedGuard>
+        </AuthGuard>
+      ),
+      children: [
+        {
+          path: "admin/dashboard",
+          element: <AdminDashboardPage />,
+        },
+        {
+          path: "admin/users",
+          element: <AdminUserListPage />,
+        },
+        {
+          path: "admin/users/:id",
+          element: <AdminUserDetailPage />,
         },
       ],
     },

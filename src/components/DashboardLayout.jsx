@@ -79,8 +79,8 @@ const DashboardLayout = () => {
   const adminMenuItems = [
     {
       icon: BookOpen,
-      label: "Lớp học",
-      path: "/classrooms",
+      label: "Dashboard",
+      path: PATH_ADMIN.dashboard,
     },
     {
       icon: Users,
@@ -199,7 +199,7 @@ const DashboardLayout = () => {
                 <div className="user-info-header">
                   <span className="user-name">{user?.fullName || "User"}</span>
                   <span className="user-role">
-                    {isTeacher ? "Giáo viên" : "Học sinh"}
+                    {isTeacher ? "Giáo viên" : isStudent ? "Học sinh" : "Quản trị viên"}
                   </span>
                 </div>
                 <ChevronDown size={16} />
