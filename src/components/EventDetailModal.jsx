@@ -10,8 +10,9 @@ import '@/assets/css/components/eventDetailModal.css';
  * @param {Object} props.session - ClassSessionResponseDTO
  * @param {Function} props.onEdit
  * @param {Function} props.onDelete
+ * @param {Function} props.onOpenAttendance
  */
-const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete }) => {
+const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete, onOpenAttendance }) => {
   if (!isOpen || !session) return null;
 
   const handleEdit = () => {
@@ -21,6 +22,11 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete }
 
   const handleDelete = () => {
     onDelete(session.id);
+    onClose();
+  };
+
+  const handleOpenAttendance = () => {
+    onOpenAttendance?.(session);
     onClose();
   };
 
@@ -82,6 +88,11 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete }
             <div className="event-detail-section-content">
               <div className="event-detail-label">Điểm danh</div>
               <div className="event-detail-value">{session.attendanceTaken ? 'Đã mở' : 'Chưa mở'}</div>
+              {session.id && (
+                <button type="button" className="event-detail-link event-detail-link-btn" onClick={handleOpenAttendance}>
+                  Mở trang điểm danh
+                </button>
+              )}
             </div>
           </div>
 

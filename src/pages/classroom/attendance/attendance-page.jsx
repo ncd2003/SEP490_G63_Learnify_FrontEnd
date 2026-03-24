@@ -4,7 +4,7 @@ import { CheckCircle2, CircleX, Loader2, Pencil, RotateCcw, Save, X, ArrowLeft }
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import useSchedule from "@/hooks/useSchedule";
 import useAttendance, { STATUS } from "@/hooks/use-attendance";
-import { classroomApi } from "@/apis/classroom.api";
+import { enrollmentApi } from "@/apis/enrollment.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PATH_TEACHER } from "@/routes/paths";
 import "@/assets/css/pages/classroom/attendancePage.css";
@@ -119,20 +119,20 @@ const AttendancePage = () => {
   } = useAttendance(sessionId, roster);
 
   useEffect(() => {
-    const fetchClassroom = async () => {
+    const fetchMembers = async () => {
       try {
         setClassroomLoading(true);
         setClassroomError("");
-        const response = await classroomApi.getClassroomById(classroomId);
-        setClassroom(response?.result ?? null);
+        const response = await enrollmentApi.getAcceptedMembers(classroomId);
+        setClassroom({ acceptedMembers: response?.result ?? [] });
       } catch (err) {
-        setClassroomError(err?.response?.data?.message ?? "Không thể tải thông tin lớp học.");
+        setClassroomError(err?.response?.data?.message ?? "Không thể tải danh sách thành viên lớp học.");
       } finally {
         setClassroomLoading(false);
       }
     };
 
-    fetchClassroom();
+    fetchMembers();
   }, [classroomId]);
 
   const handleSubmit = async () => {
@@ -242,7 +242,7 @@ const AttendancePage = () => {
 
             {rows.length === 0 ? (
               <div className="attendance-empty">
-                Không có dữ liệu học sinh. Vui lòng đảm bảo API classroom trả về danh sách học sinh để tạo bảng điểm danh.
+                Không có dữ liệu học sinh. Vui lòng đảm bảo lớp đã có thành viên được duyệt.
               </div>
             ) : (
               <table className="attendance-table">

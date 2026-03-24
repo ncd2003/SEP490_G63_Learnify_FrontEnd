@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, MapPin, Video } from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
 import EventDetailModal from '@/components/EventDetailModal';
 import useSchedule from '@/hooks/useSchedule';
 import scheduleApi from '@/apis/schedule.api';
+import { PATH_TEACHER } from '@/routes/paths';
 import { SESSION_TYPE } from '@/schema/scheduleSchema';
 import '@/assets/css/pages/classroom/classroomSchedule.css';
 import '@/assets/css/components/eventDetailModal.css';
@@ -97,6 +98,7 @@ const getCurrentUserRole = () => {
 
 const SchedulePage = () => {
   const { id: classroomId } = useParams();
+  const routerNavigate = useNavigate();
   const { sessions, loading, error, createSession, updateSession, deleteSession } = useSchedule(classroomId);
 
   const [viewMode, setViewMode] = useState(VIEW_MODES.WEEK);
@@ -211,6 +213,11 @@ const SchedulePage = () => {
   const handleEventDelete = async (sessionId) => {
     handleCloseEventDetail();
     await handleDelete(sessionId);
+  };
+
+  const handleOpenAttendance = (session) => {
+    if (!classroomId || !session?.id) return;
+    routerNavigate(PATH_TEACHER.classroom.attendanceSession(classroomId, session.id));
   };
 
   const handleJoinMeeting = async (session, e) => {
@@ -455,6 +462,7 @@ const SchedulePage = () => {
         onJoin={handleJoinMeeting}
         onEdit={handleEventEdit}
         onDelete={handleEventDelete}
+        onOpenAttendance={handleOpenAttendance}
       />
 
       {/* Day Detail Modal */}
