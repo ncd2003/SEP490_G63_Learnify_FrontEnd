@@ -29,6 +29,7 @@ const ClassroomListPage     = Loadable(lazy(() => import("@/pages/classroom/list
 const ClassroomPostPage     = Loadable(lazy(() => import("@/pages/classroom/feed/post-page")));
 const PendingRequestsPage   = Loadable(lazy(() => import("@/pages/classroom/PendingRequests")));
 const SchedulePage          = Loadable(lazy(() => import("@/pages/classroom/schedule/schedulePage")));
+const FoldersPage           = Loadable(lazy(() => import("@/pages/classroom/folders/foldersPage")));
 
 // ─── Not Found ────────────────────────────────────────────────────────────────
 const NotFoundPage          = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
@@ -111,6 +112,10 @@ const AppRoutes = () =>
           path: "classrooms",
           element: <ClassroomListPage />,
         },
+        {
+          path: "folders",
+          element: <Navigate to="/classrooms" replace />,
+        },
       ],
     },
 
@@ -136,6 +141,14 @@ const AppRoutes = () =>
       element: (
         <AuthGuard>
           <SchedulePage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/folders",
+      element: (
+        <AuthGuard>
+          <FoldersPage />
         </AuthGuard>
       ),
     },

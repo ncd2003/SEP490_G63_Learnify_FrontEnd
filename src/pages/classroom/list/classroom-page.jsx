@@ -44,7 +44,7 @@ const TABLE_HEADERS = [
   { key: "students", label: "Học sinh", className: "text-center" },
   { key: "lectures", label: "Bài giảng", className: "text-center" },
   { key: "assignments", label: "Bài tập", className: "text-center" },
-  { key: "documents", label: "Tài liệu", className: "text-center" },
+  { key: "folders", label: "Tài liệu", className: "text-center" },
 ];
 
 const ClassroomPage = () => {

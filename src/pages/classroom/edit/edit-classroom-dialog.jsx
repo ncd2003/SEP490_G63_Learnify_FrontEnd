@@ -5,7 +5,7 @@ import { classroomApi } from "@/apis/classroom.api";
 import { UpdateClassroomSchema } from "@/schema/classroom.schema";
 import "@/assets/css/pages/classroom/modals.css";
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/jpg"];
 
 const SUBJECT_OPTIONS = [
   "Toán",
@@ -88,7 +88,7 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Chỉ chấp nhận các định dạng ảnh: JPG, JPEG, PNG, GIF, WEBP");
+      toast.error("Chỉ chấp nhận các định dạng ảnh: JPG, JPEG, PNG, GIF");
       return;
     }
 
@@ -102,7 +102,7 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Chỉ chấp nhận các định dạng ảnh: JPG, JPEG, PNG, GIF, WEBP");
+      toast.error("Chỉ chấp nhận các định dạng ảnh: JPG, JPEG, PNG, GIF");
       return;
     }
 

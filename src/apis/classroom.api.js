@@ -17,8 +17,7 @@ const BASE = API_SUFFIX.CLASSROOM;
 /**
  * @returns {Promise<import("axios").AxiosResponse<ClassroomListResponse>>}
  */
-const getClassroomsByTeacher = () =>
-  apiRequest.get(`${BASE}/teacher`);
+const getClassroomsByUser = () => apiRequest.get(`${BASE}`);
 
 /**
  * @param {number} id
@@ -68,7 +67,7 @@ const deleteClassroom = (id) =>
 
 /* ─── Export ─────────────────────────────────────────────────────────────── */
 export const classroomApi = {
-  getClassroomsByTeacher,
+  getClassroomsByUser,
   getClassroomById,
   createClassroom,
   updateClassroom,

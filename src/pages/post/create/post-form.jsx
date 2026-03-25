@@ -3,6 +3,36 @@ import { ImagePlus, X, Paperclip, Pin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PostSchema } from "@/schema/post.schema";
 
+const ALLOWED_FILE_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "mp4",
+  "mov",
+  "avi",
+  "mp3",
+  "wav",
+  "pdf",
+  "doc",
+  "docx",
+  "txt",
+  "ppt",
+  "pptx",
+];
+
+const ALLOWED_FILE_LABEL = "JPG, JPEG, PNG, GIF, MP4, MOV, AVI, MP3, WAV, PDF, DOC, DOCX, TXT, PPT, PPTX";
+
+const MAX_PREVIEW_FILES = 6;
+
+const FILE_ACCEPT = ALLOWED_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(",");
+
+const isAllowedFile = (file) => {
+  const ext = file.name?.split(".").pop()?.toLowerCase();
+  if (!ext) return false;
+  return ALLOWED_FILE_EXTENSIONS.includes(ext);
+};
+
 /**
  * @param {{
  *   classroomId: number,
@@ -46,9 +76,27 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
   }, [content]);
 
   const handleFileChange = (e) => {
+    setError("");
     const selected = Array.from(e.target.files ?? []);
-    setFiles((prev) => [...prev, ...selected]);
-    // Reset input so re-selecting same file works
+    const validFiles = [];
+    const invalidFiles = [];
+
+    selected.forEach((file) => {
+      if (isAllowedFile(file)) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(file.name);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      setError(`Các tệp không được hỗ trợ: ${invalidFiles.join(", ")} (Chỉ chấp nhận: ${ALLOWED_FILE_LABEL})`);
+    }
+
+    if (validFiles.length > 0) {
+      setFiles((prev) => [...prev, ...validFiles]);
+    }
+
     e.target.value = "";
   };
 
@@ -167,7 +215,7 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
       {/* File chips */}
       {files.length > 0 && (
         <div className="post-form-files">
-          {files.map((f, i) => (
+          {files.slice(0, MAX_PREVIEW_FILES).map((f, i) => (
             <span key={i} className="post-form-file-chip">
               <Paperclip size={12} />
               {f.name}
@@ -176,6 +224,9 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
               </button>
             </span>
           ))}
+          {files.length > MAX_PREVIEW_FILES && (
+            <span className="post-form-file-chip post-form-file-chip--overflow">+{files.length - MAX_PREVIEW_FILES} tệp</span>
+          )}
         </div>
       )}
 
@@ -198,7 +249,7 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*"
+            accept={FILE_ACCEPT}
             className="hidden-file-input"
             onChange={handleFileChange}
           />
@@ -211,7 +262,7 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
               disabled={submitting}
             />
             <Pin size={14} />
-            <span>Ghím bài đăng</span>
+            <span>Ghim bài đăng</span>
           </label>
         </div>
 

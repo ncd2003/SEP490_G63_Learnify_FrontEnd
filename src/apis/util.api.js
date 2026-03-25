@@ -6,4 +6,6 @@ export const API_SUFFIX = {
   COMMENT:   '/comments',
   SCHEDULE:  '/classrooms',
   ATTENDANCE:'/attendance',
+  MATERIAL:  '/materials',
+  FOLDER:    '/folders',
 };

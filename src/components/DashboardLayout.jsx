@@ -50,11 +50,6 @@ const DashboardLayout = () => {
       path: PATH_TEACHER.students,
     },
     {
-      icon: FileText,
-      label: "Tài liệu",
-      path: PATH_TEACHER.documents,
-    },
-    {
       icon: ClipboardList,
       label: "Ngân hàng câu hỏi",
       path: PATH_TEACHER.questionBank,
