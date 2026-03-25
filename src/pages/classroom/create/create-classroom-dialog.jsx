@@ -19,7 +19,7 @@ const SUBJECT_OPTIONS = [
   "OTHER",
 ];
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/jpg"];
 
 const INITIAL_FIELDS = { name: "", description: "" };
 const INITIAL_ERRORS = { name: "", subject: "", description: "" };
@@ -67,7 +67,7 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.");
+      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG hoặc PNG dưới 5MB.");
       return;
     }
 
@@ -81,7 +81,7 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG, PNG, WEBP hoặc WEBP dưới 5MB.");
+      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG hoặc PNG dưới 5MB.");
       return;
     }
 

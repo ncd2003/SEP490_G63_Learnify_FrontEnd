@@ -27,9 +27,10 @@ export const PATH_TEACHER = {
     edit: (id) => `/classrooms/${id}/edit`,
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
+    folders: (id) => `/classrooms/${id}/folders`,
   },
   students: "/students",
-  documents: "/documents",
+  folders: "/folders",
   questionBank: "/question-bank",
   reports: "/reports",
 };
