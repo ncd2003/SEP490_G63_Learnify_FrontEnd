@@ -5,6 +5,7 @@ import { toast } from "sonner";
 /* ─── Public endpoints (no auth token needed) ───────────────────────────── */
 const PUBLIC_ENDPOINTS = [
   "/auth/login",
+  "/admin/login",
   "/auth/register",
   "/auth/verify-otp",
   "/auth/resend-otp",

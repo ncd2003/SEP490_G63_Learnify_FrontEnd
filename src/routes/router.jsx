@@ -2,10 +2,11 @@ import { lazy, Suspense } from "react";
 import { Navigate, useRoutes } from "react-router-dom";
 import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
+import RoleBasedGuard from "@/guards/role-base-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
-import { PATH_AUTH, PATH_TEACHER } from "@/routes/paths";
+import { PATH_AUTH, PATH_ADMIN, PATH_COMMON, PATH_TEACHER } from "@/routes/paths";
 
 const Loadable = (Component) => (props) => (
   <Suspense fallback={<LoadingScreen />}>
@@ -15,6 +16,7 @@ const Loadable = (Component) => (props) => (
 
 // Auth pages
 const LoginPage = Loadable(lazy(() => import("@/pages/Login")));
+const AdminLoginPage = Loadable(lazy(() => import("@/pages/AdminLogin")));
 const RegisterPage = Loadable(lazy(() => import("@/pages/Register")));
 const OtpVerificationPage = Loadable(
   lazy(() => import("@/pages/OtpVerification")),
@@ -30,6 +32,13 @@ const RoleSelectionPage = Loadable(lazy(() => import("@/pages/RoleSelection")));
 const HomePage = Loadable(lazy(() => import("@/pages/Home")));
 const OAuth2RedirectPage = Loadable(
   lazy(() => import("@/pages/OAuth2Redirect")),
+);
+const AdminDashboardPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminDashboard")),
+);
+const AdminUserListPage = Loadable(lazy(() => import("@/pages/admin/AdminUserList")));
+const AdminUserDetailPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminUserDetail")),
 );
 
 // User/Teacher pages
@@ -111,6 +120,14 @@ const AppRoutes = () =>
       ),
     },
     {
+      path: PATH_AUTH.adminLogin,
+      element: (
+        <GuestGuard>
+          <AdminLoginPage />
+        </GuestGuard>
+      ),
+    },
+    {
       path: PATH_AUTH.register,
       element: (
         <GuestGuard>
@@ -143,7 +160,7 @@ const AppRoutes = () =>
       element: <OAuth2RedirectPage />,
     },
     {
-      path: "profile",
+      path: PATH_COMMON.profile,
       element: (
         <AuthGuard>
           <UserProfilePage />
@@ -151,7 +168,7 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "change-password",
+      path: PATH_COMMON.changePassword,
       element: (
         <AuthGuard>
           <ChangePasswordPage />
@@ -199,6 +216,33 @@ const AppRoutes = () =>
         },
       ],
     },
+
+    // ── Admin routes (with DashboardLayout) ─────────────────────────────────
+    {
+      element: (
+        <AuthGuard>
+          <RoleBasedGuard role="ROLE_ADMIN">
+            <DashboardLayout />
+          </RoleBasedGuard>
+        </AuthGuard>
+      ),
+      children: [
+        {
+          path: PATH_ADMIN.dashboard,
+          element: <AdminDashboardPage />,
+        },
+        {
+          path: PATH_ADMIN.users.root,
+          element: <AdminUserListPage />,
+        },
+        {
+          path: PATH_ADMIN.users.detail(":id"),
+          element: <AdminUserDetailPage />,
+        },
+      ],
+    },
+
+    // ── Classroom detail routes (without DashboardLayout, uses ClassroomDetailLayout inside) ───
     {
       path: PATH_TEACHER.classroom.detail(":id"),
       element: (

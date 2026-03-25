@@ -6,6 +6,7 @@ import LogoutDialog from "@/components/LogoutDialog";
 import "@/assets/css/components/dashboardLayout.css";
 import {
   BookOpen,
+  BookMarked,
   Home,
   Users,
   FileText,
@@ -110,7 +111,35 @@ const DashboardLayout = () => {
     },
   ];
 
-  const menuItems = isTeacher ? teacherMenuItems : studentMenuItems;
+  // Admin menu items
+  const adminMenuItems = [
+    {
+      icon: BookOpen,
+      label: "Dashboard",
+      path: PATH_ADMIN.dashboard,
+    },
+    {
+      icon: Users,
+      label: "Quản lý người dùng",
+      path: PATH_ADMIN.users.root,
+    },
+    {
+      icon: BookMarked,
+      label: "Báo cáo hệ thống",
+      path: PATH_ADMIN.reports,
+    },
+    {
+      icon: Settings,
+      label: "Cài đặt",
+      path: PATH_ADMIN.settings,
+    },
+  ];
+
+  const menuItems = isTeacher
+    ? teacherMenuItems
+    : isStudent
+      ? studentMenuItems
+      : adminMenuItems;
   const activeMenuItem = menuItems.find(
     (item) =>
       location.pathname === item.path ||
@@ -201,8 +230,7 @@ const DashboardLayout = () => {
             <div className="page-context">
               <div className="page-context-label">Khu vực làm việc</div>
               <div className="page-context-title">
-                {activeMenuItem?.label ||
-                  (isTeacher ? "Giáo viên" : "Học sinh")}
+                {activeMenuItem?.label || roleLabel}
               </div>
             </div>
           </div>

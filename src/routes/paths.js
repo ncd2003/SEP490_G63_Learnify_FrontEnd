@@ -7,6 +7,7 @@ export const PATH_AUTH = {
   root: "/",
   home: "/home",
   login: "/login",
+  adminLogin: "/admin/login",
   register: "/register",
   verifyOtp: "/verify-otp",
   oauth2Redirect: "/oauth2/redirect",
@@ -65,6 +66,7 @@ export const PATH_STUDENT = {
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 export const PATH_ADMIN = {
   root: "/admin",
+  dashboard: "/admin/dashboard",
   users: {
     root: "/admin/users",
     detail: (id) => `/admin/users/${id}`,
