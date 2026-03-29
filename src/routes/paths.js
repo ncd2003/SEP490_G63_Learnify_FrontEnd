@@ -30,6 +30,7 @@ export const PATH_TEACHER = {
     detail: (id) => `/classrooms/${id}`,
     create: "/classrooms/new",
     edit: (id) => `/classrooms/${id}/edit`,
+    lecture: (id) => `/classrooms/${id}/lecture`,
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
     attendance: (id) => `/classrooms/${id}/attendance`,

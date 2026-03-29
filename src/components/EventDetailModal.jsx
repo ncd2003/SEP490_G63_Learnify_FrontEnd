@@ -8,12 +8,18 @@ import '@/assets/css/components/eventDetailModal.css';
  * @param {boolean} props.isOpen
  * @param {Function} props.onClose
  * @param {Object} props.session - ClassSessionResponseDTO
+ * @param {Function} props.onJoin
+ * @param {Function} props.canJoinSession
+ * @param {Function} props.getJoinDisabledReason
  * @param {Function} props.onEdit
  * @param {Function} props.onDelete
  * @param {Function} props.onOpenAttendance
  */
-const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete, onOpenAttendance }) => {
+const EventDetailModal = ({ isOpen, onClose, session, onJoin, canJoinSession, getJoinDisabledReason, onEdit, onDelete, onOpenAttendance }) => {
   if (!isOpen || !session) return null;
+
+  const canJoin = canJoinSession ? canJoinSession(session) : true;
+  const joinDisabledReason = getJoinDisabledReason ? getJoinDisabledReason(session) : null;
 
   const handleEdit = () => {
     onEdit(session);
@@ -46,6 +52,8 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete, 
             <button
               type="button"
               className="event-detail-join-btn"
+              disabled={!canJoin}
+              title={joinDisabledReason ?? 'Tham gia buổi học'}
               onClick={(e) => onJoin?.(session, e)}
             >
               <Video size={16} />
@@ -111,9 +119,32 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, onEdit, onDelete, 
               <Video size={20} className="event-detail-icon" />
               <div className="event-detail-section-content">
                 <div className="event-detail-label">Loại phòng: Jitsi Meet</div>
-                <button type="button" className="event-detail-link event-detail-link-btn" onClick={(e) => onJoin?.(session, e)}>
+                <button
+                  type="button"
+                  className="event-detail-link event-detail-link-btn"
+                  disabled={!canJoin}
+                  title={joinDisabledReason ?? 'Tham gia buổi học'}
+                  onClick={(e) => onJoin?.(session, e)}
+                >
                   Tham gia cuộc họp
                 </button>
+              </div>
+            </div>
+          )}
+
+          {session.recordingLink && (
+            <div className="event-detail-section">
+              <Video size={20} className="event-detail-icon" />
+              <div className="event-detail-section-content">
+                <div className="event-detail-label">Bản ghi buổi học</div>
+                <a
+                  href={session.recordingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="event-detail-link"
+                >
+                  Xem recording
+                </a>
               </div>
             </div>
           )}

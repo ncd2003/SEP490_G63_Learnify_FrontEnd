@@ -52,6 +52,9 @@ const PendingRequestsPage = Loadable(
 const SchedulePage = Loadable(
   lazy(() => import("@/pages/classroom/schedule/schedulePage")),
 );
+const ClassroomLecturePage = Loadable(
+  lazy(() => import("@/pages/classroom/lecture/lecture-page")),
+);
 const AttendanceListPage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
 );
@@ -220,6 +223,14 @@ const AppRoutes = () =>
       element: (
         <AuthGuard>
           <SchedulePage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: PATH_TEACHER.classroom.lecture(":id"),
+      element: (
+        <AuthGuard>
+          <ClassroomLecturePage />
         </AuthGuard>
       ),
     },
