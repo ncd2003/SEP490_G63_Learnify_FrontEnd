@@ -1,0 +1,287 @@
+/* ==========================================
+   QUESTION BANK PAGE STYLES
+   ========================================== */
+
+.question-bank-page {
+  min-height: 100%;
+}
+
+.qb-state-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 24px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.qb-card-wrapper {
+  padding: 14px 24px 24px;
+  background: #ffffff;
+}
+
+.qb-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(296px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.qb-bank-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 17px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qb-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.qb-card-title-wrap {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.qb-card-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qb-card-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #0f172a;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.qb-subject-chip {
+  border-radius: 999px;
+  border: 1px solid;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.qb-subject-math {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.qb-subject-physics {
+  color: #6d28d9;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.qb-subject-english {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.qb-subject-default {
+  color: #92400e;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.qb-card-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.qb-meta-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: #f8fafc;
+}
+
+.qb-meta-item span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.qb-meta-item strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.qb-meta-item-wide {
+  grid-column: span 2;
+}
+
+.qb-card-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #475569;
+  height: calc(1.6em * 3);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.qb-card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.qb-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  min-width: 0;
+}
+
+.qb-action-btn-create {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.qb-action-btn-create:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.qb-action-btn:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.qb-action-btn-danger {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.qb-action-btn-danger:hover {
+  color: #b91c1c;
+  border-color: #fca5a5;
+  background: #fee2e2;
+}
+
+.qb-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 24px 24px;
+  background: white;
+}
+
+.qb-pagination-info {
+  font-size: 14px;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.qb-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.qb-pagination-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.qb-pagination-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .qb-state-banner {
+    margin: 12px 12px 0;
+  }
+
+  .qb-card-wrapper {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .qb-meta-item-wide {
+    grid-column: auto;
+  }
+
+  .qb-card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .qb-action-btn {
+    width: 100%;
+  }
+
+  .qb-pagination {
+    justify-content: space-between;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

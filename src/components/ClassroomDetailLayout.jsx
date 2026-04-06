@@ -6,6 +6,7 @@ import {
   FileText, 
   FolderOpen, 
   BarChart3,
+  ClipboardCheck,
   ChevronLeft,
   Calendar,
   ChevronsLeft,
@@ -23,6 +24,7 @@ const MENU_ITEMS = [
   { key: 'assignments', label: 'Bài tập', icon: FileText, path: '/assignments' },
   { key: 'folders', label: 'Tài liệu', icon: FolderOpen, path: '/folders' },
   { key: 'grades', label: 'Bảng điểm', icon: BarChart3, path: '/grades' },
+  { key: 'attendance', label: 'Điểm danh', icon: ClipboardCheck, path: '/attendance' },
 ];
 
 const ClassroomDetailLayout = ({ children }) => {
@@ -60,6 +62,7 @@ const ClassroomDetailLayout = ({ children }) => {
 
   const getActiveMenuItem = () => {
     const path = location.pathname;
+    if (path.includes('/attendance')) return 'attendance';
     if (path.includes('/schedule')) return 'schedule';
     if (path.includes('/pending-requests')) return 'members';
     if (path.includes('/members')) return 'members';

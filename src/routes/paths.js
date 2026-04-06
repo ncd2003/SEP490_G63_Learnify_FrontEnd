@@ -1,4 +1,8 @@
 // ─── GUEST / AUTH ─────────────────────────────────────────────────────────────
+const path = (root, sublink) => `${root}${sublink}`;
+
+const ROOTS_TEACHER = "/";
+
 export const PATH_AUTH = {
   root: "/",
   home: "/home",
@@ -15,6 +19,7 @@ export const PATH_AUTH = {
 // ─── COMMON (All authenticated users) ─────────────────────────────────────────
 export const PATH_COMMON = {
   profile: "/profile",
+  changePassword: "/change-password",
 };
 
 // ─── TEACHER ──────────────────────────────────────────────────────────────────
@@ -28,11 +33,25 @@ export const PATH_TEACHER = {
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
     folders: (id) => `/classrooms/${id}/folders`,
+    attendance: (id) => `/classrooms/${id}/attendance`,
+    attendanceSession: (id, sessionId) => `/classrooms/${id}/attendance/${sessionId}`,
   },
-  students: "/students",
-  folders: "/folders",
-  questionBank: "/question-bank",
-  reports: "/reports",
+  students: path(ROOTS_TEACHER, "/students"),
+  documents: path(ROOTS_TEACHER, "/documents"),
+  questionBank: path(ROOTS_TEACHER, "/question-bank"),
+  questionBankDetail: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}`),
+  questionBankEdit: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/edit`),
+  questionBankMethod: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/questions/create-method`),
+  questionBankImport: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/import`),
+  questionBankAi: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/ai`),
+  questionBankManual: (bankId) =>
+    path(ROOTS_TEACHER, `/question-bank/${bankId}/manual`),
+  reports: path(ROOTS_TEACHER, "/reports"),
 };
 
 // ─── STUDENT ──────────────────────────────────────────────────────────────────

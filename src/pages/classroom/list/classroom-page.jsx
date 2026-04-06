@@ -1,11 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
   Plus,
   Trash2,
   LayoutList,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import useClassrooms from "@/hooks/use-classrooms";
 import useDebounce from "@/hooks/use-debounce";
 import ClassroomRow from "./classroom-row";
@@ -48,8 +47,7 @@ const TABLE_HEADERS = [
 ];
 
 const ClassroomPage = () => {
-  const { user } = useAuth();
-  const { classrooms, loading, error, refetch } = useClassrooms(user?.id);
+  const { paging, loading, error, refetch } = useClassrooms();
 
   const [activeTab, setActiveTab] = useState(TABS.ACTIVE);
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,11 +57,18 @@ const ClassroomPage = () => {
   const [editingClassroom, setEditingClassroom] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deletingClassroom, setDeletingClassroom] = useState(null);
+  // Pagination state
+  const [page, setPage] = useState(1);
+
+  // Khi đổi page thì gọi lại API
+  useEffect(() => {
+    refetch({ page, size: 10 });
+  }, [page, refetch]);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const filteredClassrooms = useMemo(() => {
-    let result = [...classrooms];
+    let result = Array.isArray(paging.content) ? [...paging.content] : [];
 
     // Filter by Subject
     if (subjectFilter) {
@@ -87,7 +92,7 @@ const ClassroomPage = () => {
     }
 
     return result;
-  }, [classrooms, debouncedSearch, sortValue, subjectFilter]);
+  }, [paging.content, debouncedSearch, sortValue, subjectFilter]);
 
   const handleMenuClick = (id) => setActiveMenu((prev) => (prev === id ? null : id));
   const handleMenuClose = () => setActiveMenu(null);
@@ -106,146 +111,174 @@ const ClassroomPage = () => {
 
   return (
     <div className="classroom-list-container">
-        {/* Tabs + top-right actions */}
-        <div className="tabs-header">
-          <div className="tabs-wrapper">
-            <button
-              onClick={() => setActiveTab(TABS.ACTIVE)}
-              className={`tab-button ${activeTab === TABS.ACTIVE ? "active" : ""}`}
-            >
-              Lớp của bạn{" "}
-              {filteredClassrooms.length > 0 && activeTab === TABS.ACTIVE
-                ? `(${filteredClassrooms.length})`
-                : ""}
-            </button>
-            {/* <button
-              onClick={() => setActiveTab(TABS.HIDDEN)}
-              className={`tab-button ${activeTab === TABS.HIDDEN ? "active" : ""}`}
-            >
-              Lớp đã ẩn
-            </button> */}
-          </div>
-
-          <div className="header-actions">
-            {/* <button className="btn-secondary">
-              <Trash2 size={15} />
-              <span>Thùng rác</span>
-            </button> */}
-            {/* <button className="btn-icon">
-              <LayoutList size={18} />
-            </button> */}
-            <button onClick={handleCreateOpen} className="btn-create">
-              <Plus size={16} />
-              Tạo lớp học
-            </button>
-          </div>
-        </div>
-
-        {/* Search + Sort */}
-        <div className="toolbar">
-          <div className="search-box">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm lớp học..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <select
-            value={subjectFilter}
-            onChange={(e) => setSubjectFilter(e.target.value)}
-            className="sort-select"
-            style={{ marginRight: "8px" }}
+      {/* Tabs + top-right actions */}
+      <div className="tabs-header">
+        <div className="tabs-wrapper">
+          <button
+            onClick={() => setActiveTab(TABS.ACTIVE)}
+            className={`tab-button ${activeTab === TABS.ACTIVE ? "active" : ""}`}
           >
-            {SUBJECT_FILTER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={sortValue}
-            onChange={(e) => setSortValue(e.target.value)}
-            className="sort-select"
+            Lớp của bạn{" "}
+            {filteredClassrooms.length > 0 && activeTab === TABS.ACTIVE
+              ? `(${filteredClassrooms.length})`
+              : ""}
+          </button>
+          {/* <button
+            onClick={() => setActiveTab(TABS.HIDDEN)}
+            className={`tab-button ${activeTab === TABS.HIDDEN ? "active" : ""}`}
           >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            Lớp đã ẩn
+          </button> */}
         </div>
-
-        {/* Table */}
-        <div className="table-wrapper">
-          {loading ? (
-            <div className="empty-state">Đang tải danh sách lớp học...</div>
-          ) : error ? (
-            <div className="empty-state error">{error}</div>
-          ) : (
-            <table className="classroom-table">
-              <thead>
-                <tr>
-                  {TABLE_HEADERS.map((h) => (
-                    <th key={h.key} className={h.className}>
-                      {h.label}
-                    </th>
-                  ))}
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filteredClassrooms.length === 0 ? (
-                  <tr>
-                    <td colSpan={TABLE_HEADERS.length + 1} className="empty-cell">
-                      {searchQuery
-                        ? "Không tìm thấy lớp học phù hợp."
-                        : "Bạn chưa có lớp học nào."}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredClassrooms.map((classroom) => (
-                    <ClassroomRow
-                      key={classroom.id}
-                      classroom={classroom}
-                      onMenuClick={handleMenuClick}
-                      activeMenu={activeMenu}
-                      onMenuClose={handleMenuClose}
-                      onEdit={handleEditClick}
-                      onDelete={handleDeleteClick}
-                    />
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
+        <div className="header-actions">
+          {/* <button className="btn-secondary">
+            <Trash2 size={15} />
+            <span>Thùng rác</span>
+          </button> */}
+          {/* <button className="btn-icon">
+            <LayoutList size={18} />
+          </button> */}
+          <button onClick={handleCreateOpen} className="btn-create">
+            <Plus size={16} />
+            Tạo lớp học
+          </button>
         </div>
-
-        {editingClassroom && (
-          <EditClassroomDialog
-            classroom={editingClassroom}
-            onClose={handleEditClose}
-            onSuccess={handleEditSuccess}
-          />
-        )}
-
-        {showCreateModal && (
-          <CreateClassroomDialog
-            onClose={handleCreateClose}
-            onSuccess={handleCreateSuccess}
-          />
-        )}
-
-        {deletingClassroom && (
-          <DeleteClassroomDialog
-            classroom={deletingClassroom}
-            onClose={handleDeleteClose}
-            onSuccess={handleDeleteSuccess}
-          />
-        )}
       </div>
+
+
+
+      {/* Các dialog */}
+      {editingClassroom && (
+        <EditClassroomDialog
+          classroom={editingClassroom}
+          onClose={handleEditClose}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateClassroomDialog
+          onClose={handleCreateClose}
+          onSuccess={handleCreateSuccess}
+        />
+      )}
+
+      {deletingClassroom && (
+        <DeleteClassroomDialog
+          classroom={deletingClassroom}
+          onClose={handleDeleteClose}
+          onSuccess={handleDeleteSuccess}
+        />
+      )}
+
+
+
+      {/* Search + Sort */}
+      <div className="toolbar">
+        <div className="search-box">
+          <Search size={16} className="search-icon" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm lớp học..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
+        </div>
+        <select
+          value={subjectFilter}
+          onChange={(e) => setSubjectFilter(e.target.value)}
+          className="sort-select"
+          style={{ marginRight: "8px" }}
+        >
+          {SUBJECT_FILTER_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={sortValue}
+          onChange={(e) => setSortValue(e.target.value)}
+          className="sort-select"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Table */}
+      <div className="table-wrapper">
+        {loading ? (
+          <div className="empty-state">Đang tải danh sách lớp học...</div>
+        ) : error ? (
+          <div className="empty-state error">{error}</div>
+        ) : (
+          <table className="classroom-table">
+            <thead>
+              <tr>
+                {TABLE_HEADERS.map((h) => (
+                  <th key={h.key} className={h.className}>
+                    {h.label}
+                  </th>
+                ))}
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filteredClassrooms.length === 0 ? (
+                <tr>
+                  <td colSpan={TABLE_HEADERS.length + 1} className="empty-cell">
+                    {searchQuery
+                      ? "Không tìm thấy lớp học phù hợp."
+                      : "Bạn chưa có lớp học nào."}
+                  </td>
+                </tr>
+              ) : (
+                filteredClassrooms.map((classroom) => (
+                  <ClassroomRow
+                    key={classroom.id}
+                    classroom={classroom}
+                    onMenuClick={handleMenuClick}
+                    activeMenu={activeMenu}
+                    onMenuClose={handleMenuClose}
+                    onEdit={handleEditClick}
+                    onDelete={handleDeleteClick}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
+        {/* Pagination */}
+        <div className="classroom-pagination">
+          <button
+            type="button"
+            className="classroom-pagination-btn"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={loading || page === 1}
+          >
+            ← Trước
+          </button>
+          <span className="classroom-pagination-info">
+            Trang {page}/{paging.totalPages}
+          </span>
+          <button
+            type="button"
+            className="classroom-pagination-btn"
+            onClick={() => setPage((p) => Math.min(paging.totalPages, p + 1))}
+            disabled={loading || page === paging.totalPages}
+          >
+            Sau →
+          </button>
+        </div>
+
+      </div>
+
+    </div>
   );
 };
 

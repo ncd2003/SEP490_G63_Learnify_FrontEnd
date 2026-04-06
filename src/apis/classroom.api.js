@@ -7,17 +7,30 @@ import {
 } from "@/schema/classroom.schema";
 
 /** @typedef {import("@/schema/classroom.schema").TClassroom} TClassroom */
+/**
+ * @typedef {Object} PagingResult
+ * @property {TClassroom[]} content
+ * @property {number} pageNumber
+ * @property {number} pageSize
+ * @property {number} totalElements
+ * @property {number} totalPages
+ * @property {boolean} last
+ */
+/** @typedef {import("@/schema/type.schema").ApiResponse<PagingResult>} ClassroomPagingResponse */
 /** @typedef {import("@/schema/type.schema").ApiResponse<TClassroom>} ClassroomResponse */
-/** @typedef {import("@/schema/type.schema").ApiResponse<TClassroom[]>} ClassroomListResponse */
 
 const BASE = API_SUFFIX.CLASSROOM;
 
 /* ─── Classroom CRUD ─────────────────────────────────────────────────────── */
 
 /**
- * @returns {Promise<import("axios").AxiosResponse<ClassroomListResponse>>}
+ * @param {Object} [params]
+ * @param {number} [params.page]
+ * @param {number} [params.size]
+ * @returns {Promise<import("axios").AxiosResponse<ClassroomPagingResponse>>}
  */
-const getClassroomsByUser = () => apiRequest.get(`${BASE}`);
+const getClassroomsByUser = (params = {}) =>
+  apiRequest.get(`${BASE}`, { params });
 
 /**
  * @param {number} id
@@ -65,6 +78,13 @@ const updateClassroom = (id, data, file = null) => {
 const deleteClassroom = (id) =>
   apiRequest.delete(`${BASE}/${id}`);
 
+/**
+ * @param {string} code
+ * @returns {Promise<import("axios").AxiosResponse<ClassroomResponse>>}
+ */
+const searchByCode = (code) =>
+  apiRequest.get(`${BASE}/search`, { params: { code } });
+
 /* ─── Export ─────────────────────────────────────────────────────────────── */
 export const classroomApi = {
   getClassroomsByUser,
@@ -72,4 +92,5 @@ export const classroomApi = {
   createClassroom,
   updateClassroom,
   deleteClassroom,
+  searchByCode,
 };

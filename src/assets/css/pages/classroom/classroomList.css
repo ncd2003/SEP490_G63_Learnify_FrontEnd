@@ -377,3 +377,60 @@
   color: #9ca3af;
   font-size: 14px;
 }
+
+/* Pagination */
+.classroom-pagination {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  width: fit-content;
+  margin-left: auto;
+}
+
+.classroom-pagination-btn {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+}
+
+.classroom-pagination-btn:hover:not(:disabled) {
+  color: #111827;
+  background: #f9fafb;
+}
+
+.classroom-pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.classroom-pagination-btn:first-child {
+  border-right: 1px solid #d1d5db;
+}
+
+.classroom-pagination-info {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+  padding: 0 16px;
+  min-width: 100px;
+  text-align: center;
+  border-right: 1px solid #d1d5db;
+}
+
+.classroom-pagination-btn:last-child {
+  border-left: none;
+}

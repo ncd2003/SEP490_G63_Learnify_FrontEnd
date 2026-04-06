@@ -3,6 +3,20 @@ import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
+const MSG04 = "Mã OTP đã nhập không chính xác hoặc đã hết hạn.";
+
+const isInvalidOrExpiredOtp = (message = "") => {
+  const normalized = String(message).toLowerCase();
+  return (
+    normalized.includes("otp") &&
+    (normalized.includes("invalid") ||
+      normalized.includes("expired") ||
+      normalized.includes("không hợp lệ") ||
+      normalized.includes("không chính xác") ||
+      normalized.includes("hết hạn"))
+  );
+};
+
 const OTPVerifyScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,7 +112,7 @@ const OTPVerifyScreen = () => {
         err.response?.data?.message ||
         err.message ||
         "Xác thực thất bại. Vui lòng thử lại.";
-      setError(errorMessage);
+      setError(isInvalidOrExpiredOtp(errorMessage) ? MSG04 : errorMessage);
       setIsLoading(false);
     }
   };
@@ -168,12 +182,14 @@ const OTPVerifyScreen = () => {
                 Chúng tôi đã gửi mã xác thực gồm 6 chữ số đến
                 <span className="email-highlight"> {email}</span>
               </p>
+              <p className="otp-expiry-note">
+                Lưu ý: Mã OTP chỉ có hiệu lực trong 5 phút kể từ thời điểm gửi.
+              </p>
 
               <form onSubmit={handleVerify} className="verify-form">
                 {successMessage && (
                   <div className="success-message">{successMessage}</div>
                 )}
-                {error && <div className="error-message">{error}</div>}
 
                 <div className="otp-inputs" onPaste={handlePaste}>
                   {otp.map((digit, index) => (
@@ -191,6 +207,7 @@ const OTPVerifyScreen = () => {
                     />
                   ))}
                 </div>
+                {error && <div className="error-text">{error}</div>}
 
                 <button
                   type="submit"
@@ -215,14 +232,7 @@ const OTPVerifyScreen = () => {
               </div>
 
               <div className="help-text">
-                Không nhận được mã? Kiểm tra thư mục spam hoặc{" "}
-                <button
-                  className="link-button"
-                  onClick={handleResend}
-                  disabled={!canResend}
-                >
-                  gửi lại mã
-                </button>
+                Không nhận được mã? Vui lòng kiểm tra thư mục spam
               </div>
             </div>
           </>
@@ -402,8 +412,15 @@ const OTPVerifyScreen = () => {
           font-size: 15px;
           color: #666;
           line-height: 1.6;
-          margin-bottom: 40px;
+          margin-bottom: 12px;
           animation: fadeIn 0.6s ease-out 0.3s backwards;
+        }
+
+        .otp-expiry-note {
+          font-size: 13px;
+          color: #475569;
+          margin-bottom: 28px;
+          animation: fadeIn 0.6s ease-out 0.35s backwards;
         }
 
         .email-highlight {
@@ -425,6 +442,14 @@ const OTPVerifyScreen = () => {
           margin-bottom: 20px;
           text-align: center;
           animation: shake 0.5s ease-in-out;
+        }
+
+        .error-text {
+          color: #dc2626;
+          font-size: 14px;
+          font-weight: 500;
+          text-align: center;
+          margin-bottom: 16px;
         }
 
         .success-message {

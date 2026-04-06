@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Eye, EyeOff, ShieldCheck, Check, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { authApi } from "@/apis/auth.api";
 import { PATH_AUTH } from "@/routes/paths";
+
+const MSG05 =
+  "Mật khẩu không khớp. Vui lòng đảm bảo cả hai trường mật khẩu đều giống nhau.";
+const TOAST_ID_MSG05 = "reset-msg05";
+const TOAST_ID_RESET_GENERIC = "reset-msg-generic";
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -16,7 +22,6 @@ const ResetPasswordPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
-  const [error, setError] = useState("");
   const [passwordStrength, setPasswordStrength] = useState(0);
 
   useEffect(() => {
@@ -61,10 +66,9 @@ const ResetPasswordPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (newPassword !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+      toast.error(MSG05, { id: TOAST_ID_MSG05 });
       return;
     }
 
@@ -87,7 +91,7 @@ const ResetPasswordPage = () => {
         err.response?.data?.message ||
         err.message ||
         "Cập nhật mật khẩu thất bại. Vui lòng thử lại.";
-      setError(errorMessage);
+      toast.error(errorMessage, { id: TOAST_ID_RESET_GENERIC });
     } finally {
       setIsLoading(false);
     }
@@ -116,8 +120,6 @@ const ResetPasswordPage = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="reset-form">
-            {error && <div className="error-message">{error}</div>}
-
             {/* New Password */}
             <div className="input-group">
               <label
