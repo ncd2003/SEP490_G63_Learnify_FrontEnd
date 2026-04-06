@@ -2,6 +2,8 @@ export const API_SUFFIX = {
   AUTH: "/auth",
   ADMIN:"/admin",
   USER: "/users",
+  REPORT: "/user-reports",
+  NOTIFICATION: "/notifications",
   CLASSROOM: "/classrooms",
   QUESTION_BANK: "/question-banks",
   POST: "/posts",

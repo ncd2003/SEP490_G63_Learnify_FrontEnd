@@ -30,6 +30,12 @@ const ForgotPasswordOtpPage = Loadable(
 const ResetPasswordPage = Loadable(lazy(() => import("@/pages/ResetPassword")));
 const RoleSelectionPage = Loadable(lazy(() => import("@/pages/RoleSelection")));
 const HomePage = Loadable(lazy(() => import("@/pages/Home")));
+const TermsOfServicePage = Loadable(
+  lazy(() => import("@/pages/TermsOfService")),
+);
+const PrivacyPolicyPage = Loadable(
+  lazy(() => import("@/pages/PrivacyPolicy")),
+);
 const OAuth2RedirectPage = Loadable(
   lazy(() => import("@/pages/OAuth2Redirect")),
 );
@@ -39,6 +45,12 @@ const AdminDashboardPage = Loadable(
 const AdminUserListPage = Loadable(lazy(() => import("@/pages/admin/AdminUserList")));
 const AdminUserDetailPage = Loadable(
   lazy(() => import("@/pages/admin/AdminUserDetail")),
+);
+const AdminSystemNotificationPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminSystemNotification")),
+);
+const AdminManageReportPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminManageReport")),
 );
 
 // User/Teacher pages
@@ -90,6 +102,9 @@ const CreateQuestionManualPage = Loadable(
     () => import("@/pages/question-bank/manual/create-question-manual-page"),
   ),
 );
+const SendUserReportPage = Loadable(
+  lazy(() => import("@/pages/report/SendUserReportPage")),
+);
 
 const NotFoundPage = Loadable(
   lazy(() => import("@/pages/not-found/not-found-page")),
@@ -101,6 +116,20 @@ const ClassroomListOrStudentPage = () => {
   return <ClassroomListPage />;
 };
 
+const HomeRoute = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (user?.role === "ROLE_ADMIN") {
+    return <Navigate to={PATH_ADMIN.dashboard} replace />;
+  }
+
+  return <HomePage />;
+};
+
 const AppRoutes = () =>
   useRoutes([
     {
@@ -109,7 +138,15 @@ const AppRoutes = () =>
     },
     {
       path: "home",
-      element: <HomePage />,
+      element: <HomeRoute />,
+    },
+    {
+      path: PATH_AUTH.terms,
+      element: <TermsOfServicePage />,
+    },
+    {
+      path: PATH_AUTH.privacy,
+      element: <PrivacyPolicyPage />,
     },
     {
       path: PATH_AUTH.login,
@@ -191,6 +228,10 @@ const AppRoutes = () =>
           element: <QuestionBankPage />,
         },
         {
+          path: PATH_TEACHER.reports,
+          element: <SendUserReportPage />,
+        },
+        {
           path: PATH_TEACHER.questionBankDetail(":bankId"),
           element: <ResourceBankDetailPage />,
         },
@@ -238,6 +279,14 @@ const AppRoutes = () =>
         {
           path: PATH_ADMIN.users.detail(":id"),
           element: <AdminUserDetailPage />,
+        },
+        {
+          path: PATH_ADMIN.systemNotifications,
+          element: <AdminSystemNotificationPage />,
+        },
+        {
+          path: PATH_ADMIN.reports,
+          element: <AdminManageReportPage />,
         },
       ],
     },

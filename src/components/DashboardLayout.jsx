@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LogoutDialog from "@/components/LogoutDialog";
+import { notificationApi } from "@/apis/notification.api";
 import "@/assets/css/components/dashboardLayout.css";
 import {
   BookOpen,
@@ -18,6 +19,8 @@ import {
   ChevronRight,
   Database,
   BarChart2,
+  Bell,
+  CheckCheck,
 } from "lucide-react";
 import {
   PATH_AUTH,
@@ -34,6 +37,10 @@ const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationLoading, setIsNotificationLoading] = useState(false);
 
   const normalizedRole = user?.role?.toUpperCase?.() || "";
   const isTeacher = normalizedRole === "ROLE_TEACHER";
@@ -48,8 +55,90 @@ const DashboardLayout = () => {
         : "Người dùng";
 
   const handleLogoutClick = () => {
+    setIsNotificationOpen(false);
     setIsUserMenuOpen(false);
     setIsLogoutDialogOpen(true);
+  };
+
+  const formatTimeAgo = (createdAt) => {
+    if (!createdAt) return "";
+
+    const diffMs = Date.now() - new Date(createdAt).getTime();
+    const diffMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+
+    if (diffMinutes < 1) return "Vua xong";
+    if (diffMinutes < 60) return `${diffMinutes} phut truoc`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} gio truoc`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} ngay truoc`;
+  };
+
+  const fetchNotificationData = async ({ withList = true } = {}) => {
+    setIsNotificationLoading(true);
+    try {
+      const calls = [notificationApi.getUnreadCount()];
+      if (withList) {
+        calls.push(notificationApi.getMyNotifications());
+      }
+
+      const [unreadResponse, listResponse] = await Promise.all(calls);
+
+      setUnreadCount(Number(unreadResponse?.result || 0));
+      if (withList && Array.isArray(listResponse?.result)) {
+        setNotifications(listResponse.result);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setIsNotificationLoading(false);
+    }
+  };
+
+  const handleToggleNotification = async () => {
+    const nextState = !isNotificationOpen;
+    setIsNotificationOpen(nextState);
+    setIsUserMenuOpen(false);
+
+    if (nextState) {
+      await fetchNotificationData({ withList: true });
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification?.id) return;
+
+    try {
+      if (!notification.read) {
+        await notificationApi.markAsRead(notification.id);
+      }
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notification.id ? { ...item, read: true } : item,
+        ),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - (notification.read ? 0 : 1)));
+
+      if (notification.redirectUrl) {
+        navigate(notification.redirectUrl);
+      }
+      setIsNotificationOpen(false);
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
   };
 
   const handleConfirmLogout = async () => {
@@ -124,8 +213,13 @@ const DashboardLayout = () => {
       path: PATH_ADMIN.users.root,
     },
     {
+      icon: Bell,
+      label: "Quản lý thông báo",
+      path: PATH_ADMIN.systemNotifications,
+    },
+    {
       icon: BookMarked,
-      label: "Báo cáo hệ thống",
+      label: "Quản lý báo cáo",
       path: PATH_ADMIN.reports,
     },
     {
@@ -151,6 +245,28 @@ const DashboardLayout = () => {
       location.pathname === path || location.pathname.startsWith(path + "/")
     );
   };
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    fetchNotificationData({ withList: false });
+    const timer = window.setInterval(() => {
+      fetchNotificationData({ withList: false });
+    }, 30000);
+
+    return () => window.clearInterval(timer);
+  }, [user?.id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".notification-wrapper")) {
+        setIsNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="dashboard-layout">
@@ -236,10 +352,80 @@ const DashboardLayout = () => {
           </div>
 
           <div className="header-right">
+            <div className="notification-wrapper">
+              <button
+                className="notification-trigger"
+                onClick={handleToggleNotification}
+                aria-label="Thong bao"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="notification-badge">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationOpen && (
+                <div className="notification-dropdown">
+                  <div className="notification-header">
+                    <h3>Thong bao</h3>
+                    <button
+                      className="mark-all-btn"
+                      onClick={handleMarkAllAsRead}
+                      disabled={unreadCount === 0}
+                    >
+                      <CheckCheck size={14} />
+                      <span>Danh dau tat ca da doc</span>
+                    </button>
+                  </div>
+
+                  <div className="notification-list">
+                    {isNotificationLoading ? (
+                      <div className="notification-empty">Dang tai thong bao...</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="notification-empty">Ban chua co thong bao nao</div>
+                    ) : (
+                      notifications.slice(0, 8).map((notification) => (
+                        <button
+                          key={notification.id}
+                          className={`notification-item ${notification.read ? "read" : "unread"}`}
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="notification-item-title-row">
+                            <div className="notification-item-title">{notification.title}</div>
+                            {!notification.read && <span className="notification-dot" />}
+                          </div>
+                          <div className="notification-item-desc">
+                            {notification.shortDescription || "Khong co mo ta"}
+                          </div>
+                          <div className="notification-item-time">
+                            {formatTimeAgo(notification.createdAt)}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="notification-footer">
+                    <button
+                      className="view-all-btn"
+                      onClick={() => setIsNotificationOpen(false)}
+                    >
+                      Xem tat ca
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="user-menu-wrapper">
               <button
                 className="user-menu-trigger"
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                onClick={() => {
+                  setIsNotificationOpen(false);
+                  setIsUserMenuOpen(!isUserMenuOpen);
+                }}
               >
                 <div className="user-avatar">
                   {user?.avatarUrl ? (

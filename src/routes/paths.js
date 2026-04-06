@@ -9,6 +9,8 @@ export const PATH_AUTH = {
   login: "/login",
   adminLogin: "/admin/login",
   register: "/register",
+  terms: "/terms-of-service",
+  privacy: "/privacy-policy",
   verifyOtp: "/verify-otp",
   oauth2Redirect: "/oauth2/redirect",
   selectRole: "/select-role",
@@ -76,5 +78,6 @@ export const PATH_ADMIN = {
     detail: (id) => `/admin/classrooms/${id}`,
   },
   reports: "/admin/reports",
+  systemNotifications: "/admin/system-notifications",
   settings: "/admin/settings",
 };
