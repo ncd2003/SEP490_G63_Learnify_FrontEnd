@@ -3,6 +3,7 @@ import { Eye, EyeOff, BookOpen, Check, X } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
+import { PATH_AUTH } from "@/routes/paths";
 
 const MSG02 =
   "Các trường bắt buộc phải được điền đầy đủ và tất cả giá trị nhập vào phải hợp lệ.";
@@ -498,8 +499,8 @@ const RegisterScreen = () => {
                 />
                 <span className="checkbox-custom"></span>
                 <span className="checkbox-text">
-                  Tôi đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
-                  <a href="#">Chính sách bảo mật</a>
+                  Tôi đồng ý với <Link to={PATH_AUTH.terms}>Điều khoản dịch vụ</Link> và{" "}
+                  <Link to={PATH_AUTH.privacy}>Chính sách bảo mật</Link>
                 </span>
               </label>
               {shouldShowInlineError(fieldErrors.agreeTerms) && (

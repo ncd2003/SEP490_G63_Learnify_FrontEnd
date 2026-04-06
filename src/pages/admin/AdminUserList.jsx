@@ -22,6 +22,20 @@ const STATUS_OPTIONS = [
   { label: "Đã xóa", value: "DELETED" },
 ];
 
+const CREATE_ROLE_OPTIONS = [
+  { label: "-- Chọn vai trò --", value: "" },
+  { label: "Admin", value: "ROLE_ADMIN" },
+  { label: "Teacher", value: "ROLE_TEACHER" },
+  { label: "Student", value: "ROLE_STUDENT" },
+];
+
+const INITIAL_CREATE_FORM = {
+  fullName: "",
+  email: "",
+  phoneNumber: "",
+  role: "",
+};
+
 const formatRole = (role) => {
   switch (role) {
     case "ROLE_ADMIN":
@@ -30,8 +44,6 @@ const formatRole = (role) => {
       return "Teacher";
     case "ROLE_STUDENT":
       return "Student";
-    case "ROLE_GUEST":
-      return "Guest";
     default:
       return role || "-";
   }
@@ -96,9 +108,16 @@ const AdminUserListPage = () => {
   const [rows, setRows] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
+  const [createFieldErrors, setCreateFieldErrors] = useState({});
+  const [createSuccess, setCreateSuccess] = useState("");
+  const [createError, setCreateError] = useState("");
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -130,7 +149,7 @@ const AdminUserListPage = () => {
     };
 
     fetchUsers();
-  }, [keyword, role, status, page, size]);
+  }, [keyword, role, status, page, size, reloadKey]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -147,6 +166,107 @@ const AdminUserListPage = () => {
     setPage(1);
   };
 
+  const openCreateModal = () => {
+    setCreateForm(INITIAL_CREATE_FORM);
+    setCreateFieldErrors({});
+    setCreateSuccess("");
+    setCreateError("");
+    setIsCreateModalOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    if (creating) return;
+    setIsCreateModalOpen(false);
+  };
+
+  const handleCreateFieldChange = (field, value) => {
+    setCreateForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setCreateFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setCreateSuccess("");
+    setCreateError("");
+  };
+
+  const validateCreateForm = () => {
+    const errors = {};
+
+    if (!createForm.fullName.trim()) {
+      errors.fullName = "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.";
+    }
+
+    if (!createForm.email.trim()) {
+      errors.email = "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.";
+    }
+
+    if (!createForm.role) {
+      errors.role = "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.";
+    }
+
+    if (createForm.email.trim() && !/^\S+@\S+\.\S+$/.test(createForm.email.trim())) {
+      errors.email = "Email không hợp lệ.";
+    }
+
+    setCreateFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    if (!validateCreateForm()) return;
+
+    try {
+      setCreating(true);
+      setCreateSuccess("");
+      setCreateError("");
+
+      const payload = {
+        fullName: createForm.fullName.trim(),
+        email: createForm.email.trim(),
+        role: createForm.role,
+      };
+
+      if (createForm.phoneNumber.trim()) {
+        payload.phoneNumber = createForm.phoneNumber.trim();
+      }
+
+      const response = await adminApi.createUser(payload);
+      setCreateSuccess(response?.message || "MSG127: Tạo người dùng mới thành công. Mật khẩu đã được gửi qua email.");
+      setCreateForm(INITIAL_CREATE_FORM);
+      setCreateFieldErrors({});
+      setPage(1);
+      setReloadKey((prev) => prev + 1);
+    } catch (err) {
+      const backendMessage = err?.response?.data?.message;
+
+      if (backendMessage && /email/i.test(backendMessage)) {
+        setCreateFieldErrors((prev) => ({
+          ...prev,
+          email: `MSG128: ${backendMessage}`,
+        }));
+        return;
+      }
+
+      if (backendMessage && /đầy đủ|bắt buộc/i.test(backendMessage)) {
+        setCreateFieldErrors({
+          fullName: "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.",
+          email: "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.",
+          role: "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.",
+        });
+        return;
+      }
+
+      setCreateError(backendMessage || "Không thể tạo người dùng mới. Vui lòng thử lại.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="admin-user-list-page">
       <div className="header-card">
@@ -157,9 +277,14 @@ const AdminUserListPage = () => {
             Theo dõi tài khoản người dùng, tìm kiếm nhanh theo tên/email và lọc theo vai trò hoặc trạng thái.
           </p>
         </div>
-        <div className="header-icon">
-          <UserCog size={20} />
-          <span>{totalElements.toLocaleString("vi-VN")} tài khoản</span>
+        <div className="header-tools">
+          <div className="header-icon">
+            <UserCog size={20} />
+            <span>{totalElements.toLocaleString("vi-VN")} tài khoản</span>
+          </div>
+          <button type="button" className="btn-create-user" onClick={openCreateModal}>
+            Thêm người dùng
+          </button>
         </div>
       </div>
 
@@ -321,6 +446,87 @@ const AdminUserListPage = () => {
         </div>
       </div>
 
+      {isCreateModalOpen && (
+        <div className="create-modal-backdrop" onClick={closeCreateModal}>
+          <div className="create-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="create-modal-header">
+              <h3>Thêm người dùng mới</h3>
+            </div>
+
+            <form className="create-form" onSubmit={handleCreateUser}>
+              <div className="create-form-grid two-cols">
+                <div className="create-field">
+                  <label htmlFor="create-full-name">Họ và tên *</label>
+                  <input
+                    id="create-full-name"
+                    value={createForm.fullName}
+                    onChange={(e) => handleCreateFieldChange("fullName", e.target.value)}
+                    placeholder="Nhập họ và tên"
+                  />
+                  {createFieldErrors.fullName && <p className="create-field-error">{createFieldErrors.fullName}</p>}
+                </div>
+
+                <div className="create-field">
+                  <label htmlFor="create-email">Email *</label>
+                  <input
+                    id="create-email"
+                    value={createForm.email}
+                    onChange={(e) => handleCreateFieldChange("email", e.target.value)}
+                    placeholder="Nhập email"
+                  />
+                  {createFieldErrors.email && <p className="create-field-error">{createFieldErrors.email}</p>}
+                </div>
+              </div>
+
+              <div className="create-form-grid two-cols">
+                <div className="create-field">
+                  <label htmlFor="create-phone">Số điện thoại (tùy chọn)</label>
+                  <input
+                    id="create-phone"
+                    value={createForm.phoneNumber}
+                    onChange={(e) => handleCreateFieldChange("phoneNumber", e.target.value)}
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+
+                <div className="create-field">
+                  <label htmlFor="create-role">Vai trò *</label>
+                  <select
+                    id="create-role"
+                    value={createForm.role}
+                    onChange={(e) => handleCreateFieldChange("role", e.target.value)}
+                  >
+                    {CREATE_ROLE_OPTIONS.map((item) => (
+                      <option value={item.value} key={item.value || "create-role-empty"}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                  {createFieldErrors.role && <p className="create-field-error">{createFieldErrors.role}</p>}
+                </div>
+              </div>
+
+              <div className="create-note-box">
+                Hệ thống sẽ sinh mật khẩu ngẫu nhiên. Admin không được nhập hoặc xem mật khẩu này. Người dùng bắt buộc đổi
+                mật khẩu sau lần đăng nhập đầu tiên.
+              </div>
+
+              {createSuccess && <p className="create-success">{createSuccess}</p>}
+              {createError && <p className="create-error">{createError}</p>}
+
+              <div className="create-actions">
+                <button type="button" className="btn-secondary" onClick={closeCreateModal} disabled={creating}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn-primary" disabled={creating}>
+                  {creating ? "Đang tạo..." : "Tạo tài khoản"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .admin-user-list-page {
           display: grid;
@@ -337,6 +543,14 @@ const AdminUserListPage = () => {
           align-items: flex-start;
           justify-content: space-between;
           gap: 12px;
+        }
+
+        .header-tools {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
         }
 
         .screen-label {
@@ -375,12 +589,149 @@ const AdminUserListPage = () => {
           white-space: nowrap;
         }
 
+        .btn-create-user {
+          min-height: 38px;
+          border: 1px solid #0f172a;
+          background: #0f172a;
+          color: #fff;
+          border-radius: 8px;
+          padding: 0 14px;
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+        }
+
         .filter-card,
         .table-card {
           border: 1px solid #e2e8f0;
           border-radius: 14px;
           background: #fff;
           padding: 14px;
+        }
+
+        .create-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow-y: auto;
+          padding: 24px 16px;
+          z-index: 1200;
+          backdrop-filter: blur(2px);
+        }
+
+        .create-modal {
+          width: min(760px, calc(100vw - 32px));
+          max-height: calc(100vh - 48px);
+          margin: auto;
+          border-radius: 14px;
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .create-modal-header {
+          border-bottom: 1px solid #e2e8f0;
+          padding: 14px 18px;
+          background: #f8fafc;
+          flex-shrink: 0;
+        }
+
+        .create-modal-header h3 {
+          margin: 0;
+          font-size: 18px;
+          color: #0f172a;
+        }
+
+        .create-form {
+          padding: 16px 18px 18px;
+          display: grid;
+          gap: 14px;
+          overflow-y: auto;
+        }
+
+        .create-form-grid {
+          display: grid;
+          gap: 12px;
+        }
+
+        .create-form-grid.two-cols {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .create-field {
+          display: grid;
+          gap: 6px;
+        }
+
+        .create-field label {
+          font-size: 13px;
+          font-weight: 600;
+          color: #0f172a;
+        }
+
+        .create-field input,
+        .create-field select {
+          min-height: 40px;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 0 10px;
+          font-size: 14px;
+          color: #0f172a;
+          outline: none;
+          background: #fff;
+        }
+
+        .create-field input:focus,
+        .create-field select:focus {
+          border-color: #0f766e;
+          box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+        }
+
+        .create-field-error {
+          margin: 0;
+          color: #dc2626;
+          font-size: 12px;
+          line-height: 1.35;
+          font-weight: 600;
+        }
+
+        .create-note-box {
+          border: 1px solid #e2e8f0;
+          background: #f8fafc;
+          border-radius: 8px;
+          padding: 11px 12px;
+          font-size: 12px;
+          color: #334155;
+          line-height: 1.5;
+        }
+
+        .create-success,
+        .create-error {
+          margin: 0;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .create-success {
+          color: #047857;
+        }
+
+        .create-error {
+          color: #b91c1c;
+        }
+
+        .create-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+          padding-top: 8px;
+          border-top: 1px solid #e2e8f0;
         }
 
         .filter-grid {
@@ -592,7 +943,32 @@ const AdminUserListPage = () => {
             flex-direction: column;
           }
 
+          .header-tools {
+            width: 100%;
+            justify-content: space-between;
+          }
+
           .filter-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .create-modal-backdrop {
+            padding: 12px;
+          }
+
+          .create-modal {
+            width: calc(100vw - 24px);
+            max-height: calc(100vh - 24px);
+            border-radius: 12px;
+          }
+
+          .create-modal-header,
+          .create-form {
+            padding-left: 14px;
+            padding-right: 14px;
+          }
+
+          .create-form-grid.two-cols {
             grid-template-columns: 1fr;
           }
 
