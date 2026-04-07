@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ShieldCheck, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdminRole } from "@/lib/auth-role";
 import { PATH_ADMIN } from "@/routes/paths";
 
 const AdminLoginPage = () => {
@@ -21,7 +22,7 @@ const AdminLoginPage = () => {
 
     try {
       const userData = await adminLogin({ email, password });
-      if (userData?.role !== "ROLE_ADMIN") {
+      if (!isAdminRole(userData?.role)) {
         setError("Tài khoản không có quyền quản trị viên.");
         return;
       }

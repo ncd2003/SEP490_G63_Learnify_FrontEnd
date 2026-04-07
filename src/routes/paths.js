@@ -6,6 +6,7 @@ const ROOTS_TEACHER = "/";
 export const PATH_AUTH = {
   root: "/",
   home: "/home",
+  plans: "/plans",
   login: "/login",
   adminLogin: "/admin/login",
   register: "/register",
@@ -35,6 +36,7 @@ export const PATH_TEACHER = {
     edit: (id) => `/classrooms/${id}/edit`,
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
+    folders: (id) => `/classrooms/${id}/folders`,
     attendance: (id) => `/classrooms/${id}/attendance`,
     attendanceSession: (id, sessionId) => `/classrooms/${id}/attendance/${sessionId}`,
   },
@@ -72,6 +74,14 @@ export const PATH_ADMIN = {
   users: {
     root: "/admin/users",
     detail: (id) => `/admin/users/${id}`,
+  },
+  subscriptions: {
+    root: "/admin/subscriptions",
+    detail: (id) => `/admin/subscriptions/${id}`,
+  },
+  plans: {
+    root: "/admin/plans",
+    detail: (id) => `/admin/plans/${id}`,
   },
   classroom: {
     root: "/admin/classrooms",

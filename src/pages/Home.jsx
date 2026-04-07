@@ -1,5 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import {
   BookOpen,
   Users,
@@ -9,16 +8,13 @@ import {
   BarChart2,
   Bell,
   ChevronRight,
-  Menu,
-  X,
   Mail,
   MapPin,
   Phone,
   Clock,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import LogoutDialog from "@/components/LogoutDialog";
-import { PATH_AUTH, PATH_COMMON } from "@/routes/paths";
+import Header from "@/components/Header";
+import { PATH_AUTH } from "@/routes/paths";
 
 /* ── Feature cards — đúng theo wireframe ── */
 const FEATURES = [
@@ -118,206 +114,29 @@ function HeroIllustration() {
    MAIN COMPONENT
 ══════════════════════════════════════ */
 export default function Homepage() {
-  const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
-
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
-  const userMenuRef = useRef(null);
-
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", fn);
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-
-  useEffect(() => {
-    const handleOutsideClick = (event) => {
-      if (!userMenuRef.current?.contains(event.target)) {
-        setUserMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
-
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    setMobileOpen(false);
   };
 
-  const handleGoToProfile = () => {
-    setUserMenuOpen(false);
-    navigate(PATH_COMMON.profile);
-  };
-
-  const handleLogoutClick = () => {
-    setUserMenuOpen(false);
-    setMobileOpen(false);
-    setIsLogoutDialogOpen(true);
-  };
-
-  const handleConfirmLogout = async () => {
-    try {
-      await logout();
-      navigate(PATH_AUTH.login);
-    } finally {
-      setIsLogoutDialogOpen(false);
-    }
-  };
-
-  const initials = user?.fullName
-    ? user.fullName
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "U";
+  const headerNavItems = [
+    {
+      key: "home",
+      label: "Trang chủ",
+      onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+    },
+    { key: "intro", label: "Giới thiệu", onClick: () => scrollTo("intro") },
+    {
+      key: "features",
+      label: "Tính năng",
+      onClick: () => scrollTo("features"),
+    },
+    { key: "contact", label: "Liên hệ", onClick: () => scrollTo("contact") },
+    { key: "plans", label: "Gói dịch vụ", to: PATH_AUTH.plans },
+  ];
 
   return (
     <div style={s.root}>
-      {/* ══ NAVBAR ══ */}
-      <header
-        style={{
-          ...s.navbar,
-          boxShadow: scrolled ? "0 1px 12px rgba(0,0,0,.08)" : "none",
-        }}
-      >
-        <div style={s.navInner}>
-          {/* Logo */}
-          <div style={s.logo}>
-            <div style={s.logoIcon}>
-              <BookOpen size={18} strokeWidth={2.5} />
-            </div>
-            <span style={s.logoTxt}>Learnify</span>
-          </div>
-
-          {/* Desktop nav links */}
-          <nav style={s.navLinks}>
-            {["intro", "features", "contact"].map((id, i) => (
-              <button key={id} onClick={() => scrollTo(id)} style={s.navLink}>
-                {["Giới Thiệu", "Tính Năng", "Liên Hệ"][i]}
-              </button>
-            ))}
-          </nav>
-
-          {/* Auth buttons — BR-01 */}
-          <div style={s.navAuth}>
-            {isAuthenticated ? (
-              <div style={s.userMenuWrap} ref={userMenuRef}>
-                <Link to="/classrooms" style={s.btnNavPrimary}>
-                  Vào Lớp học
-                </Link>
-                <button
-                  type="button"
-                  style={s.avatarSmall}
-                  title={user?.fullName || "User"}
-                  onClick={() => setUserMenuOpen((prev) => !prev)}
-                >
-                  {initials}
-                </button>
-                {userMenuOpen && (
-                  <div style={s.userMenuDropdown}>
-                    <button
-                      type="button"
-                      style={s.userMenuItem}
-                      onClick={handleGoToProfile}
-                    >
-                      Trang cá nhân
-                    </button>
-                    <button
-                      type="button"
-                      style={{ ...s.userMenuItem, ...s.userMenuDanger }}
-                      onClick={handleLogoutClick}
-                    >
-                      Đăng xuất
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <Link to="/login" style={s.btnNavGhost}>
-                  Đăng nhập
-                </Link>
-                <Link to="/register" style={s.btnNavPrimary}>
-                  Đăng ký
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile hamburger */}
-          <button onClick={() => setMobileOpen((p) => !p)} style={s.hamburger}>
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-
-        {/* Mobile menu */}
-        {mobileOpen && (
-          <div style={s.mobileMenu}>
-            {["intro", "features", "contact"].map((id, i) => (
-              <button
-                key={id}
-                onClick={() => scrollTo(id)}
-                style={s.mobileLink}
-              >
-                {["Giới Thiệu", "Tính Năng", "Liên Hệ"][i]}
-              </button>
-            ))}
-            <div style={{ display: "flex", gap: 10, padding: "12px 20px" }}>
-              {isAuthenticated ? (
-                <>
-                  <Link
-                    to="/classrooms"
-                    style={{ ...s.btnNavPrimary, flex: 1, textAlign: "center" }}
-                  >
-                    Vào Lớp học
-                  </Link>
-                  <button
-                    type="button"
-                    style={{ ...s.btnNavGhost, flex: 1 }}
-                    onClick={handleGoToProfile}
-                  >
-                    Trang cá nhân
-                  </button>
-                  <button
-                    type="button"
-                    style={{
-                      ...s.btnNavGhost,
-                      flex: 1,
-                      color: "#dc2626",
-                      borderColor: "#fecaca",
-                    }}
-                    onClick={handleLogoutClick}
-                  >
-                    Đăng xuất
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to="/login"
-                    style={{ ...s.btnNavGhost, flex: 1, textAlign: "center" }}
-                  >
-                    Đăng nhập
-                  </Link>
-                  <Link
-                    to="/register"
-                    style={{ ...s.btnNavPrimary, flex: 1, textAlign: "center" }}
-                  >
-                    Đăng ký
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
+      <Header navItems={headerNavItems} activeNavKey="home" />
 
       {/* ══ SECTION 1: GIỚI THIỆU ══ */}
       <section id="intro" style={s.introSection}>
@@ -466,11 +285,6 @@ export default function Homepage() {
         }
       `}</style>
 
-      <LogoutDialog
-        isOpen={isLogoutDialogOpen}
-        onClose={() => setIsLogoutDialogOpen(false)}
-        onConfirm={handleConfirmLogout}
-      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { isAdminRole } from '@/lib/auth-role';
 import { PATH_ADMIN } from '@/routes/paths';
 import { PATH_TEACHER } from '@/routes/paths';
 
@@ -11,8 +12,8 @@ const GuestGuard = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
 
   if (isAuthenticated) {
-    if (user?.role === "ROLE_ADMIN") {
-      return <Navigate to={PATH_ADMIN.users.root} replace />;
+    if (isAdminRole(user?.role)) {
+      return <Navigate to={PATH_ADMIN.dashboard} replace />;
     }
     return <Navigate to={PATH_TEACHER.classroom.root} replace />;
   }

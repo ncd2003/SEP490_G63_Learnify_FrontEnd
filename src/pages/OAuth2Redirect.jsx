@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { BookOpen } from "lucide-react";
+import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
+import { PATH_ADMIN, PATH_TEACHER } from "@/routes/paths";
 
 const OAuth2Redirect = () => {
   const navigate = useNavigate();
@@ -49,16 +51,14 @@ const OAuth2Redirect = () => {
 
           if (result.success) {
             // Get user role and redirect accordingly
-            const userRole = result.user?.role?.toUpperCase();
+            const userRole = result.user?.role;
 
             // Đợi một chút để đảm bảo state được update
             setTimeout(() => {
-              if (userRole === "ROLE_TEACHER" || userRole === "ROLE_STUDENT") {
-                // Redirect to classrooms for now until admin pages are ready
-                navigate("/classrooms", { replace: true });
-              } else if (userRole === "ROLE_ADMIN") {
-                // Redirect to classrooms for now until admin pages are ready
-                navigate("/classrooms", { replace: true });
+              if (isTeacherRole(userRole) || isStudentRole(userRole)) {
+                navigate(PATH_TEACHER.classroom.root, { replace: true });
+              } else if (isAdminRole(userRole)) {
+                navigate(PATH_ADMIN.dashboard, { replace: true });
               } else {
                 // New Google user — no role set yet, go to role selection
                 navigate("/select-role", { replace: true });

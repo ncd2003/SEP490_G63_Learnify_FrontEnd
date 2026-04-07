@@ -6,6 +6,7 @@ import RoleBasedGuard from "@/guards/role-base-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdminRole } from "@/lib/auth-role";
 import { PATH_AUTH, PATH_ADMIN, PATH_COMMON, PATH_TEACHER } from "@/routes/paths";
 
 const Loadable = (Component) => (props) => (
@@ -29,6 +30,9 @@ const ForgotPasswordOtpPage = Loadable(
 );
 const ResetPasswordPage = Loadable(lazy(() => import("@/pages/ResetPassword")));
 const RoleSelectionPage = Loadable(lazy(() => import("@/pages/RoleSelection")));
+const OAuth2RedirectPage = Loadable(
+  lazy(() => import("@/pages/OAuth2Redirect")),
+);
 const HomePage = Loadable(lazy(() => import("@/pages/Home")));
 const TermsOfServicePage = Loadable(
   lazy(() => import("@/pages/TermsOfService")),
@@ -36,28 +40,17 @@ const TermsOfServicePage = Loadable(
 const PrivacyPolicyPage = Loadable(
   lazy(() => import("@/pages/PrivacyPolicy")),
 );
-const OAuth2RedirectPage = Loadable(
-  lazy(() => import("@/pages/OAuth2Redirect")),
-);
-const AdminDashboardPage = Loadable(
-  lazy(() => import("@/pages/admin/AdminDashboard")),
-);
-const AdminUserListPage = Loadable(lazy(() => import("@/pages/admin/AdminUserList")));
-const AdminUserDetailPage = Loadable(
-  lazy(() => import("@/pages/admin/AdminUserDetail")),
-);
-const AdminSystemNotificationPage = Loadable(
-  lazy(() => import("@/pages/admin/AdminSystemNotification")),
-);
-const AdminManageReportPage = Loadable(
-  lazy(() => import("@/pages/admin/AdminManageReport")),
+const PublicPlanPage = Loadable(
+  lazy(() => import("@/pages/plan/public-plan-page")),
 );
 
-// User/Teacher pages
+// User / Profile
 const UserProfilePage = Loadable(lazy(() => import("@/pages/UserProfile")));
 const ChangePasswordPage = Loadable(
   lazy(() => import("@/pages/ChangePassword")),
 );
+
+// Classroom
 const ClassroomListPage = Loadable(
   lazy(() => import("@/pages/classroom/list/classroom-page")),
 );
@@ -79,6 +72,11 @@ const AttendanceListPage = Loadable(
 const AttendancePage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-page")),
 );
+const FoldersPage = Loadable(
+  lazy(() => import("@/pages/classroom/folders/foldersPage")),
+);
+
+// Question Bank
 const QuestionBankPage = Loadable(
   lazy(() => import("@/pages/question-bank/list/question-bank-page")),
 );
@@ -98,139 +96,110 @@ const CreateQuestionAiPage = Loadable(
   lazy(() => import("@/pages/question-bank/ai/create-question-ai-page")),
 );
 const CreateQuestionManualPage = Loadable(
-  lazy(
-    () => import("@/pages/question-bank/manual/create-question-manual-page"),
-  ),
+  lazy(() => import("@/pages/question-bank/manual/create-question-manual-page")),
 );
+
+// Report
 const SendUserReportPage = Loadable(
   lazy(() => import("@/pages/report/SendUserReportPage")),
 );
 
-const NotFoundPage = Loadable(
-  lazy(() => import("@/pages/not-found/not-found-page")),
+// Admin pages
+const AdminDashboardPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminDashboard")),
 );
+const AdminUserListPage = Loadable(lazy(() => import("@/pages/admin/AdminUserList")));
+const AdminUserDetailPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminUserDetail")),
+);
+const AdminSystemNotificationPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminSystemNotification")),
+);
+const AdminManageReportPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminManageReport")),
+);
+const AdminSubscriptionListPage = Loadable(
+  lazy(() => import("@/pages/admin/subscription/subscription-list-page")),
+);
+const AdminPlanManagementPage = Loadable(
+  lazy(() => import("@/pages/admin/plan/plan-management-page")),
+);
+
+const NotFoundPage = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
 
 const ClassroomListOrStudentPage = () => {
   const { user } = useAuth();
-  if (user?.role === "ROLE_STUDENT") return <StudentClassroomListPage />;
-  return <ClassroomListPage />;
+  return user?.role === "ROLE_STUDENT"
+    ? <StudentClassroomListPage />
+    : <ClassroomListPage />;
 };
 
-const HomeRoute = () => {
-  const { user, loading } = useAuth();
+const RootRedirect = () => {
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  if (user?.role === "ROLE_ADMIN") {
+  if (!isAuthenticated) {
+    return <Navigate to={PATH_AUTH.home} replace />;
+  }
+
+  if (isAdminRole(user?.role)) {
     return <Navigate to={PATH_ADMIN.dashboard} replace />;
   }
 
-  return <HomePage />;
+  return <Navigate to={PATH_TEACHER.classroom.root} replace />;
 };
 
 const AppRoutes = () =>
   useRoutes([
-    {
-      path: "/",
-      element: <Navigate to="/home" replace />,
-    },
-    {
-      path: "home",
-      element: <HomeRoute />,
-    },
-    {
-      path: PATH_AUTH.terms,
-      element: <TermsOfServicePage />,
-    },
-    {
-      path: PATH_AUTH.privacy,
-      element: <PrivacyPolicyPage />,
-    },
+    { path: "/", element: <RootRedirect /> },
+
+    // Public
+    { path: "home", element: <HomePage /> },
+    { path: PATH_AUTH.plans, element: <PublicPlanPage /> },
+    { path: PATH_AUTH.terms, element: <TermsOfServicePage /> },
+    { path: PATH_AUTH.privacy, element: <PrivacyPolicyPage /> },
+
+    // Auth
     {
       path: PATH_AUTH.login,
-      element: (
-        <GuestGuard>
-          <LoginPage />
-        </GuestGuard>
-      ),
+      element: <GuestGuard><LoginPage /></GuestGuard>,
     },
     {
       path: PATH_AUTH.adminLogin,
-      element: (
-        <GuestGuard>
-          <AdminLoginPage />
-        </GuestGuard>
-      ),
+      element: <GuestGuard><AdminLoginPage /></GuestGuard>,
     },
     {
       path: PATH_AUTH.register,
-      element: (
-        <GuestGuard>
-          <RegisterPage />
-        </GuestGuard>
-      ),
+      element: <GuestGuard><RegisterPage /></GuestGuard>,
     },
-    {
-      path: PATH_AUTH.verifyOtp,
-      element: <OtpVerificationPage />,
-    },
-    {
-      path: PATH_AUTH.forgotPassword,
-      element: <ForgotPasswordPage />,
-    },
-    {
-      path: PATH_AUTH.forgotPasswordOtp,
-      element: <ForgotPasswordOtpPage />,
-    },
-    {
-      path: PATH_AUTH.resetPassword,
-      element: <ResetPasswordPage />,
-    },
-    {
-      path: PATH_AUTH.selectRole,
-      element: <RoleSelectionPage />,
-    },
-    {
-      path: PATH_AUTH.oauth2Redirect,
-      element: <OAuth2RedirectPage />,
-    },
+    { path: PATH_AUTH.verifyOtp, element: <OtpVerificationPage /> },
+    { path: PATH_AUTH.forgotPassword, element: <ForgotPasswordPage /> },
+    { path: PATH_AUTH.forgotPasswordOtp, element: <ForgotPasswordOtpPage /> },
+    { path: PATH_AUTH.resetPassword, element: <ResetPasswordPage /> },
+    { path: PATH_AUTH.selectRole, element: <RoleSelectionPage /> },
+    { path: PATH_AUTH.oauth2Redirect, element: <OAuth2RedirectPage /> },
+
+    // Profile
     {
       path: PATH_COMMON.profile,
-      element: (
-        <AuthGuard>
-          <UserProfilePage />
-        </AuthGuard>
-      ),
+      element: <AuthGuard><UserProfilePage /></AuthGuard>,
     },
     {
       path: PATH_COMMON.changePassword,
-      element: (
-        <AuthGuard>
-          <ChangePasswordPage />
-        </AuthGuard>
-      ),
+      element: <AuthGuard><ChangePasswordPage /></AuthGuard>,
     },
+
+    // Dashboard layout (main app)
     {
-      element: (
-        <AuthGuard>
-          <DashboardLayout />
-        </AuthGuard>
-      ),
+      element: <AuthGuard><DashboardLayout /></AuthGuard>,
       children: [
-        {
-          path: "classrooms",
-          element: <ClassroomListOrStudentPage />,
-        },
-        {
-          path: PATH_TEACHER.questionBank,
-          element: <QuestionBankPage />,
-        },
-        {
-          path: PATH_TEACHER.reports,
-          element: <SendUserReportPage />,
-        },
+        { path: "classrooms", element: <ClassroomListOrStudentPage /> },
+
+        // Question Bank
+        { path: PATH_TEACHER.questionBank, element: <QuestionBankPage /> },
         {
           path: PATH_TEACHER.questionBankDetail(":bankId"),
           element: <ResourceBankDetailPage />,
@@ -255,10 +224,13 @@ const AppRoutes = () =>
           path: PATH_TEACHER.questionBankManual(":bankId"),
           element: <CreateQuestionManualPage />,
         },
+
+        // Teacher report
+        { path: PATH_TEACHER.reports, element: <SendUserReportPage /> },
       ],
     },
 
-    // ── Admin routes (with DashboardLayout) ─────────────────────────────────
+    // Admin routes
     {
       element: (
         <AuthGuard>
@@ -268,74 +240,49 @@ const AppRoutes = () =>
         </AuthGuard>
       ),
       children: [
-        {
-          path: PATH_ADMIN.dashboard,
-          element: <AdminDashboardPage />,
-        },
-        {
-          path: PATH_ADMIN.users.root,
-          element: <AdminUserListPage />,
-        },
-        {
-          path: PATH_ADMIN.users.detail(":id"),
-          element: <AdminUserDetailPage />,
-        },
+        { path: PATH_ADMIN.dashboard, element: <AdminDashboardPage /> },
+        { path: PATH_ADMIN.users.root, element: <AdminUserListPage /> },
+        { path: PATH_ADMIN.users.detail(":id"), element: <AdminUserDetailPage /> },
         {
           path: PATH_ADMIN.systemNotifications,
           element: <AdminSystemNotificationPage />,
         },
+        { path: PATH_ADMIN.reports, element: <AdminManageReportPage /> },
         {
-          path: PATH_ADMIN.reports,
-          element: <AdminManageReportPage />,
+          path: PATH_ADMIN.subscriptions.root,
+          element: <AdminSubscriptionListPage />,
         },
+        { path: PATH_ADMIN.plans.root, element: <AdminPlanManagementPage /> },
       ],
     },
 
-    // ── Classroom detail routes (without DashboardLayout, uses ClassroomDetailLayout inside) ───
+    // Classroom detail
     {
-      path: PATH_TEACHER.classroom.detail(":id"),
-      element: (
-        <AuthGuard>
-          <ClassroomPostPage />
-        </AuthGuard>
-      ),
+      path: "classrooms/:id",
+      element: <AuthGuard><ClassroomPostPage /></AuthGuard>,
     },
     {
-      path: PATH_TEACHER.classroom.pendingRequests(":id"),
-      element: (
-        <AuthGuard>
-          <PendingRequestsPage />
-        </AuthGuard>
-      ),
+      path: "classrooms/:id/pending-requests",
+      element: <AuthGuard><PendingRequestsPage /></AuthGuard>,
     },
     {
-      path: PATH_TEACHER.classroom.schedule(":id"),
-      element: (
-        <AuthGuard>
-          <SchedulePage />
-        </AuthGuard>
-      ),
+      path: "classrooms/:id/schedule",
+      element: <AuthGuard><SchedulePage /></AuthGuard>,
     },
     {
-      path: PATH_TEACHER.classroom.attendance(":id"),
-      element: (
-        <AuthGuard>
-          <AttendanceListPage />
-        </AuthGuard>
-      ),
+      path: "classrooms/:id/attendance",
+      element: <AuthGuard><AttendanceListPage /></AuthGuard>,
     },
     {
-      path: PATH_TEACHER.classroom.attendanceSession(":id", ":sessionId"),
-      element: (
-        <AuthGuard>
-          <AttendancePage />
-        </AuthGuard>
-      ),
+      path: "classrooms/:id/attendance/:sessionId",
+      element: <AuthGuard><AttendancePage /></AuthGuard>,
     },
     {
-      path: "*",
-      element: <NotFoundPage />,
+      path: "classrooms/:id/folders",
+      element: <AuthGuard><FoldersPage /></AuthGuard>,
     },
+
+    { path: "*", element: <NotFoundPage /> },
   ]);
 
 export default AppRoutes;

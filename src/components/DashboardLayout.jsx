@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import LogoutDialog from "@/components/LogoutDialog";
 import { notificationApi } from "@/apis/notification.api";
 import "@/assets/css/components/dashboardLayout.css";
+import { normalizeRole } from "@/lib/auth-role";
 import {
   BookOpen,
   BookMarked,
@@ -21,6 +22,8 @@ import {
   BarChart2,
   Bell,
   CheckCheck,
+  CreditCard,
+  Package,
 } from "lucide-react";
 import {
   PATH_AUTH,
@@ -42,10 +45,10 @@ const DashboardLayout = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
 
-  const normalizedRole = user?.role?.toUpperCase?.() || "";
-  const isTeacher = normalizedRole === "ROLE_TEACHER";
-  const isStudent = normalizedRole === "ROLE_STUDENT";
-  const isAdmin = normalizedRole === "ROLE_ADMIN";
+  const normalizedRole = normalizeRole(user?.role);
+  const isTeacher = normalizedRole === "TEACHER";
+  const isStudent = normalizedRole === "STUDENT";
+  const isAdmin = normalizedRole === "ADMIN";
   const roleLabel = isTeacher
     ? "Giáo viên"
     : isStudent
@@ -211,6 +214,16 @@ const DashboardLayout = () => {
       icon: Users,
       label: "Quản lý người dùng",
       path: PATH_ADMIN.users.root,
+    },
+    {
+      icon: CreditCard,
+      label: "Gói đăng ký người dùng",
+      path: PATH_ADMIN.subscriptions.root,
+    },
+    {
+      icon: Package,
+      label: "Quản lý gói dịch vụ",
+      path: PATH_ADMIN.plans.root,
     },
     {
       icon: Bell,

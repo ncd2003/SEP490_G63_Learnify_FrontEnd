@@ -1,0 +1,508 @@
+.admin-plan-page {
+  display: grid;
+  gap: 16px;
+}
+
+.plan-header-card {
+  border: 1px solid #dbe5ef;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #eff6ff 0%, #f8fafc 100%);
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-screen-label {
+  margin: 0;
+  font-size: 12px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.plan-header-card h1 {
+  margin: 6px 0;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.plan-screen-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.plan-create-btn {
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-create-btn:hover {
+  background: #1d4ed8;
+}
+
+.plan-toolbar-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.plan-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dbe5ef;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #64748b;
+}
+
+.plan-search-wrap input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.plan-table-card {
+  border: 1px solid #dbe5ef;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.plan-error-banner {
+  margin: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.plan-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.plan-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.plan-table th,
+.plan-table td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf2f7;
+  font-size: 13px;
+  color: #1e293b;
+  vertical-align: top;
+}
+
+.plan-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.plan-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.plan-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.plan-status-pill.public,
+.plan-status-pill.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.plan-status-pill.hide,
+.plan-status-pill.inactive {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.plan-description-cell {
+  max-width: 320px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.plan-row-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.plan-row-btn {
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.plan-row-btn:hover {
+  background: #f8fafc;
+}
+
+.plan-row-btn.delete {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.plan-row-btn.delete:hover {
+  background: #fef2f2;
+}
+
+.plan-state-cell {
+  text-align: center;
+  color: #64748b;
+  padding: 24px !important;
+}
+
+.plan-form-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.plan-form-modal {
+  width: min(900px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 14px;
+  border: 1px solid #dbe5ef;
+  overflow: hidden;
+}
+
+.plan-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.plan-form-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.plan-form-close {
+  border: 1px solid #dbe5ef;
+  background: #ffffff;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #334155;
+}
+
+.plan-form-close:hover {
+  background: #f8fafc;
+}
+
+.plan-form-error {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.plan-form-body {
+  padding: 16px;
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+}
+
+.plan-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.plan-form-item {
+  display: grid;
+  gap: 6px;
+}
+
+.plan-form-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.plan-form-item label {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.plan-form-item input,
+.plan-form-item select,
+.plan-form-item textarea {
+  border: 1px solid #dbe5ef;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #0f172a;
+  outline: none;
+}
+
+.plan-form-item input:focus,
+.plan-form-item select:focus,
+.plan-form-item textarea:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.plan-benefit-box {
+  border: 1px solid #dbe5ef;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.plan-benefit-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.plan-benefit-create-wrap {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.plan-benefit-create-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.plan-benefit-create-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.plan-benefit-create-controls select {
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.plan-benefit-create-btn {
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.plan-benefit-create-btn:hover {
+  background: #1d4ed8;
+}
+
+.plan-benefit-create-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.plan-benefit-create-message {
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.plan-benefit-create-message.error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.plan-benefit-create-message.success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.plan-benefit-empty {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.plan-benefit-list {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-benefit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 8px 10px;
+}
+
+.plan-benefit-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.plan-benefit-limit-input {
+  width: 140px;
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.plan-benefit-limit-input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.plan-form-actions {
+  padding: 14px 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.plan-btn-secondary,
+.plan-btn-primary {
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-btn-secondary {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.plan-btn-secondary:hover {
+  background: #f8fafc;
+}
+
+.plan-btn-primary {
+  border: 1px solid #1d4ed8;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.plan-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.plan-btn-secondary:disabled,
+.plan-btn-primary:disabled,
+.plan-form-close:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .plan-header-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plan-create-btn {
+    width: fit-content;
+  }
+
+  .plan-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-benefit-create-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-benefit-create-btn {
+    justify-self: start;
+  }
+
+  .plan-benefit-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plan-benefit-limit-input {
+    width: 100%;
+  }
+}

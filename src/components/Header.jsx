@@ -4,9 +4,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import LogoutDialog from "@/components/LogoutDialog";
 import "@/assets/css/components/header.css";
 import { BookOpen, Menu, X, LogOut, User } from "lucide-react";
-import { PATH_AUTH, PATH_COMMON } from "@/routes/paths";
+import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
+import { PATH_ADMIN, PATH_AUTH, PATH_COMMON } from "@/routes/paths";
 
-const Header = () => {
+const DEFAULT_NAV_ITEMS = [
+  { key: "home", label: "Trang chủ", to: PATH_AUTH.home },
+  { key: "plans", label: "Gói dịch vụ", to: PATH_AUTH.plans },
+];
+
+const Header = ({ navItems = DEFAULT_NAV_ITEMS, activeNavKey = "" }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -29,21 +35,37 @@ const Header = () => {
     }
   };
 
+  const handleNavItemClick = (item) => {
+    if (!item) {
+      return;
+    }
+
+    if (typeof item.onClick === "function") {
+      item.onClick();
+    } else if (item.to) {
+      navigate(item.to);
+    }
+
+    setIsMobileMenuOpen(false);
+  };
+
   const handleDashboardClick = () => {
-    const userRole = user?.role?.toUpperCase();
-    if (
-      userRole === "ROLE_TEACHER" ||
-      userRole === "ROLE_STUDENT" ||
-      userRole === "ROLE_ADMIN"
-    ) {
+    const userRole = user?.role;
+    if (isAdminRole(userRole)) {
+      navigate(PATH_ADMIN.dashboard);
+    } else if (isTeacherRole(userRole) || isStudentRole(userRole)) {
       navigate("/classrooms");
     }
+    setIsMobileMenuOpen(false);
   };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (isUserMenuOpen && !event.target.closest(".user-menu-wrapper")) {
+      if (
+        isUserMenuOpen &&
+        !event.target.closest(".site-header-user-menu-wrapper")
+      ) {
         setIsUserMenuOpen(false);
       }
     };
@@ -53,40 +75,45 @@ const Header = () => {
   }, [isUserMenuOpen]);
 
   return (
-    <header className="header">
-      <div className="container">
-        <div className="header-content">
-          <div className="logo" onClick={() => navigate(PATH_AUTH.home)}>
+    <header className="site-header">
+      <div className="site-header-container">
+        <div className="site-header-content">
+          <div
+            className="site-header-logo"
+            onClick={() => navigate(PATH_AUTH.home)}
+          >
             <BookOpen size={32} strokeWidth={2.5} />
-            <span className="logo-text">Learnify</span>
+            <span className="site-header-logo-text">Learnify</span>
           </div>
 
-          <nav className={`nav ${isMobileMenuOpen ? "open" : ""}`}>
-            <a href="#" className="nav-link active">
-              Trang chủ
-            </a>
-            <a href="#features" className="nav-link">
-              Tính năng
-            </a>
-            <a href="#pricing" className="nav-link">
-              Bảng giá
-            </a>
-            <a href="#support" className="nav-link">
-              Hỗ trợ
-            </a>
+          <nav className={`site-header-nav ${isMobileMenuOpen ? "open" : ""}`}>
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`site-header-nav-link ${
+                  activeNavKey === item.key ? "active" : ""
+                }`}
+                onClick={() => handleNavItemClick(item)}
+              >
+                {item.label}
+              </button>
+            ))}
           </nav>
 
-          <div className="header-actions">
+          <div className="site-header-actions">
             {!isAuthenticated ? (
               <>
                 <button
-                  className="btn-text"
+                  type="button"
+                  className="site-header-btn-text"
                   onClick={() => navigate(PATH_AUTH.login)}
                 >
                   Đăng nhập
                 </button>
                 <button
-                  className="btn-primary"
+                  type="button"
+                  className="site-header-btn-primary"
                   onClick={() => navigate(PATH_AUTH.register)}
                 >
                   Đăng ký
@@ -94,20 +121,25 @@ const Header = () => {
               </>
             ) : (
               <>
-                <button className="btn-text" onClick={handleDashboardClick}>
+                <button
+                  type="button"
+                  className="site-header-btn-text"
+                  onClick={handleDashboardClick}
+                >
                   Dashboard
                 </button>
-                <div className="user-menu-wrapper">
+                <div className="site-header-user-menu-wrapper">
                   <button
-                    className="user-menu-trigger"
+                    type="button"
+                    className="site-header-user-menu-trigger"
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   >
-                    <div className="user-avatar">
+                    <div className="site-header-user-avatar">
                       {user?.avatarUrl ? (
                         <img
                           src={user.avatarUrl}
                           alt={user?.fullName || "User"}
-                          className="avatar-image"
+                          className="site-header-avatar-image"
                         />
                       ) : (
                         <span>
@@ -115,21 +147,21 @@ const Header = () => {
                         </span>
                       )}
                     </div>
-                    <span className="user-name">
+                    <span className="site-header-user-name">
                       {user?.fullName || "User"}
                     </span>
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="user-dropdown">
-                      <div className="dropdown-header">
-                        <div className="dropdown-user-info">
-                          <div className="dropdown-avatar">
+                    <div className="site-header-user-dropdown">
+                      <div className="site-header-dropdown-header">
+                        <div className="site-header-dropdown-user-info">
+                          <div className="site-header-dropdown-avatar">
                             {user?.avatarUrl ? (
                               <img
                                 src={user.avatarUrl}
                                 alt={user?.fullName || "User"}
-                                className="avatar-image"
+                                className="site-header-avatar-image"
                               />
                             ) : (
                               <span>
@@ -138,27 +170,32 @@ const Header = () => {
                             )}
                           </div>
                           <div>
-                            <div className="dropdown-name">
+                            <div className="site-header-dropdown-name">
                               {user?.fullName}
                             </div>
-                            <div className="dropdown-email">{user?.email}</div>
+                            <div className="site-header-dropdown-email">
+                              {user?.email}
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div className="dropdown-divider"></div>
+                      <div className="site-header-dropdown-divider"></div>
                       <button
-                        className="dropdown-item"
+                        type="button"
+                        className="site-header-dropdown-item"
                         onClick={() => {
                           setIsUserMenuOpen(false);
+                          setIsMobileMenuOpen(false);
                           navigate(PATH_COMMON.profile);
                         }}
                       >
                         <User size={16} />
                         <span>Tài khoản</span>
                       </button>
-                      <div className="dropdown-divider"></div>
+                      <div className="site-header-dropdown-divider"></div>
                       <button
-                        className="dropdown-item danger"
+                        type="button"
+                        className="site-header-dropdown-item danger"
                         onClick={handleLogoutClick}
                       >
                         <LogOut size={16} />
@@ -171,7 +208,8 @@ const Header = () => {
             )}
 
             <button
-              className="mobile-menu-btn"
+              type="button"
+              className="site-header-mobile-menu-btn"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
