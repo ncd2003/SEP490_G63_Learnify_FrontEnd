@@ -36,6 +36,9 @@ export const adminApi = {
   getReportDetail: (reportId) => {
     return apiRequest.get(`${BASE}/reports/${reportId}`);
   },
+  resolveReport: (reportId, payload) => {
+    return apiRequest.patch(`${BASE}/reports/${reportId}/resolve`, payload);
+  },
   getSystemNotifications: ({ page = 1, size = 10 } = {}) => {
     return apiRequest.get(`${BASE}/system-notifications`, {
       params: { page, size },

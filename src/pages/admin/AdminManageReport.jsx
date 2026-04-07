@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { adminApi } from "@/apis/admin.api";
+import { PATH_ADMIN } from "@/routes/paths";
 
 const STATUS_OPTIONS = [
   { value: "PENDING", label: "Chờ xử lý (mặc định)" },
@@ -33,28 +35,21 @@ const formatReason = (reason) => {
   }
 };
 
-const formatRole = (role) => {
-  if (!role) return "-";
-  const lowered = role.toLowerCase();
-  if (lowered.includes("student")) return "Học sinh";
-  if (lowered.includes("teacher")) return "Giáo viên";
-  if (lowered.includes("admin")) return "Quản trị viên";
-  return role;
-};
-
 const AdminManageReportPage = () => {
+  const navigate = useNavigate();
   const [status, setStatus] = useState("PENDING");
   const [page, setPage] = useState(1);
   const [size] = useState(10);
   const [items, setItems] = useState([]);
+  const [resolvingReportId, setResolvingReportId] = useState(null);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const [selectedReportId, setSelectedReportId] = useState(null);
-  const [detail, setDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState("");
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState("");
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [actionNote, setActionNote] = useState("");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -64,27 +59,33 @@ const AdminManageReportPage = () => {
       try {
         const response = await adminApi.getReports({ status, page, size });
         const result = response?.result || {};
-        const content = result.content || [];
+        const content = Array.isArray(result.content) ? result.content : [];
 
-        setItems(content);
+        // List API currently does not include detailedDescription, so enrich rows from detail API.
+        const contentWithDescription = await Promise.all(
+          content.map(async (item) => {
+            try {
+              const detailResponse = await adminApi.getReportDetail(item.reportId);
+              return {
+                ...item,
+                detailedDescription: detailResponse?.result?.detailedDescription || "",
+              };
+            } catch {
+              return { ...item, detailedDescription: "" };
+            }
+          }),
+        );
+
+        setItems(contentWithDescription);
         setTotalPages(result.totalPages || 1);
-
-        if (content.length > 0) {
-          const nextSelected = content.some((item) => item.reportId === selectedReportId)
-            ? selectedReportId
-            : content[0].reportId;
-          setSelectedReportId(nextSelected);
-        } else {
-          setSelectedReportId(null);
-          setDetail(null);
-        }
       } catch (err) {
         const backendMessage = err?.response?.data?.message;
-        setError(backendMessage || "MSG90: Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.");
+        setError(
+          backendMessage ||
+            "MSG90: Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
+        );
         setItems([]);
         setTotalPages(1);
-        setSelectedReportId(null);
-        setDetail(null);
       } finally {
         setLoading(false);
       }
@@ -93,32 +94,102 @@ const AdminManageReportPage = () => {
     fetchReports();
   }, [status, page, size]);
 
-  useEffect(() => {
-    const fetchReportDetail = async () => {
-      if (!selectedReportId) return;
+  const handleOpenUserDetail = (userId) => {
+    if (!userId) return;
+    navigate(PATH_ADMIN.users.detail(userId));
+  };
 
-      setDetailLoading(true);
-      setDetailError("");
+  const resolveReport = async (reportId, action, note) => {
+    if (!reportId) return;
 
-      try {
-        const response = await adminApi.getReportDetail(selectedReportId);
-        setDetail(response?.result || null);
-      } catch (err) {
-        const backendMessage = err?.response?.data?.message;
-        setDetailError(backendMessage || "Không thể tải chi tiết báo cáo.");
-        setDetail(null);
-      } finally {
-        setDetailLoading(false);
-      }
+    try {
+      setResolvingReportId(reportId);
+
+      await adminApi.resolveReport(reportId, {
+        action,
+        note: note || null,
+      });
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.reportId === reportId
+            ? {
+                ...item,
+                status: action === "DISMISS" ? "REJECTED" : "REVIEWED",
+              }
+            : item,
+        ),
+      );
+    } catch {
+      // Errors are surfaced by global HTTP interceptor toast.
+    } finally {
+      setResolvingReportId(null);
+    }
+  };
+
+  const openActionModal = (report, action) => {
+    setSelectedReport(report);
+    setSelectedAction(action);
+    setActionNote("");
+    setActionError("");
+    setIsActionModalOpen(true);
+  };
+
+  const closeActionModal = () => {
+    if (selectedReport?.reportId === resolvingReportId) return;
+    setIsActionModalOpen(false);
+    setSelectedAction("");
+    setSelectedReport(null);
+    setActionNote("");
+    setActionError("");
+  };
+
+  const handleConfirmAction = async () => {
+    if (!selectedReport?.reportId || !selectedAction) return;
+
+    const trimmedNote = actionNote.trim();
+    const requiresNote = selectedAction === "DISMISS" || selectedAction === "LOCK_ACCOUNT";
+    if (requiresNote && !trimmedNote) {
+      setActionError("Vui lòng nhập nội dung trước khi xác nhận.");
+      return;
+    }
+
+    await resolveReport(selectedReport.reportId, selectedAction, trimmedNote);
+    if (selectedReport.reportId !== resolvingReportId) {
+      closeActionModal();
+    } else {
+      setIsActionModalOpen(false);
+      setSelectedAction("");
+      setSelectedReport(null);
+      setActionNote("");
+      setActionError("");
+    }
+  };
+
+  const getActionModalMeta = () => {
+    if (selectedAction === "DISMISS") {
+      return {
+        title: "Bỏ qua báo cáo",
+        helper:
+          "Nhập nội dung phản hồi để gửi kết quả xử lý báo cáo cho người báo cáo.",
+        placeholder: "Nhập nội dung phản hồi...",
+      };
+    }
+    if (selectedAction === "WARN") {
+      return {
+        title: "Gửi cảnh báo",
+        helper:
+          "Hệ thống sẽ gửi thông báo cảnh báo cho người bị báo cáo và gửi kết quả xử lý cho người báo cáo.",
+        placeholder: "Nội dung bổ sung (không bắt buộc)...",
+      };
+    }
+    return {
+      title: "Khóa tài khoản",
+      helper:
+        "Nhập lý do khóa tài khoản. Hệ thống sẽ gửi mail cho người bị khóa và gửi kết quả cho người báo cáo.",
+      placeholder: "Nhập lý do khóa tài khoản...",
     };
-
-    fetchReportDetail();
-  }, [selectedReportId]);
-
-  const selectedSummary = useMemo(
-    () => items.find((item) => item.reportId === selectedReportId) || null,
-    [items, selectedReportId],
-  );
+  };
 
   return (
     <div className="admin-manage-report-page">
@@ -154,35 +225,90 @@ const AdminManageReportPage = () => {
               <thead>
                 <tr>
                   <th>Mã</th>
+                  <th>Người báo cáo</th>
                   <th>Người bị báo cáo</th>
-                  <th>Số báo cáo chờ</th>
                   <th>Lý do chính</th>
+                  <th>Mô tả chi tiết</th>
+                  <th>Số báo cáo chờ</th>
                   <th>Trạng thái</th>
                   <th>Ưu tiên</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="state-cell">Đang tải dữ liệu...</td>
+                    <td colSpan={9} className="state-cell">
+                      Đang tải dữ liệu...
+                    </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="state-cell">Không có dữ liệu.</td>
+                    <td colSpan={9} className="state-cell">
+                      Không có dữ liệu.
+                    </td>
                   </tr>
                 ) : (
                   items.map((item) => (
-                    <tr
-                      key={item.reportId}
-                      className={item.reportId === selectedReportId ? "active-row" : ""}
-                      onClick={() => setSelectedReportId(item.reportId)}
-                    >
+                    <tr key={item.reportId}>
                       <td>RP-{item.reportId}</td>
-                      <td>USR-{item.reportedUserId}</td>
-                      <td>{item.pendingReportCountForTarget}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="user-link-btn"
+                          onClick={() => handleOpenUserDetail(item.reporterId)}
+                        >
+                          {item.reporterName || `USR-${item.reporterId}`}
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="user-link-btn"
+                          onClick={() => handleOpenUserDetail(item.reportedUserId)}
+                        >
+                          {item.reportedUserName || `USR-${item.reportedUserId}`}
+                        </button>
+                      </td>
                       <td>{formatReason(item.reason)}</td>
+                      <td className="desc-cell" title={item.detailedDescription || "-"}>
+                        {item.detailedDescription || "-"}
+                      </td>
+                      <td>{item.pendingReportCountForTarget}</td>
                       <td>{formatStatus(item.status)}</td>
                       <td>{item.highPriority ? "TOP" : "Thường"}</td>
+                      <td>
+                        {item.status === "PENDING" ? (
+                          <div className="action-group">
+                            <button
+                              type="button"
+                              className="action-btn dismiss"
+                              disabled={resolvingReportId === item.reportId}
+                              onClick={() => openActionModal(item, "DISMISS")}
+                            >
+                              Bỏ qua
+                            </button>
+                            <button
+                              type="button"
+                              className="action-btn warn"
+                              disabled={resolvingReportId === item.reportId}
+                              onClick={() => openActionModal(item, "WARN")}
+                            >
+                              Cảnh báo
+                            </button>
+                            <button
+                              type="button"
+                              className="action-btn lock"
+                              disabled={resolvingReportId === item.reportId}
+                              onClick={() => openActionModal(item, "LOCK_ACCOUNT")}
+                            >
+                              Khóa
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="action-done">Đã xử lý</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -195,7 +321,11 @@ const AdminManageReportPage = () => {
               Trang {page}/{Math.max(totalPages, 1)}
             </span>
             <div className="pager-actions">
-              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={loading || page <= 1}>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={loading || page <= 1}
+              >
                 Trước
               </button>
               <button
@@ -208,49 +338,51 @@ const AdminManageReportPage = () => {
             </div>
           </div>
         </div>
-
-        <div className="detail-panel card">
-          <h2>
-            Chi tiết báo cáo
-            {selectedSummary ? ` đã chọn: RP-${selectedSummary.reportId}` : ""}
-          </h2>
-
-          {detailLoading ? (
-            <p className="state-text">Đang tải chi tiết...</p>
-          ) : detailError ? (
-            <p className="error-text">{detailError}</p>
-          ) : !detail ? (
-            <p className="state-text">Chọn một báo cáo để xem chi tiết.</p>
-          ) : (
-            <div className="detail-grid">
-              <div className="detail-item">
-                <span>Người gửi báo cáo:</span>
-                <strong>
-                  {detail.reporterCode} ({formatRole(detail.reporterRole)})
-                </strong>
-              </div>
-              <div className="detail-item">
-                <span>Người bị báo cáo:</span>
-                <strong>
-                  {detail.reportedUserCode} ({formatRole(detail.reportedUserRole)})
-                </strong>
-              </div>
-              <div className="detail-item">
-                <span>Lý do báo cáo:</span>
-                <strong>{formatReason(detail.reason)}</strong>
-              </div>
-              <div className="detail-item">
-                <span>Mô tả chi tiết:</span>
-                <p>{detail.detailedDescription || "-"}</p>
-              </div>
-              <div className="detail-item">
-                <span>Trạng thái:</span>
-                <strong>{formatStatus(detail.status)}</strong>
-              </div>
-            </div>
-          )}
-        </div>
       </section>
+
+      {isActionModalOpen && selectedReport && (
+        <div className="action-modal-overlay" onClick={closeActionModal}>
+          <div className="action-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>{getActionModalMeta().title}</h3>
+            <p className="action-modal-helper">{getActionModalMeta().helper}</p>
+            <div className="action-modal-target">
+              Báo cáo: RP-{selectedReport.reportId} | Người báo cáo: {selectedReport.reporterName || `USR-${selectedReport.reporterId}`} | Người bị báo cáo: {selectedReport.reportedUserName || `USR-${selectedReport.reportedUserId}`}
+            </div>
+
+            <textarea
+              className="action-note-input"
+              value={actionNote}
+              onChange={(event) => {
+                setActionNote(event.target.value);
+                if (actionError) setActionError("");
+              }}
+              placeholder={getActionModalMeta().placeholder}
+              rows={5}
+            />
+
+            {actionError && <div className="action-error-text">{actionError}</div>}
+
+            <div className="action-modal-buttons">
+              <button
+                type="button"
+                className="modal-btn secondary"
+                onClick={closeActionModal}
+                disabled={resolvingReportId === selectedReport.reportId}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="modal-btn primary"
+                onClick={handleConfirmAction}
+                disabled={resolvingReportId === selectedReport.reportId}
+              >
+                {resolvingReportId === selectedReport.reportId ? "Đang xử lý..." : "Xác nhận"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .admin-manage-report-page {
@@ -299,7 +431,7 @@ const AdminManageReportPage = () => {
 
         .content-grid {
           display: grid;
-          grid-template-columns: 1fr 1.12fr;
+          grid-template-columns: 1fr;
           gap: 14px;
         }
 
@@ -318,7 +450,7 @@ const AdminManageReportPage = () => {
         table {
           width: 100%;
           border-collapse: collapse;
-          min-width: 760px;
+          min-width: 980px;
         }
 
         th,
@@ -338,12 +470,70 @@ const AdminManageReportPage = () => {
           color: #475569;
         }
 
-        .active-row {
-          background: #eff6ff;
+        .user-link-btn {
+          border: none;
+          background: none;
+          padding: 0;
+          font: inherit;
+          font-weight: 700;
+          color: #1d4ed8;
+          cursor: pointer;
+          text-decoration: underline;
         }
 
-        tbody tr {
+        .user-link-btn:hover {
+          color: #1e40af;
+        }
+
+        .desc-cell {
+          max-width: 360px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .action-group {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+        }
+
+        .action-btn {
+          min-height: 28px;
+          border-radius: 6px;
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 0 8px;
           cursor: pointer;
+        }
+
+        .action-btn.dismiss {
+          color: #334155;
+        }
+
+        .action-btn.warn {
+          color: #92400e;
+          border-color: #fcd34d;
+          background: #fffbeb;
+        }
+
+        .action-btn.lock {
+          color: #991b1b;
+          border-color: #fecaca;
+          background: #fef2f2;
+        }
+
+        .action-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .action-done {
+          font-size: 12px;
+          font-weight: 700;
+          color: #64748b;
         }
 
         .state-cell {
@@ -388,65 +578,112 @@ const AdminManageReportPage = () => {
           cursor: not-allowed;
         }
 
-        .detail-grid {
-          display: grid;
-          gap: 10px;
-        }
-
-        .detail-item {
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 10px;
-          background: #f8fafc;
-          display: grid;
-          gap: 5px;
-        }
-
-        .detail-item span {
-          font-size: 12px;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-          font-weight: 700;
-        }
-
-        .detail-item strong,
-        .detail-item p {
-          margin: 0;
-          font-size: 14px;
-          color: #0f172a;
-          line-height: 1.45;
-        }
-
-        .state-text {
-          margin: 0;
-          font-size: 14px;
-          color: #64748b;
-        }
-
-        .error-banner,
-        .error-text {
-          color: #b91c1c;
-        }
-
         .error-banner {
           margin-bottom: 8px;
           border: 1px solid #fecaca;
+          color: #b91c1c;
           background: #fff1f2;
           border-radius: 10px;
           padding: 10px 12px;
           font-size: 13px;
         }
 
-        .error-text {
-          margin: 0;
-          font-size: 14px;
+        .action-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.42);
+          z-index: 160;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
         }
 
-        @media (max-width: 1200px) {
-          .content-grid {
-            grid-template-columns: 1fr;
-          }
+        .action-modal {
+          width: min(640px, 100%);
+          background: #ffffff;
+          border: 1px solid #dbe5ef;
+          border-radius: 12px;
+          padding: 16px;
+          display: grid;
+          gap: 10px;
+        }
+
+        .action-modal h3 {
+          margin: 0;
+          font-size: 18px;
+          color: #0f172a;
+        }
+
+        .action-modal-helper {
+          margin: 0;
+          font-size: 13px;
+          color: #334155;
+          line-height: 1.5;
+        }
+
+        .action-modal-target {
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          background: #f8fafc;
+          padding: 10px;
+          font-size: 12px;
+          color: #334155;
+          line-height: 1.45;
+        }
+
+        .action-note-input {
+          width: 100%;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 10px;
+          font-size: 14px;
+          color: #0f172a;
+          resize: vertical;
+          min-height: 110px;
+          outline: none;
+        }
+
+        .action-note-input:focus {
+          border-color: #93c5fd;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        .action-error-text {
+          font-size: 13px;
+          color: #b91c1c;
+        }
+
+        .action-modal-buttons {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .modal-btn {
+          min-height: 34px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 0 12px;
+          cursor: pointer;
+        }
+
+        .modal-btn.secondary {
+          background: #ffffff;
+          color: #334155;
+        }
+
+        .modal-btn.primary {
+          background: #1d4ed8;
+          border-color: #1d4ed8;
+          color: #ffffff;
+        }
+
+        .modal-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
       `}</style>
     </div>
