@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import useClassrooms from "@/hooks/use-classrooms";
 import useDebounce from "@/hooks/use-debounce";
+import Pagination from "@/components/Pagination";
 import ClassroomRow from "./classroom-row";
 import EditClassroomDialog from "@/pages/classroom/edit/edit-classroom-dialog";
 import CreateClassroomDialog from "@/pages/classroom/create/create-classroom-dialog";
@@ -254,27 +255,12 @@ const ClassroomPage = () => {
           </table>
         )}
         {/* Pagination */}
-        <div className="classroom-pagination">
-          <button
-            type="button"
-            className="classroom-pagination-btn"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={loading || page === 1}
-          >
-            ← Trước
-          </button>
-          <span className="classroom-pagination-info">
-            Trang {page}/{paging.totalPages}
-          </span>
-          <button
-            type="button"
-            className="classroom-pagination-btn"
-            onClick={() => setPage((p) => Math.min(paging.totalPages, p + 1))}
-            disabled={loading || page === paging.totalPages}
-          >
-            Sau →
-          </button>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={paging.totalPages}
+          loading={loading}
+          onPageChange={setPage}
+        />
 
       </div>
 

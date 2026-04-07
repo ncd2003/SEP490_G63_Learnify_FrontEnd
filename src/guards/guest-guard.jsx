@@ -1,5 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { isAdminRole } from '@/lib/auth-role';
+import { PATH_ADMIN } from '@/routes/paths';
 import { PATH_TEACHER } from '@/routes/paths';
 
 /**
@@ -7,9 +9,12 @@ import { PATH_TEACHER } from '@/routes/paths';
  * Nếu đã đăng nhập → chuyển hướng về trang chủ của teacher.
  */
 const GuestGuard = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   if (isAuthenticated) {
+    if (isAdminRole(user?.role)) {
+      return <Navigate to={PATH_ADMIN.dashboard} replace />;
+    }
     return <Navigate to={PATH_TEACHER.classroom.root} replace />;
   }
 

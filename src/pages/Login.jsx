@@ -3,7 +3,8 @@ import { Eye, EyeOff, BookOpen, Sparkles } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
-import { PATH_AUTH } from "../routes/paths";
+import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
+import { PATH_ADMIN, PATH_AUTH } from "../routes/paths";
 
 const MSG06 = "Email hoặc mật khẩu bạn nhập không chính xác. Vui lòng thử lại.";
 const MSG07 = "Tài khoản của bạn chưa được xác minh.";
@@ -102,16 +103,15 @@ const LoginPage = () => {
     try {
       const userData = await login({ email, password });
 
-      // Get user role from userData and redirect accordingly
-      const userRole = userData?.role?.toUpperCase();
+      const userRole = userData?.role;
 
-      if (userRole === "ROLE_TEACHER") {
-        navigate("/classrooms");
-      } else if (userRole === "ROLE_STUDENT") {
-        navigate("/classrooms");
+      if (isAdminRole(userRole)) {
+        navigate(PATH_ADMIN.dashboard, { replace: true });
+      } else if (isTeacherRole(userRole) || isStudentRole(userRole)) {
+        navigate("/classrooms", { replace: true });
       } else {
         // Fallback to home if role is not recognized
-        navigate("/home");
+        navigate("/home", { replace: true });
       }
     } catch (err) {
       const status = err.response?.status;

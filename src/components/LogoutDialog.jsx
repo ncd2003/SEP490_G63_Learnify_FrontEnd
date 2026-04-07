@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { LogOut, X } from "lucide-react";
 
 const MSG_CONFIRM = "Bạn có chắc chắn muốn đăng xuất?";
@@ -7,6 +8,7 @@ export default function LogoutDialog({ isOpen, onClose, onConfirm }) {
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const handleConfirm = async () => {
     try {
@@ -17,7 +19,7 @@ export default function LogoutDialog({ isOpen, onClose, onConfirm }) {
     }
   };
 
-  return (
+  return createPortal(
     <>
       <div onClick={loading ? undefined : onClose} style={s.overlay}>
         <div style={s.dialog} onClick={(e) => e.stopPropagation()}>
@@ -58,7 +60,8 @@ export default function LogoutDialog({ isOpen, onClose, onConfirm }) {
                              to   { opacity:1; transform:scale(1)  translateY(0)     } }
         @keyframes spin    { to { transform:rotate(360deg) } }
       `}</style>
-    </>
+    </>,
+    document.body,
   );
 }
 
@@ -68,10 +71,10 @@ const s = {
     inset: 0,
     background: "rgba(15,23,42,.45)",
     backdropFilter: "blur(4px)",
-    zIndex: 999,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    zIndex: 2000,
+    display: "grid",
+    placeItems: "center",
+    padding: 16,
     animation: "fadeIn .2s ease both",
   },
   dialog: {

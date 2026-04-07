@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import { Pin, MoreVertical, Pencil, Trash2, FileText, Image, Film, MessageCircle, X } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import useComments from "@/hooks/use-comments";
 import useCommentMutations from "@/hooks/use-comment";
 import CommentCard from "@/pages/comment/list/comment-card";
@@ -26,6 +27,7 @@ const MAX_MEDIA_PREVIEW = 6;
  * }} props
  */
 const PostCard = memo(({ post, onEdit, onDelete }) => {
+  const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [visibleCount, setVisibleCount] = useState(5);
@@ -91,6 +93,9 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
     return result;
   };
 
+  const postOwnerId = post.user?.id ?? post.userId ?? post.authorId ?? post.createdBy?.id;
+  const canManagePost = user?.id != null && postOwnerId != null && String(user.id) === String(postOwnerId);
+
   const authorName = post.user?.fullName || post.user?.name || "Người dùng";
   const authorInitial = authorName?.charAt(0)?.toUpperCase() || "?";
 
@@ -122,32 +127,34 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
         </div>
 
         {/* Actions menu */}
-        <div className="post-menu-wrapper">
-          <button className="post-menu-trigger" onClick={() => setMenuOpen((o) => !o)}>
-            <MoreVertical size={18} />
-          </button>
-          {menuOpen && (
-            <>
-              <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
-              <div className="action-menu">
-                <button
-                  className="action-menu-item"
-                  onClick={() => { setMenuOpen(false); onEdit(post); }}
-                >
-                  <Pencil size={14} />
-                  <span>Chỉnh sửa</span>
-                </button>
-                <button
-                  className="action-menu-item danger"
-                  onClick={() => { setMenuOpen(false); onDelete(post); }}
-                >
-                  <Trash2 size={14} />
-                  <span>Xóa bài đăng</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        {canManagePost && (
+          <div className="post-menu-wrapper">
+            <button className="post-menu-trigger" onClick={() => setMenuOpen((o) => !o)}>
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
+                <div className="action-menu">
+                  <button
+                    className="action-menu-item"
+                    onClick={() => { setMenuOpen(false); onEdit(post); }}
+                  >
+                    <Pencil size={14} />
+                    <span>Chỉnh sửa</span>
+                  </button>
+                  <button
+                    className="action-menu-item danger"
+                    onClick={() => { setMenuOpen(false); onDelete(post); }}
+                  >
+                    <Trash2 size={14} />
+                    <span>Xóa bài đăng</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
