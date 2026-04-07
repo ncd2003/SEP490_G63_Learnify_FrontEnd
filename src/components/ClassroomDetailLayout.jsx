@@ -9,7 +9,7 @@ import {
   ChevronLeft,
   Calendar,
   ClipboardCheck,
-  Presentation
+  Video,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PATH_TEACHER } from '@/routes/paths';
@@ -22,9 +22,9 @@ const MENU_ITEMS = [
   { key: 'members', label: 'Thành viên', icon: Users, path: '/pending-requests' },
   { key: 'assignments', label: 'Bài tập', icon: FileText, path: '/assignments' },
   { key: 'documents', label: 'Tài liệu', icon: FolderOpen, path: '/documents' },
-  { key: 'lecture', label: 'Bài giảng', icon: Presentation, path: '/lecture' },
   { key: 'grades', label: 'Bảng điểm', icon: BarChart3, path: '/grades' },
   { key: 'attendance', label: 'Điểm danh', icon: ClipboardCheck, path: '/attendance' },
+  { key: 'recordings', label: 'Bài giảng', icon: Video, path: '/recordings' },
 ];
 
 const ClassroomDetailLayout = ({ children }) => {
@@ -62,7 +62,7 @@ const ClassroomDetailLayout = ({ children }) => {
   const getActiveMenuItem = () => {
     const path = location.pathname;
     if (path.includes('/attendance')) return 'attendance';
-    if (path.includes('/lecture')) return 'lecture';
+    if (path.includes('/recordings')) return 'recordings';
     if (path.includes('/schedule')) return 'schedule';
     if (path.includes('/pending-requests')) return 'members';
     if (path.includes('/members')) return 'members';

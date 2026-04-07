@@ -20,13 +20,18 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, canJoinSession, ge
 
   const canJoin = canJoinSession ? canJoinSession(session) : true;
   const joinDisabledReason = getJoinDisabledReason ? getJoinDisabledReason(session) : null;
+  const canEdit = typeof onEdit === "function";
+  const canDelete = typeof onDelete === "function";
+  const canOpenAttendance = typeof onOpenAttendance === "function";
 
   const handleEdit = () => {
+    if (!canEdit) return;
     onEdit(session);
     onClose();
   };
 
   const handleDelete = () => {
+    if (!canDelete) return;
     onDelete(session.id);
     onClose();
   };
@@ -68,12 +73,16 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, canJoinSession, ge
           </span>
 
           <div className="event-detail-actions">
-            <button className="event-detail-action-btn" onClick={handleEdit} title="Chỉnh sửa">
-              <Edit size={18} />
-            </button>
-            <button className="event-detail-action-btn event-detail-action-btn--danger" onClick={handleDelete} title="Xóa">
-              <Trash2 size={18} />
-            </button>
+            {canEdit && (
+              <button className="event-detail-action-btn" onClick={handleEdit} title="Chỉnh sửa">
+                <Edit size={18} />
+              </button>
+            )}
+            {canDelete && (
+              <button className="event-detail-action-btn event-detail-action-btn--danger" onClick={handleDelete} title="Xóa">
+                <Trash2 size={18} />
+              </button>
+            )}
             <button className="event-detail-action-btn" onClick={onClose} title="Đóng">
               <X size={18} />
             </button>
@@ -96,7 +105,7 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, canJoinSession, ge
             <div className="event-detail-section-content">
               <div className="event-detail-label">Điểm danh</div>
               <div className="event-detail-value">{session.attendanceTaken ? 'Đã mở' : 'Chưa mở'}</div>
-              {session.id && (
+              {canOpenAttendance && session.id && (
                 <button type="button" className="event-detail-link event-detail-link-btn" onClick={handleOpenAttendance}>
                   Mở trang điểm danh
                 </button>

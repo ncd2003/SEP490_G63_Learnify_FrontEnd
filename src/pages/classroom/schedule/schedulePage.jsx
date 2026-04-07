@@ -276,8 +276,6 @@ const SchedulePage = () => {
   return (
     <ClassroomDetailLayout>
       <div className="classroom-schedule-page">
-        <h1 className="schedule-title">Lịch Học</h1>
-
         {/* View mode tabs */}
         <div className="schedule-tabs">
           {Object.entries({ [VIEW_MODES.WEEK]: 'Tuần', [VIEW_MODES.MONTH]: 'Tháng' }).map(

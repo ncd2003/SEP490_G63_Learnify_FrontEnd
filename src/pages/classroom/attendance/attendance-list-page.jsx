@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CalendarClock, Clock3, ArrowRight, Loader2, Search, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import useSchedule from "@/hooks/useSchedule";
 import { PATH_TEACHER } from "@/routes/paths";
@@ -46,10 +46,24 @@ const getAttendanceState = (session) => {
   return { label: "Đang mở điểm danh", type: "open" };
 };
 
+const ITEMS_PER_PAGE = 10;
+
 const AttendanceListPage = () => {
   const { id: classroomId } = useParams();
   const navigate = useNavigate();
-  const [searchValue, setSearchValue] = useState("");
+  const [filters, setFilters] = useState({
+    keyword: "",
+    sessionDate: "",
+    status: "all",
+    timeSlot: "all",
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    keyword: "",
+    sessionDate: "",
+    status: "all",
+    timeSlot: "all",
+  });
+  const [page, setPage] = useState(1);
 
   const { sessions, loading, error } = useSchedule(Number(classroomId));
 
@@ -61,17 +75,87 @@ const AttendanceListPage = () => {
     });
   }, [sessions]);
 
-  const filteredSessions = useMemo(() => {
-    const keyword = searchValue.trim().toLowerCase();
-    if (!keyword) return sortedSessions;
+  const getSessionTitle = (session) => session.topic || session.title || "Buổi học";
 
-    return sortedSessions.filter((session) => {
-      const topic = (session.topic || "Buổi học").toLowerCase();
-      const date = formatDate(session.sessionDate).toLowerCase();
-      const time = `${session.startTime?.slice(0, 5) || ""} ${session.endTime?.slice(0, 5) || ""}`.toLowerCase();
-      return topic.includes(keyword) || date.includes(keyword) || time.includes(keyword);
+  const getAttendanceStatus = (session) => {
+    const state = getAttendanceState(session);
+    if (session?.attendanceTaken) {
+      return { label: "Hoàn thành", key: "completed" };
+    }
+    if (state.type === "open") {
+      return { label: "Đang tiến hành", key: "open" };
+    }
+    if (state.type === "upcoming") {
+      return { label: "Chưa điểm danh", key: "pending" };
+    }
+    if (state.type === "closed") {
+      return { label: "Chưa điểm danh", key: "pending" };
+    }
+    return { label: "Không xác định", key: "unknown" };
+  };
+
+  const getAttendanceSummary = (session) => {
+    const summary = session.attendanceSummary || session.attendanceStats || {};
+    const total = session.totalStudents ?? summary.total ?? summary.totalCount ?? null;
+    const present = session.presentCount ?? summary.present ?? summary.presentCount ?? null;
+    const absent = session.absentCount ?? summary.absent ?? summary.absentCount ?? null;
+    const rate = total ? Math.round((present ?? 0) / total * 100) : null;
+    return { total, present, absent, rate };
+  };
+
+  const timeSlotOptions = useMemo(() => {
+    const slots = new Set();
+    sessions.forEach((session) => {
+      const start = session.startTime?.slice(0, 5) || "";
+      const end = session.endTime?.slice(0, 5) || "";
+      if (start && end) {
+        slots.add(`${start} - ${end}`);
+      }
     });
-  }, [searchValue, sortedSessions]);
+    return Array.from(slots).sort();
+  }, [sessions]);
+
+  const filteredSessions = useMemo(() => {
+    const keyword = appliedFilters.keyword.trim().toLowerCase();
+    return sortedSessions.filter((session) => {
+      const title = getSessionTitle(session).toLowerCase();
+      const date = session.sessionDate || "";
+      const timeSlot = `${session.startTime?.slice(0, 5) || ""} - ${session.endTime?.slice(0, 5) || ""}`.trim();
+      const statusKey = getAttendanceStatus(session).key;
+
+      if (keyword) {
+        const text = `${title} ${formatDate(session.sessionDate)} ${timeSlot}`.toLowerCase();
+        if (!text.includes(keyword)) return false;
+      }
+
+      if (appliedFilters.sessionDate && date !== appliedFilters.sessionDate) return false;
+      if (appliedFilters.status !== "all" && statusKey !== appliedFilters.status) return false;
+      if (appliedFilters.timeSlot !== "all" && timeSlot !== appliedFilters.timeSlot) return false;
+
+      return true;
+    });
+  }, [appliedFilters, sortedSessions]);
+
+  const pagedSessions = useMemo(() => {
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    return filteredSessions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredSessions, page]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / ITEMS_PER_PAGE));
+  const pageStart = filteredSessions.length === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
+  const pageEnd = Math.min(filteredSessions.length, page * ITEMS_PER_PAGE);
+
+  const handleSearch = () => {
+    setAppliedFilters(filters);
+    setPage(1);
+  };
+
+  const handleReset = () => {
+    const reset = { keyword: "", sessionDate: "", status: "all", timeSlot: "all" };
+    setFilters(reset);
+    setAppliedFilters(reset);
+    setPage(1);
+  };
 
   const handleOpenAttendance = (sessionId) => {
     navigate(PATH_TEACHER.classroom.attendanceSession(classroomId, sessionId));
@@ -82,27 +166,68 @@ const AttendanceListPage = () => {
       <div className="attendance-list-page">
         <div className="attendance-list-header">
           <h1>Điểm danh</h1>
-          <p>Chọn một buổi học bên dưới để vào màn hình điểm danh chi tiết.</p>
         </div>
 
         {!loading && !error && sortedSessions.length > 0 && (
-          <div className="attendance-list-search-wrap">
-            <Search size={16} className="attendance-list-search-icon" />
-            <input
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Tìm theo chủ đề, ngày hoặc giờ học"
-              className="attendance-list-search-input"
-            />
-            {searchValue && (
-              <button
-                className="attendance-list-search-clear"
-                onClick={() => setSearchValue("")}
-                aria-label="Xóa tìm kiếm"
-              >
-                <X size={14} />
+          <div className="attendance-filter-card">
+            <div className="attendance-filter-grid">
+              <div className="attendance-filter-field">
+                <label htmlFor="attendance-keyword">Tên buổi học</label>
+                <input
+                  id="attendance-keyword"
+                  type="text"
+                  placeholder="Nhập tên buổi học"
+                  value={filters.keyword}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+                />
+              </div>
+              <div className="attendance-filter-field">
+                <label htmlFor="attendance-date">Ngày học</label>
+                <input
+                  id="attendance-date"
+                  type="date"
+                  value={filters.sessionDate}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, sessionDate: e.target.value }))}
+                />
+              </div>
+              <div className="attendance-filter-field">
+                <label htmlFor="attendance-status">Trạng thái điểm danh</label>
+                <select
+                  id="attendance-status"
+                  value={filters.status}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="completed">Hoàn thành</option>
+                  <option value="open">Đang tiến hành</option>
+                  <option value="pending">Chưa điểm danh</option>
+                  <option value="unknown">Không xác định</option>
+                </select>
+              </div>
+              <div className="attendance-filter-field">
+                <label htmlFor="attendance-slot">Khung giờ</label>
+                <select
+                  id="attendance-slot"
+                  value={filters.timeSlot}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, timeSlot: e.target.value }))}
+                >
+                  <option value="all">Tất cả</option>
+                  {timeSlotOptions.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="attendance-filter-actions">
+              <button type="button" className="btn-primary" onClick={handleSearch}>
+                Tìm kiếm
               </button>
-            )}
+              <button type="button" className="btn-secondary" onClick={handleReset}>
+                Đặt lại
+              </button>
+            </div>
           </div>
         )}
 
@@ -120,41 +245,94 @@ const AttendanceListPage = () => {
         )}
 
         {!loading && !error && filteredSessions.length > 0 && (
-          <div className="attendance-session-list">
-            {filteredSessions.map((session) => {
-              const state = getAttendanceState(session);
-              return (
-                <article key={session.id} className="attendance-session-card">
-                  <div className="session-card-top">
-                    <h2>{session.topic || "Buổi học"}</h2>
-                    <span className={`session-state ${state.type}`}>{state.label}</span>
-                  </div>
+          <div className="attendance-table-card">
+            <div className="attendance-table-wrapper">
+              <table className="attendance-table">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Tên buổi học</th>
+                    <th>Ngày học</th>
+                    <th>Khung giờ</th>
+                    <th>Tổng học sinh</th>
+                    <th>Có mặt</th>
+                    <th>Vắng mặt</th>
+                    <th>Tỷ lệ có mặt</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedSessions.map((session, index) => {
+                    const status = getAttendanceStatus(session);
+                    const summary = getAttendanceSummary(session);
+                    const timeSlot = `${session.startTime?.slice(0, 5) || "--"} - ${session.endTime?.slice(0, 5) || "--"}`;
+                    return (
+                      <tr key={session.id}>
+                        <td>{(page - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                        <td>{getSessionTitle(session)}</td>
+                        <td>{formatDate(session.sessionDate)}</td>
+                        <td>{timeSlot}</td>
+                        <td>{summary.total ?? "-"}</td>
+                        <td>{summary.present ?? "-"}</td>
+                        <td>{summary.absent ?? "-"}</td>
+                        <td>{summary.rate !== null ? `${summary.rate}%` : "-"}</td>
+                        <td>
+                          <span className={`attendance-status ${status.key}`}>{status.label}</span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="attendance-action-btn"
+                            onClick={() => handleOpenAttendance(session.id)}
+                          >
+                            Vào điểm danh
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                  <div className="session-card-meta">
-                    <span>
-                      <CalendarClock size={14} /> {formatDate(session.sessionDate)}
-                    </span>
-                    <span>
-                      <Clock3 size={14} /> {session.startTime?.slice(0, 5)} - {session.endTime?.slice(0, 5)}
-                    </span>
-                  </div>
-
+            <div className="attendance-table-footer">
+              <span>
+                Hiển thị {pageStart}-{pageEnd} trên tổng {filteredSessions.length} buổi điểm danh
+              </span>
+              <div className="attendance-pagination">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page === 1}
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                   <button
-                    className="session-open-btn"
-                    onClick={() => handleOpenAttendance(session.id)}
+                    key={p}
+                    type="button"
+                    className={p === page ? "active" : ""}
+                    onClick={() => setPage(p)}
                   >
-                    Vào điểm danh
-                    <ArrowRight size={14} />
+                    {p}
                   </button>
-                </article>
-              );
-            })}
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page === totalPages}
+                >
+                  &gt;
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {!loading && !error && sortedSessions.length > 0 && filteredSessions.length === 0 && (
           <div className="attendance-list-empty">
-            Không tìm thấy buổi học phù hợp với từ khóa tìm kiếm.
+            Không tìm thấy buổi học phù hợp với điều kiện lọc.
           </div>
         )}
       </div>

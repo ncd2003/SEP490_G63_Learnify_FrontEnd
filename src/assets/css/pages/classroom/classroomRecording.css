@@ -1,0 +1,233 @@
+.classroom-recording-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.recording-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.recording-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.recording-header p {
+  margin: 4px 0 0;
+  color: #6b7280;
+}
+
+.recording-filters {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recording-filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recording-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recording-filter-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.recording-filter-field input,
+.recording-filter-field select {
+  border: 1px solid #cbd5f5;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  background: #ffffff;
+}
+
+.recording-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5f5;
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: #ffffff;
+}
+
+.recording-input-wrap input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+  background: transparent;
+}
+
+.recording-clear {
+  border: none;
+  background: #e0e7ff;
+  color: #3730a3;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.recording-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.recording-btn {
+  border: 1px solid #cbd5f5;
+  background: #f8fafc;
+  color: #1e293b;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recording-state,
+.recording-error,
+.recording-empty {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.recording-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.recording-table-wrapper {
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.recording-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #eff6ff;
+  padding: 12px 14px;
+}
+
+.recording-table-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.recording-table-header span {
+  color: #374151;
+  font-size: 13px;
+}
+
+.recording-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.recording-table th,
+.recording-table td {
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.recording-table th {
+  background: #f8fbff;
+  font-size: 13px;
+  color: #1e3a8a;
+}
+
+.recording-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.recording-session-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.recording-session-type {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.recording-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recording-action-btn {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recording-action-btn--ghost {
+  border-color: #cbd5f5;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+@media (max-width: 1100px) {
+  .recording-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .recording-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .recording-table {
+    min-width: 720px;
+  }
+
+  .recording-table-wrapper {
+    overflow-x: auto;
+  }
+}

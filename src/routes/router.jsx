@@ -52,8 +52,14 @@ const PendingRequestsPage = Loadable(
 const SchedulePage = Loadable(
   lazy(() => import("@/pages/classroom/schedule/schedulePage")),
 );
+const TeacherSchedulePage = Loadable(
+  lazy(() => import("@/pages/classroom/schedule/teacher-schedule-page")),
+);
 const ClassroomLecturePage = Loadable(
   lazy(() => import("@/pages/classroom/lecture/lecture-page")),
+);
+const ClassroomRecordingPage = Loadable(
+  lazy(() => import("@/pages/classroom/recording/recording-page")),
 );
 const AttendanceListPage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
@@ -173,6 +179,10 @@ const AppRoutes = () =>
           element: <ClassroomListOrStudentPage />,
         },
         {
+          path: PATH_TEACHER.schedule,
+          element: <TeacherSchedulePage />,
+        },
+        {
           path: PATH_TEACHER.questionBank,
           element: <QuestionBankPage />,
         },
@@ -231,6 +241,14 @@ const AppRoutes = () =>
       element: (
         <AuthGuard>
           <ClassroomLecturePage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: PATH_TEACHER.classroom.recordings(":id"),
+      element: (
+        <AuthGuard>
+          <ClassroomRecordingPage />
         </AuthGuard>
       ),
     },

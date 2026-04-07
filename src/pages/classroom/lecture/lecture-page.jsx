@@ -90,6 +90,8 @@ const getJitsiScriptUrl = ({ domain, appId }) => {
   return `https://${domain}/external_api.js`;
 };
 
+const isTeacherRole = (role) => normalizeRoleForToken(role) === "TEACHER";
+
 const loadJitsiApiScript = (src) => {
   const loadedSrc = window.__learnifyJitsiApiSrc;
   if (window.JitsiMeetExternalAPI && loadedSrc === src) {
@@ -142,6 +144,8 @@ const ClassroomLecturePage = () => {
 
   const containerRef = useRef(null);
   const jitsiApiRef = useRef(null);
+  const autoStopRecordingTimerRef = useRef(null);
+  const autoRecordingStartedRef = useRef(false);
 
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [joinConfig, setJoinConfig] = useState(null);
@@ -198,8 +202,18 @@ const ClassroomLecturePage = () => {
     [onlineSessions, selectedSessionId],
   );
 
+  const selectedSessionEndTimeMs = useMemo(() => {
+    if (!selectedSession) return null;
+    return toSessionDateTime(selectedSession.sessionDate, selectedSession.endTime)?.getTime() || null;
+  }, [selectedSession]);
+
   useEffect(() => {
     setParticipantCount(0);
+    autoRecordingStartedRef.current = false;
+    if (autoStopRecordingTimerRef.current) {
+      clearTimeout(autoStopRecordingTimerRef.current);
+      autoStopRecordingTimerRef.current = null;
+    }
   }, [selectedSession?.id]);
 
   useEffect(() => {
@@ -276,6 +290,72 @@ const ClassroomLecturePage = () => {
     let disposed = false;
     let cleanupListeners = () => {};
 
+    const clearAutoStopTimer = () => {
+      if (autoStopRecordingTimerRef.current) {
+        clearTimeout(autoStopRecordingTimerRef.current);
+        autoStopRecordingTimerRef.current = null;
+      }
+    };
+
+    const stopRecordingIfNeeded = (jitsiApi) => {
+      if (!isTeacherRole(user?.role) || !autoRecordingStartedRef.current) return;
+      try {
+        jitsiApi.executeCommand("stopRecording", "file");
+      } catch {
+        // Ignore provider-specific recording stop errors.
+      }
+
+      if (classroomId && selectedSession?.id) {
+        scheduleApi
+          .stopSessionRecording(classroomId, selectedSession.id)
+          .catch(() => {
+            // Keep UI resilient even if backend sync fails transiently.
+          });
+      }
+
+      autoRecordingStartedRef.current = false;
+    };
+
+    const scheduleAutoStopRecording = (jitsiApi) => {
+      if (!isTeacherRole(user?.role) || !selectedSessionEndTimeMs) return;
+
+      clearAutoStopTimer();
+
+      const delay = selectedSessionEndTimeMs - Date.now();
+      if (delay <= 0) {
+        stopRecordingIfNeeded(jitsiApi);
+        return;
+      }
+
+      autoStopRecordingTimerRef.current = setTimeout(() => {
+        if (jitsiApiRef.current !== jitsiApi) return;
+        stopRecordingIfNeeded(jitsiApi);
+      }, delay);
+    };
+
+    const startRecordingIfTeacher = (jitsiApi) => {
+      if (!isTeacherRole(user?.role) || autoRecordingStartedRef.current) return;
+
+      try {
+        jitsiApi.executeCommand("startRecording", {
+          mode: "file",
+          shouldShare: false,
+        });
+
+        if (classroomId && selectedSession?.id) {
+          scheduleApi
+            .startSessionRecording(classroomId, selectedSession.id)
+            .catch(() => {
+              // Keep UI resilient even if backend sync fails transiently.
+            });
+        }
+
+        autoRecordingStartedRef.current = true;
+      } catch {
+        // Ignore provider-specific recording start errors.
+      }
+    };
+
     const mountJitsi = async () => {
       try {
         setEmbedError("");
@@ -325,6 +405,8 @@ const ClassroomLecturePage = () => {
         const handleConferenceJoined = () => {
           setParticipantCount((prev) => (prev > 0 ? prev : 1));
           syncParticipantCount();
+          startRecordingIfTeacher(jitsiApi);
+          scheduleAutoStopRecording(jitsiApi);
         };
         const handleParticipantJoined = () => {
           setParticipantCount((prev) => prev + 1);
@@ -334,15 +416,21 @@ const ClassroomLecturePage = () => {
           setParticipantCount((prev) => Math.max(0, prev - 1));
           syncParticipantCount();
         };
+        const handleConferenceLeft = () => {
+          clearAutoStopTimer();
+          autoRecordingStartedRef.current = false;
+        };
 
         jitsiApi.addListener("videoConferenceJoined", handleConferenceJoined);
         jitsiApi.addListener("participantJoined", handleParticipantJoined);
         jitsiApi.addListener("participantLeft", handleParticipantLeft);
+        jitsiApi.addListener("videoConferenceLeft", handleConferenceLeft);
 
         cleanupListeners = () => {
           jitsiApi.removeListener("videoConferenceJoined", handleConferenceJoined);
           jitsiApi.removeListener("participantJoined", handleParticipantJoined);
           jitsiApi.removeListener("participantLeft", handleParticipantLeft);
+          jitsiApi.removeListener("videoConferenceLeft", handleConferenceLeft);
         };
       } catch (err) {
         setEmbedError(err.message || "Không thể nhúng Jitsi vào hệ thống.");
@@ -354,12 +442,17 @@ const ClassroomLecturePage = () => {
     return () => {
       disposed = true;
       cleanupListeners();
+      if (autoStopRecordingTimerRef.current) {
+        clearTimeout(autoStopRecordingTimerRef.current);
+        autoStopRecordingTimerRef.current = null;
+      }
+      autoRecordingStartedRef.current = false;
       if (jitsiApiRef.current) {
         jitsiApiRef.current.dispose();
         jitsiApiRef.current = null;
       }
     };
-  }, [joinConfig, user?.email, user?.fullName, user?.username]);
+  }, [joinConfig, selectedSessionEndTimeMs, user?.email, user?.fullName, user?.role, user?.username]);
 
   return (
     <ClassroomDetailLayout>
