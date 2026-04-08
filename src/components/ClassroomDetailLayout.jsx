@@ -6,10 +6,12 @@ import {
   FileText, 
   FolderOpen, 
   BarChart3,
+  ClipboardCheck,
   ChevronLeft,
   Calendar,
-  ClipboardCheck,
   Video,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PATH_TEACHER } from '@/routes/paths';
@@ -21,7 +23,7 @@ const MENU_ITEMS = [
   { key: 'schedule', label: 'Lịch học', icon: Calendar, path: '/schedule' },
   { key: 'members', label: 'Thành viên', icon: Users, path: '/pending-requests' },
   { key: 'assignments', label: 'Bài tập', icon: FileText, path: '/assignments' },
-  { key: 'documents', label: 'Tài liệu', icon: FolderOpen, path: '/documents' },
+  { key: 'folders', label: 'Tài liệu', icon: FolderOpen, path: '/folders' },
   { key: 'grades', label: 'Bảng điểm', icon: BarChart3, path: '/grades' },
   { key: 'attendance', label: 'Điểm danh', icon: ClipboardCheck, path: '/attendance' },
   { key: 'recordings', label: 'Bài giảng', icon: Video, path: '/recordings' },
@@ -34,6 +36,7 @@ const ClassroomDetailLayout = ({ children }) => {
   const { user } = useAuth();
   const [classroom, setClassroom] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     fetchClassroomInfo();
@@ -67,7 +70,7 @@ const ClassroomDetailLayout = ({ children }) => {
     if (path.includes('/pending-requests')) return 'members';
     if (path.includes('/members')) return 'members';
     if (path.includes('/assignments')) return 'assignments';
-    if (path.includes('/documents')) return 'documents';
+    if (path.includes('/folders')) return 'folders';
     if (path.includes('/grades')) return 'grades';
     return 'feed';
   };
@@ -83,9 +86,9 @@ const ClassroomDetailLayout = ({ children }) => {
   }
 
   return (
-    <div className="classroom-detail-layout">
+    <div className={`classroom-detail-layout ${collapsed ? 'is-collapsed' : ''}`}>
       {/* Sidebar */}
-      <aside className="classroom-sidebar">
+      <aside className={`classroom-sidebar ${collapsed ? 'collapsed' : ''}`}>
         <div className="classroom-sidebar-header">
           <button 
             className="back-to-classrooms-btn"
@@ -94,28 +97,37 @@ const ClassroomDetailLayout = ({ children }) => {
           >
             <ChevronLeft size={20} />
           </button>
-          <h2 className="classroom-sidebar-title">Thông tin lớp học - {classroom?.name}</h2>
+          {!collapsed && (
+            <h2 className="classroom-sidebar-title">Thông tin lớp học - {classroom?.name}</h2>
+          )}
+          <button
+            type="button"
+            className="collapse-toggle-btn"
+            onClick={() => setCollapsed((prev) => !prev)}
+            aria-label={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+          >
+            {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+          </button>
         </div>
 
-        <div className="classroom-info-card">
-          <div className="classroom-info-row">
-            <span className="classroom-info-label">Giảng viên:</span>
-            <span className="classroom-info-value">{user?.fullName || user?.username}</span>
-          </div>
-          {/* <div className="classroom-info-row">
-            <span className="classroom-info-email">{user?.email}</span>
-          </div> */}
-          <div className="classroom-info-row">
-            <span className="classroom-info-label">Mã lớp:</span>
-            <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>
-          </div>
-          {classroom?.schedule && (
+        {!collapsed && (
+          <div className="classroom-info-card">
             <div className="classroom-info-row">
-              <Calendar size={16} className="classroom-info-icon" />
-              <span className="classroom-info-schedule">{classroom.schedule}</span>
+              <span className="classroom-info-label">Giảng viên:</span>
+              <span className="classroom-info-value">{user?.fullName || user?.username}</span>
             </div>
-          )}
-        </div>
+            <div className="classroom-info-row">
+              <span className="classroom-info-label">Mã lớp:</span>
+              <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>
+            </div>
+            {classroom?.schedule && (
+              <div className="classroom-info-row">
+                <Calendar size={16} className="classroom-info-icon" />
+                <span className="classroom-info-schedule">{classroom.schedule}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         <nav className="classroom-nav">
           {MENU_ITEMS.map((item) => {
@@ -128,13 +140,15 @@ const ClassroomDetailLayout = ({ children }) => {
                 onClick={() => {
                   if (item.key === 'feed') {
                     navigate(PATH_TEACHER.classroom.detail(id));
+                  } else if (item.key === 'folders') {
+                    navigate(PATH_TEACHER.classroom.folders(id));
                   } else {
                     navigate(`${PATH_TEACHER.classroom.detail(id)}${item.path}`);
                   }
                 }}
               >
                 <Icon size={20} />
-                <span>{item.label}</span>
+                {!collapsed && <span>{item.label}</span>}
               </button>
             );
           })}

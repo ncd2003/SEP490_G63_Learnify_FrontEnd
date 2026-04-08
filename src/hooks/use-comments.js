@@ -12,12 +12,15 @@ const useComments = (postId) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const sortByCreatedDesc = (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
+
   // Transform API response to UI format
   const transformComment = (comment) => {
+    const replies = (comment.replies?.map(transformComment) || []).sort(sortByCreatedDesc);
     return {
       ...comment,
-      authorName: comment.user?.name || "Người dùng",
-      replies: comment.replies?.map(transformComment) || [],
+      authorName: comment.user?.fullName || comment.user?.name || "Người dùng",
+      replies,
     };
   };
 
@@ -28,7 +31,7 @@ const useComments = (postId) => {
       setError(null);
       const data = await commentApi.getCommentsByPost(postId);
       const list = data?.result ?? data ?? [];
-      const transformed = Array.isArray(list) ? list.map(transformComment) : [];
+      const transformed = Array.isArray(list) ? list.map(transformComment).sort(sortByCreatedDesc) : [];
       setComments(transformed);
     } catch (err) {
       console.error("Failed to fetch comments:", err);

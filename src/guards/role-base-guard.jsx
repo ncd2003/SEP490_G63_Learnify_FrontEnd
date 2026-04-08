@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { normalizeRole } from "@/lib/auth-role";
 import { PATH_TEACHER, PATH_STUDENT, PATH_ADMIN } from "@/routes/paths";
 
 /**
@@ -18,16 +19,17 @@ const RoleBasedGuard = ({ children, role }) => {
     return <Navigate to="/" replace />;
   }
 
-  const userRole = user?.role;
+  const userRole = normalizeRole(user?.role);
+  const requiredRole = normalizeRole(role);
 
-  if (userRole !== role) {
+  if (userRole !== requiredRole) {
     switch (userRole) {
-      case "ROLE_TEACHER":
+      case "TEACHER":
         return <Navigate to={PATH_TEACHER.classroom.root} replace />;
-      case "ROLE_STUDENT":
+      case "STUDENT":
         return <Navigate to={PATH_STUDENT.classroom.root} replace />;
-      case "ROLE_ADMIN":
-        return <Navigate to={PATH_ADMIN.users.root} replace />;
+      case "ADMIN":
+        return <Navigate to={PATH_ADMIN.dashboard} replace />;
       default:
         return <Navigate to="/404" replace />;
     }

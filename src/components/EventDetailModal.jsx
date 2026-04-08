@@ -104,10 +104,10 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, canJoinSession, ge
             <Users size={20} className="event-detail-icon" />
             <div className="event-detail-section-content">
               <div className="event-detail-label">Điểm danh</div>
-              <div className="event-detail-value">{session.attendanceTaken ? 'Đã mở' : 'Chưa mở'}</div>
+              <div className="event-detail-value">{session.attendanceTaken ? 'Đã điểm danh' : 'Chưa điểm danh'}</div>
               {canOpenAttendance && session.id && (
                 <button type="button" className="event-detail-link event-detail-link-btn" onClick={handleOpenAttendance}>
-                  Mở trang điểm danh
+                  {session.attendanceTaken ? 'Xem điểm danh' : 'Mở trang điểm danh'}
                 </button>
               )}
             </div>

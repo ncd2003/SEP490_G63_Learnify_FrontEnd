@@ -89,7 +89,7 @@ const AttendanceListPage = () => {
       return { label: "Chưa điểm danh", key: "pending" };
     }
     if (state.type === "closed") {
-      return { label: "Chưa điểm danh", key: "pending" };
+      return { label: "Đã quá hạn điểm danh", key: "expired" };
     }
     return { label: "Không xác định", key: "unknown" };
   };
@@ -201,6 +201,7 @@ const AttendanceListPage = () => {
                   <option value="completed">Hoàn thành</option>
                   <option value="open">Đang tiến hành</option>
                   <option value="pending">Chưa điểm danh</option>
+                  <option value="expired">Đã quá hạn điểm danh</option>
                   <option value="unknown">Không xác định</option>
                 </select>
               </div>
@@ -285,8 +286,9 @@ const AttendanceListPage = () => {
                             type="button"
                             className="attendance-action-btn"
                             onClick={() => handleOpenAttendance(session.id)}
+                            disabled={status.key === "pending" || status.key === "unknown"}
                           >
-                            Vào điểm danh
+                            {status.key === "completed" || status.key === "expired" ? "Xem điểm danh" : "Vào điểm danh"}
                           </button>
                         </td>
                       </tr>

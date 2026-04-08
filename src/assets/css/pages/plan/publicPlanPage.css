@@ -1,0 +1,224 @@
+.public-plan-page {
+  min-height: 100vh;
+  padding: 20px 24px 36px;
+  background: radial-gradient(circle at top right, #e0f2fe 0%, #f8fafc 35%, #ffffff 80%);
+  color: #0f172a;
+}
+
+.plan-hero {
+  max-width: 1120px;
+  margin: 0 auto 20px;
+  border: 1px solid #dbe5ef;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 58%, #0369a1 100%);
+  color: #f8fafc;
+  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+
+.plan-hero h1 {
+  margin: 0;
+  font-size: clamp(24px, 3.4vw, 36px);
+  line-height: 1.15;
+}
+
+.plan-hero p {
+  margin: 10px 0 0;
+  max-width: 700px;
+  color: #dbeafe;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hero-cta:hover {
+  background: #eff6ff;
+}
+
+.plan-grid {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.plan-card {
+  border: 1px solid #dbe5ef;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.plan-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan-name-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-name-wrap svg {
+  color: #2563eb;
+}
+
+.plan-name-wrap h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.plan-status {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.plan-price {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.plan-price span {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.plan-description {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+  min-height: 42px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.plan-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.plan-benefits {
+  border-top: 1px dashed #dbe5ef;
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.plan-benefit-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.plan-benefit-item svg {
+  color: #16a34a;
+}
+
+.plan-benefit-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.plan-select-btn {
+  border: 1px solid #1d4ed8;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plan-select-btn:hover {
+  background: #1d4ed8;
+}
+
+.plan-state {
+  max-width: 1120px;
+  margin: 0 auto;
+  border: 1px solid #dbe5ef;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.plan-state.error {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fff5f5;
+}
+
+@media (max-width: 1024px) {
+  .plan-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .public-plan-page {
+    padding: 16px;
+  }
+
+  .plan-hero {
+    flex-direction: column;
+  }
+
+  .plan-grid {
+    grid-template-columns: 1fr;
+  }
+}

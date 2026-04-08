@@ -2,9 +2,12 @@ import { apiRequest } from "@/lib/http";
 import { API_SUFFIX } from "./util.api";
 
 const BASE = API_SUFFIX.AUTH;
+const ADMIN_BASE = API_SUFFIX.ADMIN;
 
 export const authApi = {
   login: (credentials) => apiRequest.post(`${BASE}/login`, credentials),
+
+  adminLogin: (credentials) => apiRequest.post(`${ADMIN_BASE}/login`, credentials),
 
   register: (userData) => apiRequest.post(`${BASE}/register`, userData),
 

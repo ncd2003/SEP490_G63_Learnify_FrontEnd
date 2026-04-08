@@ -79,6 +79,36 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
+  const adminLogin = async (credentials) => {
+    const response = await authApi.adminLogin(credentials);
+
+    const { accessToken } = response.result;
+    localStorage.setItem("accessToken", accessToken);
+    setIsAuthenticated(true);
+
+    let userData;
+    try {
+      const userResponse = await authApi.getCurrentUser();
+      userData = userResponse.result;
+
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+    } catch (error) {
+      console.error("Could not fetch admin info after login:", error);
+      userData = {
+        id: response.result.id,
+        email: response.result.email,
+        fullName: response.result.fullName,
+        avatarUrl: null,
+        role: "ROLE_ADMIN",
+      };
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+    }
+
+    return userData;
+  };
+
   const register = async (userData) => {
     const response = await authApi.register(userData);
     // Backend may return: { code, message, result: {...} }
@@ -169,6 +199,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         loading,
         login,
+        adminLogin,
         logout,
         register,
         verifyOtp,
