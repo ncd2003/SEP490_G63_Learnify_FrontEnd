@@ -108,6 +108,12 @@ const SendUserReportPage = Loadable(
 const AdminDashboardPage = Loadable(
   lazy(() => import("@/pages/admin/AdminDashboard")),
 );
+const AdminRevenueDashboardPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminRevenueDashboard")),
+);
+const AdminTransactionHistoryPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminTransactionHistory")),
+);
 const AdminUserListPage = Loadable(lazy(() => import("@/pages/admin/AdminUserList")));
 const AdminUserDetailPage = Loadable(
   lazy(() => import("@/pages/admin/AdminUserDetail")),
@@ -241,6 +247,14 @@ const AppRoutes = () =>
       ),
       children: [
         { path: PATH_ADMIN.dashboard, element: <AdminDashboardPage /> },
+        {
+          path: PATH_ADMIN.revenueDashboard,
+          element: <AdminRevenueDashboardPage />,
+        },
+        {
+          path: PATH_ADMIN.transactionHistory,
+          element: <AdminTransactionHistoryPage />,
+        },
         { path: PATH_ADMIN.users.root, element: <AdminUserListPage /> },
         { path: PATH_ADMIN.users.detail(":id"), element: <AdminUserDetailPage /> },
         {
