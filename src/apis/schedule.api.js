@@ -63,24 +63,6 @@ const scheduleApi = {
    */
   generateJitsiMeetingLink: (data) =>
     apiRequest.post('/integrations/jitsi/meeting-link', data),
-
-  /**
-   * Mark recording started for a session
-   * POST /api/classrooms/{classId}/sessions/{sessionId}/recording/start
-   * @param {number|string} classId
-   * @param {number|string} sessionId
-   */
-  startSessionRecording: (classId, sessionId) =>
-    apiRequest.post(`/classrooms/${classId}/sessions/${sessionId}/recording/start`),
-
-  /**
-   * Mark recording stopped for a session
-   * POST /api/classrooms/{classId}/sessions/{sessionId}/recording/stop
-   * @param {number|string} classId
-   * @param {number|string} sessionId
-   */
-  stopSessionRecording: (classId, sessionId) =>
-    apiRequest.post(`/classrooms/${classId}/sessions/${sessionId}/recording/stop`),
 };
 
 export default scheduleApi;

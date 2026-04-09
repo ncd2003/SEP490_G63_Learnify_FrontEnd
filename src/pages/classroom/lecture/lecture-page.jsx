@@ -305,14 +305,6 @@ const ClassroomLecturePage = () => {
         // Ignore provider-specific recording stop errors.
       }
 
-      if (classroomId && selectedSession?.id) {
-        scheduleApi
-          .stopSessionRecording(classroomId, selectedSession.id)
-          .catch(() => {
-            // Keep UI resilient even if backend sync fails transiently.
-          });
-      }
-
       autoRecordingStartedRef.current = false;
     };
 
@@ -341,14 +333,6 @@ const ClassroomLecturePage = () => {
           mode: "file",
           shouldShare: false,
         });
-
-        if (classroomId && selectedSession?.id) {
-          scheduleApi
-            .startSessionRecording(classroomId, selectedSession.id)
-            .catch(() => {
-              // Keep UI resilient even if backend sync fails transiently.
-            });
-        }
 
         autoRecordingStartedRef.current = true;
       } catch {
