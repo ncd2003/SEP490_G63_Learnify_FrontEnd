@@ -24,6 +24,8 @@ import {
   CheckCheck,
   CreditCard,
   Package,
+  Wallet,
+  ReceiptText,
 } from "lucide-react";
 import {
   PATH_AUTH,
@@ -253,8 +255,18 @@ const DashboardLayout = () => {
   const adminMenuItems = [
     {
       icon: BookOpen,
-      label: "Dashboard",
+      label: "System Dashboard",
       path: PATH_ADMIN.dashboard,
+    },
+    {
+      icon: Wallet,
+      label: "Revenue Dashboard",
+      path: PATH_ADMIN.revenueDashboard,
+    },
+    {
+      icon: ReceiptText,
+      label: "Lịch sử giao dịch",
+      path: PATH_ADMIN.transactionHistory,
     },
     {
       icon: Users,

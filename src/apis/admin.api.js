@@ -44,6 +44,9 @@ export const adminApi = {
       params: { page, size },
     });
   },
+  getSystemDashboard: () => {
+    return apiRequest.get(`${BASE}/system-dashboard`);
+  },
   createSystemNotification: (payload) => {
     return apiRequest.post(`${BASE}/system-notifications`, payload);
   },

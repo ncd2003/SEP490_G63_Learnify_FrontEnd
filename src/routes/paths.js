@@ -76,6 +76,8 @@ export const PATH_STUDENT = {
 export const PATH_ADMIN = {
   root: "/admin",
   dashboard: "/admin/dashboard",
+  revenueDashboard: "/admin/revenue-dashboard",
+  transactionHistory: "/admin/transaction-history",
   users: {
     root: "/admin/users",
     detail: (id) => `/admin/users/${id}`,
