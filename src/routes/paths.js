@@ -24,6 +24,7 @@ export const PATH_AUTH = {
 export const PATH_COMMON = {
   profile: "/profile",
   changePassword: "/change-password",
+  notifications: "/notifications",
 };
 
 // ─── TEACHER ──────────────────────────────────────────────────────────────────

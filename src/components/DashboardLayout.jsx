@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LogoutDialog from "@/components/LogoutDialog";
+import NotificationDetailModal from "@/components/NotificationDetailModal";
+import AppLogo from "@/components/AppLogo";
 import { notificationApi } from "@/apis/notification.api";
+import { createNotificationSocket } from "@/lib/notification-websocket";
 import "@/assets/css/components/dashboardLayout.css";
 import { normalizeRole } from "@/lib/auth-role";
 import {
@@ -19,7 +22,6 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
-  BarChart2,
   Bell,
   CheckCheck,
   CreditCard,
@@ -46,6 +48,9 @@ const DashboardLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [accountLockedNotice, setAccountLockedNotice] = useState("");
+  const forcedLogoutTriggeredRef = useRef(false);
 
   const normalizedRole = normalizeRole(user?.role);
   const isTeacher = normalizedRole === "TEACHER";
@@ -82,7 +87,9 @@ const DashboardLayout = () => {
   };
 
   const fetchNotificationData = async ({ withList = true } = {}) => {
-    setIsNotificationLoading(true);
+    if (withList) {
+      setIsNotificationLoading(true);
+    }
     try {
       const calls = [notificationApi.getUnreadCount()];
       if (withList) {
@@ -98,7 +105,9 @@ const DashboardLayout = () => {
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
-      setIsNotificationLoading(false);
+      if (withList) {
+        setIsNotificationLoading(false);
+      }
     }
   };
 
@@ -116,21 +125,24 @@ const DashboardLayout = () => {
     if (!notification?.id) return;
 
     try {
+      let nextNotification = notification;
+
       if (!notification.read) {
-        await notificationApi.markAsRead(notification.id);
+        const response = await notificationApi.markAsRead(notification.id);
+        nextNotification = {
+          ...notification,
+          ...(response?.result || {}),
+          read: true,
+        };
       }
 
       setNotifications((prev) =>
         prev.map((item) =>
-          item.id === notification.id ? { ...item, read: true } : item,
+          item.id === notification.id ? { ...item, ...nextNotification, read: true } : item,
         ),
       );
       setUnreadCount((prev) => Math.max(0, prev - (notification.read ? 0 : 1)));
-
-      if (notification.redirectUrl) {
-        navigate(notification.redirectUrl);
-      }
-      setIsNotificationOpen(false);
+      setSelectedNotification(nextNotification);
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -183,11 +195,6 @@ const DashboardLayout = () => {
       icon: Database,
       label: "Ngân hàng đề",
       path: PATH_TEACHER.questionBank,
-    },
-    {
-      icon: BarChart2,
-      label: "Báo cáo",
-      path: PATH_TEACHER.reports,
     },
   ];
 
@@ -275,11 +282,55 @@ const DashboardLayout = () => {
     if (!user?.id) return;
 
     fetchNotificationData({ withList: false });
-    const timer = window.setInterval(() => {
-      fetchNotificationData({ withList: false });
-    }, 30000);
+    const token = localStorage.getItem("accessToken");
+    const disconnect = createNotificationSocket({
+      token,
+      onConnected: () => {
+        fetchNotificationData({ withList: false });
+      },
+      onNotification: (incomingNotification) => {
+        if (!incomingNotification?.id) return;
 
-    return () => window.clearInterval(timer);
+        setNotifications((prev) => {
+          const exists = prev.some((item) => item.id === incomingNotification.id);
+          if (exists) {
+            return prev;
+          }
+          return [incomingNotification, ...prev];
+        });
+
+        setUnreadCount((prev) => prev + (incomingNotification.read ? 0 : 1));
+      },
+      onAccountStatus: async (accountStatusEvent) => {
+        if (
+          accountStatusEvent?.status !== "BANNED" ||
+          forcedLogoutTriggeredRef.current
+        ) {
+          return;
+        }
+
+        forcedLogoutTriggeredRef.current = true;
+
+        const lockMessage =
+          accountStatusEvent?.message ||
+          "Tai khoan cua ban da bi khoa. Vui long lien he bo phan ho tro.";
+
+        setAccountLockedNotice(lockMessage);
+        sessionStorage.setItem("account_locked_realtime", "1");
+        sessionStorage.setItem("account_locked_message", lockMessage);
+
+        window.setTimeout(async () => {
+          sessionStorage.removeItem("account_locked_realtime");
+          await logout();
+          navigate(PATH_AUTH.login, { replace: true });
+        }, 2500);
+      },
+      onError: (error) => {
+        console.error("Notification socket error:", error);
+      },
+    });
+
+    return () => disconnect();
   }, [user?.id]);
 
   useEffect(() => {
@@ -295,11 +346,24 @@ const DashboardLayout = () => {
 
   return (
     <div className="dashboard-layout">
+      {accountLockedNotice && (
+        <div className="account-lock-overlay" role="alert" aria-live="assertive">
+          <div className="account-lock-card">
+            <h3>Tai khoan cua ban da bi khoa</h3>
+            <p>{accountLockedNotice}</p>
+            <span>He thong se dang xuat ban trong giay lat...</span>
+          </div>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className={`sidebar ${isSidebarOpen ? "open" : "closed"}`}>
         <div className="sidebar-header">
           <div className="logo" onClick={() => navigate(PATH_AUTH.home)}>
-            <BookOpen size={28} strokeWidth={2.5} />
+            <AppLogo
+              size={isSidebarOpen ? 56 : 34}
+              imageScale={1.9}
+              showFallbackBackground={false}
+            />
             <span className={`logo-text ${!isSidebarOpen ? "hidden" : ""}`}>
               Learnify
             </span>
@@ -435,7 +499,10 @@ const DashboardLayout = () => {
                   <div className="notification-footer">
                     <button
                       className="view-all-btn"
-                      onClick={() => setIsNotificationOpen(false)}
+                      onClick={() => {
+                        setIsNotificationOpen(false);
+                        navigate(PATH_COMMON.notifications);
+                      }}
                     >
                       Xem tat ca
                     </button>
@@ -546,6 +613,12 @@ const DashboardLayout = () => {
         isOpen={isLogoutDialogOpen}
         onClose={() => setIsLogoutDialogOpen(false)}
         onConfirm={handleConfirmLogout}
+      />
+
+      <NotificationDetailModal
+        isOpen={Boolean(selectedNotification)}
+        notification={selectedNotification}
+        onClose={() => setSelectedNotification(null)}
       />
     </div>
   );

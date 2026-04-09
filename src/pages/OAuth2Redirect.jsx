@@ -5,6 +5,35 @@ import { BookOpen } from "lucide-react";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
 import { PATH_ADMIN, PATH_TEACHER } from "@/routes/paths";
 
+const normalizeOAuth2Error = (rawError = "") => {
+  const normalized = String(rawError).toLowerCase();
+  if (
+    normalized.includes("locked") ||
+    normalized.includes("inactive") ||
+    normalized.includes("disabled") ||
+    normalized.includes("bị khóa") ||
+    normalized.includes("không hoạt động") ||
+    normalized.includes("bị cấm")
+  ) {
+    return "Tai khoan cua ban da bi khoa hoac khong hoat dong. Vui long lien he bo phan ho tro.";
+  }
+  if (!String(rawError).trim()) {
+    return "Dang nhap Google that bai. Vui long thu lai.";
+  }
+  return rawError;
+};
+
+const mapOAuth2ErrorCode = (errorCode = "") => {
+  switch (errorCode) {
+    case "ACCOUNT_LOCKED":
+      return "Tai khoan cua ban da bi khoa hoac khong hoat dong. Vui long lien he bo phan ho tro.";
+    case "ACCOUNT_DISABLED":
+      return "Tai khoan cua ban chua duoc kich hoat.";
+    default:
+      return "Dang nhap Google that bai. Vui long thu lai.";
+  }
+};
+
 const OAuth2Redirect = () => {
   const navigate = useNavigate();
   const { handleOAuth2Login } = useAuth();
@@ -19,6 +48,13 @@ const OAuth2Redirect = () => {
       return;
     }
 
+    const watchdogId = window.setTimeout(() => {
+      if (hasProcessed.current && status === "processing") {
+        setErrorMessage("Dang nhap Google mat ket noi. Vui long thu lai.");
+        setStatus("error");
+      }
+    }, 10000);
+
     const handleRedirect = async () => {
       try {
         hasProcessed.current = true;
@@ -27,18 +63,21 @@ const OAuth2Redirect = () => {
         // Lấy token từ URL params
         const params = new URLSearchParams(window.location.search);
         const token = params.get("token");
+        const errorCode = params.get("errorCode");
         const error = params.get("error");
 
         //console.log("[OAuth2Redirect] Token present:", !!token);
         //console.log("[OAuth2Redirect] Error present:", !!error);
 
-        if (error) {
-          const decodedError = decodeURIComponent(error);
+        if (errorCode || error) {
+          const decodedError = errorCode
+            ? mapOAuth2ErrorCode(errorCode)
+            : normalizeOAuth2Error(decodeURIComponent(error));
           console.error("[OAuth2Redirect] OAuth2 Error:", decodedError);
           setErrorMessage(decodedError);
           setStatus("error");
           setTimeout(() => {
-            navigate("/");
+            navigate("/login");
           }, 5000);
           return;
         }
@@ -75,16 +114,21 @@ const OAuth2Redirect = () => {
         }
       } catch (err) {
         console.error("[OAuth2Redirect] Error:", err);
-        setErrorMessage(err.message || "Đã xảy ra lỗi không xác định");
+        const backendMessage =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Dang nhap Google that bai. Vui long thu lai.";
+        setErrorMessage(normalizeOAuth2Error(backendMessage));
         setStatus("error");
         setTimeout(() => {
-          navigate("/");
+          navigate("/login");
         }, 3000);
       }
     };
 
     handleRedirect();
-  }, [navigate, handleOAuth2Login]);
+    return () => window.clearTimeout(watchdogId);
+  }, [navigate, handleOAuth2Login, status]);
 
   return (
     <div className="oauth2-redirect-container">
@@ -92,6 +136,7 @@ const OAuth2Redirect = () => {
         {status === "processing" && (
           <>
             <div className="spinner-large"></div>
+            <p className="sub-text">Dang xu ly dang nhap Google...</p>
           </>
         )}
 

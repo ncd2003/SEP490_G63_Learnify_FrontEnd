@@ -13,6 +13,46 @@
     sans-serif;
 }
 
+.account-lock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.account-lock-card {
+  width: min(520px, 100%);
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 20px 35px rgba(15, 23, 42, 0.2);
+}
+
+.account-lock-card h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: #991b1b;
+  font-weight: 800;
+}
+
+.account-lock-card p {
+  margin: 0;
+  color: #1f2937;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.account-lock-card span {
+  display: block;
+  margin-top: 10px;
+  color: #475569;
+  font-size: 13px;
+}
 /* Sidebar */
 .sidebar {
   width: 260px;
@@ -367,6 +407,12 @@
   color: #475569;
   line-height: 1.4;
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
 }
 
 .notification-item-time {

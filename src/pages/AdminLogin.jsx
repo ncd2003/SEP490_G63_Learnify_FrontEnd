@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ShieldCheck, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import AppLogo from "@/components/AppLogo";
 import { isAdminRole } from "@/lib/auth-role";
 import { PATH_ADMIN } from "@/routes/paths";
 
@@ -40,6 +41,9 @@ const AdminLoginPage = () => {
     <div className="admin-login-page">
       <div className="admin-grid-overlay" />
       <div className="admin-login-card">
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+          <AppLogo size={64} showFallbackBackground={false} rounded={false} />
+        </div>
         <h1>Đăng nhập quản trị</h1>
         <p>Trang đăng nhập dành riêng cho quản trị viên hệ thống Learnify.</p>
 

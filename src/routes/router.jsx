@@ -49,6 +49,9 @@ const UserProfilePage = Loadable(lazy(() => import("@/pages/UserProfile")));
 const ChangePasswordPage = Loadable(
   lazy(() => import("@/pages/ChangePassword")),
 );
+const NotificationCenterPage = Loadable(
+  lazy(() => import("@/pages/NotificationCenter")),
+);
 
 // Classroom
 const ClassroomListPage = Loadable(
@@ -233,6 +236,7 @@ const AppRoutes = () =>
 
         // Teacher report
         { path: PATH_TEACHER.reports, element: <SendUserReportPage /> },
+        { path: PATH_COMMON.notifications, element: <NotificationCenterPage /> },
       ],
     },
 
@@ -262,6 +266,7 @@ const AppRoutes = () =>
           element: <AdminSystemNotificationPage />,
         },
         { path: PATH_ADMIN.reports, element: <AdminManageReportPage /> },
+        { path: PATH_COMMON.notifications, element: <NotificationCenterPage /> },
         {
           path: PATH_ADMIN.subscriptions.root,
           element: <AdminSubscriptionListPage />,
