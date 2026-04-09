@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { createElement, lazy, Suspense } from "react";
 import { Navigate, useRoutes } from "react-router-dom";
 import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
@@ -7,11 +7,17 @@ import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { isAdminRole } from "@/lib/auth-role";
-import { PATH_AUTH, PATH_ADMIN, PATH_COMMON, PATH_TEACHER } from "@/routes/paths";
+import {
+  PATH_AUTH,
+  PATH_ADMIN,
+  PATH_COMMON,
+  PATH_PAYMENT,
+  PATH_TEACHER,
+} from "@/routes/paths";
 
-const Loadable = (Component) => (props) => (
+const Loadable = (component) => (props) => (
   <Suspense fallback={<LoadingScreen />}>
-    <Component {...props} />
+    {createElement(component, props)}
   </Suspense>
 );
 
@@ -42,6 +48,12 @@ const PrivacyPolicyPage = Loadable(
 );
 const PublicPlanPage = Loadable(
   lazy(() => import("@/pages/plan/public-plan-page")),
+);
+const PaymentSuccessPage = Loadable(
+  lazy(() => import("@/pages/payment/payment-success-page")),
+);
+const PaymentCancelPage = Loadable(
+  lazy(() => import("@/pages/payment/payment-cancel-page")),
 );
 
 // User / Profile
@@ -159,6 +171,8 @@ const AppRoutes = () =>
     // Public
     { path: "home", element: <HomePage /> },
     { path: PATH_AUTH.plans, element: <PublicPlanPage /> },
+    { path: PATH_PAYMENT.success, element: <PaymentSuccessPage /> },
+    { path: PATH_PAYMENT.cancel, element: <PaymentCancelPage /> },
     { path: PATH_AUTH.terms, element: <TermsOfServicePage /> },
     { path: PATH_AUTH.privacy, element: <PrivacyPolicyPage /> },
 

@@ -57,6 +57,62 @@ const DashboardLayout = () => {
         ? "Quản trị viên"
         : "Người dùng";
 
+  const safeNumber = (value) => {
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : 0;
+  };
+
+  const formatStorageInGb = (value) => {
+    const gbValue = Math.max(0, safeNumber(value)) / (1024 * 1024 * 1024);
+
+    if (gbValue >= 100) {
+      return gbValue.toFixed(0);
+    }
+
+    if (gbValue >= 10) {
+      return gbValue.toFixed(1);
+    }
+
+    return gbValue.toFixed(2);
+  };
+
+  const usageItems = Array.isArray(user?.userBenefitUsageDTO)
+    ? user.userBenefitUsageDTO
+    : [];
+  const storageUsage = usageItems.find((item) => item?.benefitCode === "STORAGE");
+  const aiRequestUsage = usageItems.find(
+    (item) => item?.benefitCode === "AI_REQUEST",
+  );
+
+  const storageUsed = Math.max(0, safeNumber(storageUsage?.used));
+  const storageLimit = Math.max(0, safeNumber(storageUsage?.limitValue));
+  const rawStoragePercent =
+    storageLimit > 0 ? (storageUsed / storageLimit) * 100 : 0;
+  const storagePercent = Number.isFinite(rawStoragePercent)
+    ? Math.max(0, rawStoragePercent)
+    : 0;
+  const storagePercentLabel =
+    storageUsed <= 0 || storageLimit <= 0
+      ? "0%"
+      : storagePercent < 0.0001
+        ? "<0.0001%"
+        : storagePercent < 0.01
+          ? `${storagePercent.toFixed(4)}%`
+          : storagePercent < 1
+            ? `${storagePercent.toFixed(2)}%`
+            : `${storagePercent.toFixed(1)}%`;
+  const storagePercentBar =
+    storagePercent > 0 ? Math.max(1, Math.min(100, storagePercent)) : 0;
+  const storageUsageLabel = `${formatStorageInGb(storageUsed)} / ${formatStorageInGb(storageLimit)} GB`;
+
+  const aiUsed = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.used)));
+  const aiLimit = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.limitValue)));
+
+  const planLabel =
+    typeof user?.plan === "string"
+      ? user.plan.replace(/_/g, " ")
+      : user?.plan?.name || "FREE";
+
   const handleLogoutClick = () => {
     setIsNotificationOpen(false);
     setIsUserMenuOpen(false);
@@ -166,16 +222,6 @@ const DashboardLayout = () => {
       icon: Users,
       label: "Quản lý lớp học",
       path: PATH_TEACHER.classroom.root,
-    },
-    {
-      icon: Users,
-      label: "Học sinh",
-      path: PATH_TEACHER.students,
-    },
-    {
-      icon: FileText,
-      label: "Tài liệu",
-      path: PATH_TEACHER.documents,
     },
     {
       icon: Database,
@@ -322,6 +368,36 @@ const DashboardLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
+          {isSidebarOpen && (
+            <div className="sidebar-plan-usage-card">
+              <div className="sidebar-plan-usage-head">
+                <span className="sidebar-plan-usage-label">Gói hiện tại</span>
+                <strong className="sidebar-plan-usage-value">{planLabel}</strong>
+              </div>
+
+              <div className="sidebar-benefit-usage-item">
+                <div className="sidebar-benefit-usage-row">
+                  <span>STORAGE</span>
+                  <span>{storagePercentLabel}</span>
+                </div>
+                <div className="sidebar-storage-progress" aria-hidden="true">
+                  <div
+                    className="sidebar-storage-progress-fill"
+                    style={{ width: `${storagePercentBar}%` }}
+                  />
+                </div>
+                <div className="sidebar-benefit-usage-subtext">{storageUsageLabel}</div>
+              </div>
+
+              <div className="sidebar-benefit-usage-item">
+                <div className="sidebar-benefit-usage-row">
+                  <span>AI_REQUEST</span>
+                  <span>{`${aiUsed}/${aiLimit}`}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <button
             className="nav-item"
             onClick={() => navigate(PATH_COMMON.profile)}

@@ -27,6 +27,27 @@ const clearBrowserAuthData = () => {
   });
 };
 
+const normalizeBenefitUsageList = (value) =>
+  Array.isArray(value) ? value : [];
+
+const enrichUserWithPlanAndBenefits = (userPayload, authResult) => {
+  const profile = userPayload || {};
+  const loginResult = authResult || {};
+  const profileBenefitUsage = normalizeBenefitUsageList(
+    profile.userBenefitUsageDTO,
+  );
+  const loginBenefitUsage = normalizeBenefitUsageList(
+    loginResult.userBenefitUsageDTO,
+  );
+
+  return {
+    ...profile,
+    plan: profile.plan ?? loginResult.plan ?? null,
+    userBenefitUsageDTO:
+      profileBenefitUsage.length > 0 ? profileBenefitUsage : loginBenefitUsage,
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -46,9 +67,10 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     const response = await authApi.login(credentials);
+    const loginResult = response?.result || {};
 
     // Backend returns: { code, message, result: { accessToken, id, email, fullName } }
-    const { accessToken } = response.result;
+    const { accessToken } = loginResult;
 
     // Lưu token
     localStorage.setItem("accessToken", accessToken);
@@ -58,20 +80,26 @@ export const AuthProvider = ({ children }) => {
     let userData;
     try {
       const userResponse = await authApi.getCurrentUser();
-      userData = userResponse.result; // { id, fullName, email, avatarUrl, role }
+      userData = enrichUserWithPlanAndBenefits(
+        userResponse.result,
+        loginResult,
+      );
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
     } catch (error) {
       console.error("Could not fetch user info after login:", error);
       // Fallback: dùng thông tin từ login response
-      userData = {
-        id: response.result.id,
-        email: response.result.email,
-        fullName: response.result.fullName,
-        avatarUrl: null,
-        role: response.result.role,
-      };
+      userData = enrichUserWithPlanAndBenefits(
+        {
+          id: loginResult.id,
+          email: loginResult.email,
+          fullName: loginResult.fullName,
+          avatarUrl: null,
+          role: loginResult.role,
+        },
+        loginResult,
+      );
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
     }
@@ -81,27 +109,34 @@ export const AuthProvider = ({ children }) => {
 
   const adminLogin = async (credentials) => {
     const response = await authApi.adminLogin(credentials);
+    const loginResult = response?.result || {};
 
-    const { accessToken } = response.result;
+    const { accessToken } = loginResult;
     localStorage.setItem("accessToken", accessToken);
     setIsAuthenticated(true);
 
     let userData;
     try {
       const userResponse = await authApi.getCurrentUser();
-      userData = userResponse.result;
+      userData = enrichUserWithPlanAndBenefits(
+        userResponse.result,
+        loginResult,
+      );
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
     } catch (error) {
       console.error("Could not fetch admin info after login:", error);
-      userData = {
-        id: response.result.id,
-        email: response.result.email,
-        fullName: response.result.fullName,
-        avatarUrl: null,
-        role: "ROLE_ADMIN",
-      };
+      userData = enrichUserWithPlanAndBenefits(
+        {
+          id: loginResult.id,
+          email: loginResult.email,
+          fullName: loginResult.fullName,
+          avatarUrl: null,
+          role: "ROLE_ADMIN",
+        },
+        loginResult,
+      );
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
     }
@@ -153,7 +188,7 @@ export const AuthProvider = ({ children }) => {
     }
     // Refresh user data từ server để lấy role mới
     const response = await authApi.getCurrentUser();
-    const updatedUser = response.result;
+    const updatedUser = enrichUserWithPlanAndBenefits(response.result, user);
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
     //console.log('[AuthContext] User updated with role:', updatedUser.role);
@@ -173,7 +208,7 @@ export const AuthProvider = ({ children }) => {
 
       // Lấy thông tin user từ backend API /users/me
       const response = await authApi.getCurrentUser();
-      const userData = response.result;
+      const userData = enrichUserWithPlanAndBenefits(response.result, null);
 
       // CHỈ set authenticated = true SAU KHI có user data
       setUser(userData);
@@ -192,6 +227,69 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const adjustStorageUsage = useCallback((deltaBytes) => {
+    const delta = Number(deltaBytes);
+    if (!Number.isFinite(delta) || delta === 0) {
+      return;
+    }
+
+    setUser((prevUser) => {
+      if (!prevUser) {
+        return prevUser;
+      }
+
+      const usageList = Array.isArray(prevUser.userBenefitUsageDTO)
+        ? prevUser.userBenefitUsageDTO
+        : [];
+      const storageIndex = usageList.findIndex(
+        (item) => item?.benefitCode === "STORAGE",
+      );
+
+      if (storageIndex < 0) {
+        return prevUser;
+      }
+
+      const nextUsageList = [...usageList];
+      const currentUsed = Number(nextUsageList[storageIndex]?.used);
+      const safeCurrentUsed = Number.isFinite(currentUsed) ? currentUsed : 0;
+
+      nextUsageList[storageIndex] = {
+        ...nextUsageList[storageIndex],
+        used: Math.max(0, safeCurrentUsed + delta),
+      };
+
+      const nextUser = {
+        ...prevUser,
+        userBenefitUsageDTO: nextUsageList,
+      };
+
+      localStorage.setItem("user", JSON.stringify(nextUser));
+      return nextUser;
+    });
+  }, []);
+
+  const refreshCurrentUser = useCallback(async () => {
+    const response = await authApi.getCurrentUser();
+
+    let storedUser = null;
+    try {
+      const rawStoredUser = localStorage.getItem("user");
+      storedUser = rawStoredUser ? JSON.parse(rawStoredUser) : null;
+    } catch {
+      storedUser = null;
+    }
+
+    const nextUser = enrichUserWithPlanAndBenefits(
+      response?.result,
+      storedUser || user,
+    );
+
+    setUser(nextUser);
+    localStorage.setItem("user", JSON.stringify(nextUser));
+
+    return nextUser;
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -206,6 +304,8 @@ export const AuthProvider = ({ children }) => {
         resendOtp,
         handleOAuth2Login,
         updateUserRole,
+        adjustStorageUsage,
+        refreshCurrentUser,
       }}
     >
       {children}

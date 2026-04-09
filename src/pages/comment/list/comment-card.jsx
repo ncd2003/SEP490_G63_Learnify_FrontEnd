@@ -6,6 +6,8 @@ import CommentForm from "@/pages/comment/create/comment-form";
 import EditCommentForm from "@/pages/comment/edit/comment-edit-form";
 import DeleteCommentDialog from "@/pages/comment/delete/delete-comment-dialog";
 
+const REPLIES_BATCH_SIZE = 5;
+
 /**
  * @param {{
  *   comment: {
@@ -34,7 +36,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
-  const [visibleRepliesCount, setVisibleRepliesCount] = useState(3);
+  const [visibleRepliesCount, setVisibleRepliesCount] = useState(REPLIES_BATCH_SIZE);
   const maxDepth = 3; // Giới hạn độ sâu nested comments
 
   const isAuthor = user?.id === comment.user?.id;
@@ -169,7 +171,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
           <button
             className="comment-replies-toggle"
             onClick={() => {
-              if (!showReplies) setVisibleRepliesCount(3);
+              if (!showReplies) setVisibleRepliesCount(REPLIES_BATCH_SIZE);
               setShowReplies(!showReplies);
             }}
             style={{
@@ -205,7 +207,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
 
               {visibleRepliesCount < comment.replies.length && (
                 <button
-                  onClick={() => setVisibleRepliesCount(prev => prev + 3)}
+                  onClick={() => setVisibleRepliesCount(prev => prev + REPLIES_BATCH_SIZE)}
                   style={{
                     background: 'none',
                     border: 'none',

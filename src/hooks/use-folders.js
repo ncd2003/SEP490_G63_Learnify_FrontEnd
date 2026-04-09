@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { folderApi } from "@/apis/folder.api";
+import { useAuth } from "@/contexts/AuthContext";
+import { isTeacherRole } from "@/lib/auth-role";
 import { FolderListSchema, FolderNodeSchema } from "@/schema/folder.schema";
 
 const normalizeNode = (node) => {
@@ -27,47 +29,9 @@ const normalizeList = (list) => {
   return list.map((item) => normalizeNode(item));
 };
 
-const addFolderToTree = (tree, parentId, newFolder) => {
-  if (parentId === null || parentId === undefined) {
-    return [...tree, newFolder];
-  }
-
-  return tree.map((node) => {
-    if (node.id === parentId) {
-      return {
-        ...node,
-        subFolders: [...(node.subFolders ?? []), newFolder],
-      };
-    }
-    return {
-      ...node,
-      subFolders: addFolderToTree(node.subFolders ?? [], parentId, newFolder),
-    };
-  });
-};
-
-const updateFolderInTree = (tree, targetId, payload) => {
-  return tree.map((node) => {
-    if (node.id === targetId) {
-      return { ...node, ...payload };
-    }
-    return {
-      ...node,
-      subFolders: updateFolderInTree(node.subFolders ?? [], targetId, payload),
-    };
-  });
-};
-
-const removeFolderFromTree = (tree, targetId) => {
-  return tree
-    .filter((node) => node.id !== targetId)
-    .map((node) => ({
-      ...node,
-      subFolders: removeFolderFromTree(node.subFolders ?? [], targetId),
-    }));
-};
-
 const useFolders = (classroomId) => {
+  const { user } = useAuth();
+  const canManageFolders = isTeacherRole(user?.role);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -94,6 +58,12 @@ const useFolders = (classroomId) => {
 
   const createFolder = useCallback(
     async ({ name, parentId = null }) => {
+      if (!canManageFolders) {
+        const message = "Bạn không có quyền tạo thư mục.";
+        setError(message);
+        return { success: false, message };
+      }
+
       setError(null);
       try {
         const response = await folderApi.createFolder({
@@ -111,11 +81,17 @@ const useFolders = (classroomId) => {
         return { success: false, message };
       }
     },
-    [classroomId, fetchFolders]
+    [canManageFolders, classroomId, fetchFolders]
   );
 
   const renameFolder = useCallback(
     async (folderId, { name, parentId = null }) => {
+      if (!canManageFolders) {
+        const message = "Bạn không có quyền cập nhật thư mục.";
+        setError(message);
+        return { success: false, message };
+      }
+
       setError(null);
       try {
         const response = await folderApi.updateFolder(folderId, {
@@ -133,10 +109,16 @@ const useFolders = (classroomId) => {
         return { success: false, message };
       }
     },
-    [classroomId, fetchFolders]
+    [canManageFolders, classroomId, fetchFolders]
   );
 
   const deleteFolder = useCallback(async (folderId) => {
+    if (!canManageFolders) {
+      const message = "Bạn không có quyền xóa thư mục.";
+      setError(message);
+      return { success: false, message };
+    }
+
     setError(null);
     try {
       await folderApi.deleteFolder(folderId);
@@ -147,12 +129,13 @@ const useFolders = (classroomId) => {
       setError(message);
       return { success: false, message };
     }
-  }, [fetchFolders]);
+  }, [canManageFolders, fetchFolders]);
 
   return {
     folders,
     loading,
     error,
+    canManageFolders,
     refresh: fetchFolders,
     createFolder,
     renameFolder,

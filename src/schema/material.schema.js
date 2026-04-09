@@ -6,6 +6,7 @@ export const MaterialSchema = z.object({
   fileUrl: z.string().url(),
   fileSize: z.number(),
   fileType: z.string().optional(),
+  createdAt: z.string().optional(),
 });
 
 export const MaterialListSchema = z.array(MaterialSchema);

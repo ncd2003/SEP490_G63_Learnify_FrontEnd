@@ -47,17 +47,7 @@ const getSubscriptions = (params = {}) => {
   return apiRequest.get(BASE, { params: queryParams });
 };
 
-/**
- * Create subscription
- * PUT /api/subscriptions
- * @param {number} planId
- * @returns {Promise<import("axios").AxiosResponse<SubscriptionMutationResponse>>}
- */
-const createSubscription = (planId) =>
-  apiRequest.put(BASE, planId);
-
 /* ─── Export ─────────────────────────────────────────────────────────────── */
 export const subscriptionApi = {
   getSubscriptions,
-  createSubscription,
 };
