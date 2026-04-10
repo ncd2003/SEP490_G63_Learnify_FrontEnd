@@ -471,11 +471,10 @@ const UserProfile = () => {
         <h2 className="card-title">Thông tin cá nhân</h2>
 
         <div className="info-grid">
-          {/* Họ và tên */}
-          <div className="info-row">
-            <div className="info-label">
+          <div className="info-item">
+            <div className="info-label-compact">
               <User size={16} />
-              <span>Họ và tên:</span>
+              <span>Họ và tên</span>
             </div>
             {isEditing ? (
               <input
@@ -492,20 +491,18 @@ const UserProfile = () => {
             )}
           </div>
 
-          {/* Email (read-only) */}
-          <div className="info-row">
-            <div className="info-label">
+          <div className="info-item">
+            <div className="info-label-compact">
               <Mail size={16} />
-              <span>Email:</span>
+              <span>Email</span>
             </div>
             <div className="info-value">{profileData.email || "—"}</div>
           </div>
 
-          {/* Số điện thoại */}
-          <div className="info-row">
-            <div className="info-label">
+          <div className="info-item">
+            <div className="info-label-compact">
               <Phone size={16} />
-              <span>Số điện thoại:</span>
+              <span>Số điện thoại</span>
             </div>
             {isEditing ? (
               <input
@@ -522,11 +519,10 @@ const UserProfile = () => {
             )}
           </div>
 
-          {/* Ngày sinh */}
-          <div className="info-row">
-            <div className="info-label">
+          <div className="info-item">
+            <div className="info-label-compact">
               <Calendar size={16} />
-              <span>Ngày sinh:</span>
+              <span>Ngày sinh</span>
             </div>
             {isEditing ? (
               <input
@@ -546,11 +542,10 @@ const UserProfile = () => {
             )}
           </div>
 
-          {/* Địa chỉ */}
-          <div className="info-row">
-            <div className="info-label">
+          <div className="info-item">
+            <div className="info-label-compact">
               <MapPin size={16} />
-              <span>Địa chỉ:</span>
+              <span>Địa chỉ</span>
             </div>
             {isEditing ? (
               <input
@@ -565,11 +560,10 @@ const UserProfile = () => {
             )}
           </div>
 
-          {/* Vai trò (read-only) */}
-          <div className="info-row">
-            <div className="info-label">
+          <div className="info-item">
+            <div className="info-label-compact">
               <Shield size={16} />
-              <span>Vai trò:</span>
+              <span>Vai trò</span>
             </div>
             <div className="info-value role-badge">
               {profileData.role || "—"}
