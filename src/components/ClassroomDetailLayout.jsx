@@ -11,10 +11,16 @@ import {
   Calendar,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
+  Bell,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { PATH_TEACHER } from '@/routes/paths';
+import { normalizeRole } from '@/lib/auth-role';
+import { PATH_AUTH, PATH_COMMON, PATH_TEACHER } from '@/routes/paths';
 import { classroomApi } from '@/apis/classroom.api';
+import { notificationApi } from '@/apis/notification.api';
 import '@/assets/css/components/classroomDetailLayout.css';
 
 const MENU_ITEMS = [
@@ -31,14 +37,49 @@ const ClassroomDetailLayout = ({ children }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [classroom, setClassroom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchClassroomInfo();
   }, [id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.classroom-workspace-user-menu')) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await notificationApi.getUnreadCount();
+        if (!isMounted) return;
+        setUnreadCount(Number(response?.result || 0));
+      } catch (err) {
+        console.error('Failed to fetch unread notifications:', err);
+      }
+    };
+
+    fetchUnreadCount();
+    const timer = window.setInterval(fetchUnreadCount, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const fetchClassroomInfo = async () => {
     try {
@@ -60,6 +101,21 @@ const ClassroomDetailLayout = ({ children }) => {
     navigate(PATH_TEACHER.classroom.root);
   };
 
+  const handleOpenNotifications = () => {
+    navigate(PATH_COMMON.notifications);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate(PATH_AUTH.login, { replace: true });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsUserMenuOpen(false);
+    }
+  };
+
   const getActiveMenuItem = () => {
     const path = location.pathname;
     if (path.includes('/attendance')) return 'attendance';
@@ -73,6 +129,15 @@ const ClassroomDetailLayout = ({ children }) => {
   };
 
   const activeKey = getActiveMenuItem();
+  const activeMenuLabel = MENU_ITEMS.find((item) => item.key === activeKey)?.label || 'Lop hoc';
+
+  const roleLabel = (() => {
+    const role = normalizeRole(user?.role);
+    if (role === 'TEACHER') return 'Giao vien';
+    if (role === 'STUDENT') return 'Hoc sinh';
+    if (role === 'ADMIN') return 'Quan tri vien';
+    return 'Nguoi dung';
+  })();
 
   if (loading) {
     return (
@@ -97,14 +162,16 @@ const ClassroomDetailLayout = ({ children }) => {
           {!collapsed && (
             <h2 className="classroom-sidebar-title">Thông tin lớp học - {classroom?.name}</h2>
           )}
-          <button
-            type="button"
-            className="collapse-toggle-btn"
-            onClick={() => setCollapsed((prev) => !prev)}
-            aria-label={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
-          >
-            {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-          </button>
+          <div className="classroom-header-actions">
+            <button
+              type="button"
+              className="collapse-toggle-btn"
+              onClick={() => setCollapsed((prev) => !prev)}
+              aria-label={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+            >
+              {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+            </button>
+          </div>
         </div>
 
         {!collapsed && (
@@ -154,7 +221,71 @@ const ClassroomDetailLayout = ({ children }) => {
 
       {/* Main content */}
       <main className="classroom-main-content">
-        {children}
+        <header className="classroom-workspace-header">
+          <div className="classroom-workspace-left">
+            <div className="classroom-workspace-label">KHU VUC LAM VIEC</div>
+            <div className="classroom-workspace-title">{activeMenuLabel}</div>
+          </div>
+
+          <div className="classroom-workspace-right">
+            <button
+              type="button"
+              className="classroom-workspace-notification"
+              onClick={handleOpenNotifications}
+              aria-label="Mo thong bao"
+              title="Thong bao"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="classroom-notification-badge">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            <div className="classroom-workspace-user-menu">
+              <button
+                type="button"
+                className="classroom-workspace-user-trigger"
+                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+              >
+                <div className="classroom-workspace-avatar">
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user?.fullName || 'User'} />
+                  ) : (
+                    <span>{user?.fullName?.charAt(0)?.toUpperCase() || 'U'}</span>
+                  )}
+                </div>
+                <div className="classroom-workspace-user-info">
+                  <div className="classroom-workspace-user-name">{user?.fullName || 'User'}</div>
+                  <div className="classroom-workspace-user-role">{roleLabel}</div>
+                </div>
+                <ChevronDown size={14} />
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="classroom-workspace-user-dropdown">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      navigate(PATH_COMMON.profile);
+                    }}
+                  >
+                    <Settings size={14} />
+                    <span>Tai khoan cua toi</span>
+                  </button>
+                  <button type="button" onClick={handleLogout}>
+                    <LogOut size={14} />
+                    <span>Dang xuat</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="classroom-main-body">{children}</section>
       </main>
     </div>
   );

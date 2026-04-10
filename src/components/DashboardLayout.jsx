@@ -142,6 +142,18 @@ const DashboardLayout = () => {
         ),
       );
       setUnreadCount((prev) => Math.max(0, prev - (notification.read ? 0 : 1)));
+
+      const redirectUrl =
+        typeof nextNotification?.redirectUrl === "string"
+          ? nextNotification.redirectUrl.trim()
+          : "";
+
+      if (redirectUrl) {
+        setIsNotificationOpen(false);
+        navigate(redirectUrl);
+        return;
+      }
+
       setSelectedNotification(nextNotification);
     } catch (error) {
       console.error("Failed to mark notification as read:", error);

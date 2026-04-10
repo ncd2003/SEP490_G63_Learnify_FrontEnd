@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, RefreshCw, Trash2 } from "lucide-react";
 import { notificationApi } from "@/apis/notification.api";
 import Pagination from "@/components/Pagination";
@@ -25,6 +26,7 @@ const formatTimeAgo = (createdAt) => {
 };
 
 const NotificationCenterPage = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -100,6 +102,17 @@ const NotificationCenterPage = () => {
             item.id === notification.id ? { ...item, ...nextNotification } : item,
           ),
         );
+      }
+
+      const redirectUrl =
+        typeof nextNotification?.redirectUrl === "string"
+          ? nextNotification.redirectUrl.trim()
+          : "";
+
+      if (redirectUrl) {
+        setSelectedNotificationId(null);
+        navigate(redirectUrl);
+        return;
       }
 
       setSelectedNotificationId(nextNotification.id);
