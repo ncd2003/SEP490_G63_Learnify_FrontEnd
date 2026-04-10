@@ -168,6 +168,9 @@ const ClassroomDetailLayout = ({ children }) => {
                 <span className="classroom-info-label">Giảng viên:</span>
                 <span className="classroom-info-value">{user?.fullName || user?.username}</span>
               </div>
+              {/* <div className="classroom-info-row">
+                <span className="classroom-info-email">{user?.email}</span>
+              </div> */}
               <div className="classroom-info-row">
                 <span className="classroom-info-label">Mã lớp:</span>
                 <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>

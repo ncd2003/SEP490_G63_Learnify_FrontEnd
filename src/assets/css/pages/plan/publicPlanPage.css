@@ -71,29 +71,6 @@
   gap: 16px;
 }
 
-.plan-controls {
-  max-width: 1120px;
-  margin: 12px auto;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 0 8px;
-}
-
-.plan-controls-inner {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.plan-status-select {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #dbe5ef;
-  background: #ffffff;
-  font-weight: 600;
-}
-
 .plan-card {
   border: 1px solid #dbe5ef;
   border-radius: 16px;
