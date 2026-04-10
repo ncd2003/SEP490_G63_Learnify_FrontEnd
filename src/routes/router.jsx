@@ -170,7 +170,16 @@ const AppRoutes = () =>
 
     // Public
     { path: "home", element: <HomePage /> },
-    { path: PATH_AUTH.plans, element: <PublicPlanPage /> },
+    {
+      path: PATH_AUTH.plans,
+      element: (
+        <AuthGuard>
+          <RoleBasedGuard role="ROLE_TEACHER">
+            <PublicPlanPage />
+          </RoleBasedGuard>
+        </AuthGuard>
+      ),
+    },
     { path: PATH_PAYMENT.success, element: <PaymentSuccessPage /> },
     { path: PATH_PAYMENT.cancel, element: <PaymentCancelPage /> },
     { path: PATH_AUTH.terms, element: <TermsOfServicePage /> },

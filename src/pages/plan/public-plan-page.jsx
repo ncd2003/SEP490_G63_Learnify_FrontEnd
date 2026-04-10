@@ -78,6 +78,12 @@ const PUBLIC_PLAN_NAV_ITEMS = [
   { key: "plans", label: "Gói dịch vụ", to: PATH_AUTH.plans },
 ];
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "ALL", label: "Tất cả" },
+  { value: "PUBLIC", label: getPlanStatusLabel("PUBLIC") },
+  { value: "HIDE", label: getPlanStatusLabel("HIDE") },
+];
+
 const comparePlanByIdAsc = (firstPlan, secondPlan) => {
   const firstId = Number(firstPlan?.id);
   const secondId = Number(secondPlan?.id);
@@ -137,15 +143,23 @@ const PublicPlanPage = () => {
     fetchPublicPlans();
   }, []);
 
-  const activePlans = useMemo(
-    () => plans
-      .filter((plan) => {
-        const normalizedStatus = String(plan?.planStatus || "").toUpperCase();
-        return normalizedStatus === "PUBLIC" || normalizedStatus === "ACTIVE";
-      })
-      .sort(comparePlanByIdAsc),
-    [plans],
-  );
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const filteredPlans = useMemo(() => {
+    const source = Array.isArray(plans) ? plans : [];
+    const getStatus = (plan) => String(plan?.planStatus || "").toUpperCase();
+
+    const allowedFor = (filter) => {
+      const f = String(filter || "").toUpperCase();
+      if (f === "ALL" || f === "PUBLIC") return new Set(["PUBLIC", "ACTIVE"]);
+      if (f === "HIDE") return new Set(["HIDE", "INACTIVE"]);
+      return new Set([f]);
+    };
+
+    const allowed = allowedFor(statusFilter);
+
+    return source.filter((plan) => allowed.has(getStatus(plan))).sort(comparePlanByIdAsc);
+  }, [plans, statusFilter]);
 
   const normalizedUserId = Number(user?.id);
 
@@ -300,15 +314,31 @@ const PublicPlanPage = () => {
           </button> */}
         </section>
 
+        <div className="plan-controls">
+          <div className="plan-controls-inner">
+            <label htmlFor="plan-status-select">Trạng thái:</label>
+            <select
+              id="plan-status-select"
+              className="plan-status-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              {STATUS_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {loading ? (
           <div className="plan-state">Đang tải danh sách gói...</div>
         ) : error ? (
           <div className="plan-state error">{error}</div>
-        ) : activePlans.length === 0 ? (
+        ) : filteredPlans.length === 0 ? (
           <div className="plan-state">Hiện chưa có gói dịch vụ khả dụng.</div>
         ) : (
           <section className="plan-grid">
-            {activePlans.map((plan) => {
+            {filteredPlans.map((plan) => {
               const parsedPrice = Number(plan?.price);
               const normalizedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
               const isFreePlan = normalizedPrice <= 0;

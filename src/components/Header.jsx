@@ -7,9 +7,11 @@ import { BookOpen, Menu, X, LogOut, User } from "lucide-react";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
 import { PATH_ADMIN, PATH_AUTH, PATH_COMMON } from "@/routes/paths";
 
+const PLAN_NAV_KEY = "plans";
+
 const DEFAULT_NAV_ITEMS = [
   { key: "home", label: "Trang chủ", to: PATH_AUTH.home },
-  { key: "plans", label: "Gói dịch vụ", to: PATH_AUTH.plans },
+  { key: PLAN_NAV_KEY, label: "Gói dịch vụ", to: PATH_AUTH.plans },
 ];
 
 const Header = ({ navItems = DEFAULT_NAV_ITEMS, activeNavKey = "" }) => {
@@ -18,6 +20,16 @@ const Header = ({ navItems = DEFAULT_NAV_ITEMS, activeNavKey = "" }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+
+  const canViewPlans = isTeacherRole(user?.role);
+  const normalizedNavItems = Array.isArray(navItems) ? navItems : [];
+  const visibleNavItems = normalizedNavItems.filter((item) => {
+    const isPlansItem = item?.key === PLAN_NAV_KEY && item?.to === PATH_AUTH.plans;
+    if (isPlansItem) {
+      return canViewPlans;
+    }
+    return true;
+  });
 
   const handleLogoutClick = () => {
     setIsUserMenuOpen(false);
@@ -87,7 +99,7 @@ const Header = ({ navItems = DEFAULT_NAV_ITEMS, activeNavKey = "" }) => {
           </div>
 
           <nav className={`site-header-nav ${isMobileMenuOpen ? "open" : ""}`}>
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <button
                 key={item.key}
                 type="button"
