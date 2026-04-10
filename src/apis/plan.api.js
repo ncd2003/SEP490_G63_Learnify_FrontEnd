@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/http";
 import { API_SUFFIX } from "./util.api";
 import {
   CreatePlanSchema,
+  PlanStatusSchema,
   UpdatePlanSchema,
 } from "@/schema/plan.schema";
 
@@ -60,6 +61,24 @@ const updatePlan = (id, data) => {
 };
 
 /**
+ * PATCH /api/plans/{id}
+ * @param {number|string} id
+ * @param {import("@/schema/plan.schema").TPlan["planStatus"]} planStatus
+ * @returns {Promise<import("axios").AxiosResponse<PlanResponse>>}
+ */
+const updatePlanStatus = (id, planStatus) => {
+  const safeId = normalizePlanId(id);
+  const parsedStatus = PlanStatusSchema.parse(planStatus);
+
+  // Backend expects enum value in raw JSON body (e.g. "PUBLIC").
+  return apiRequest.patch(`${BASE}/${safeId}`, JSON.stringify(parsedStatus), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+};
+
+/**
  * DELETE /api/plans/{id}
  * @param {number|string} id
  * @returns {Promise<import("axios").AxiosResponse<import("@/schema/type.schema").ApiResponse<void>>}
@@ -75,5 +94,6 @@ export const planApi = {
   getPublicPlans,
   createPlan,
   updatePlan,
+  updatePlanStatus,
   deletePlan,
 };

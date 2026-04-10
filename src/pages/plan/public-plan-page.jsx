@@ -1,19 +1,69 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import {
   BadgeCheck,
   Clock3,
   Sparkles,
 } from "lucide-react";
+import CenteredConfirmModal from "@/components/CenteredConfirmModal";
 import Header from "@/components/Header";
+import PaymentButton from "@/components/payment/PaymentButton";
+import { subscriptionApi } from "@/apis/subscription.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { planApi } from "@/apis/plan.api";
-import { subscriptionApi } from "@/apis/subscription.api";
 import { getPlanStatusLabel } from "@/schema/plan.schema";
 import { formatCurrency } from "@/lib/utils";
 import { PATH_AUTH } from "@/routes/paths";
 import "@/assets/css/pages/plan/publicPlanPage.css";
+
+const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["ACTIVE"]);
+
+const isFreePlan = (plan) => {
+  const price = Number(plan?.price);
+  if (Number.isFinite(price)) {
+    return price <= 0;
+  }
+
+  const normalizedName = String(plan?.name || "").toLowerCase();
+  return normalizedName.includes("free");
+};
+
+const getLatestActiveSubscription = (subscriptions, userId) => {
+  const normalizedUserId = Number(userId);
+  const source = Array.isArray(subscriptions) ? subscriptions : [];
+
+  if (source.length === 0) {
+    return null;
+  }
+
+  let ownedSubscriptions = source;
+  if (Number.isFinite(normalizedUserId) && normalizedUserId > 0) {
+    const filtered = source.filter((subscription) => {
+      const subscriptionUserId = Number(subscription?.user?.id ?? subscription?.userId);
+      return Number.isFinite(subscriptionUserId) && subscriptionUserId === normalizedUserId;
+    });
+
+    if (filtered.length > 0) {
+      ownedSubscriptions = filtered;
+    }
+  }
+
+  const activeSubscriptions = ownedSubscriptions.filter((subscription) =>
+    ACTIVE_SUBSCRIPTION_STATUSES.has(
+      String(subscription?.subscriptionStatus || "").toUpperCase(),
+    )
+  );
+
+  if (activeSubscriptions.length === 0) {
+    return null;
+  }
+
+  return [...activeSubscriptions].sort((a, b) => {
+    const bTime = Date.parse(b?.startAt || "") || 0;
+    const aTime = Date.parse(a?.startAt || "") || 0;
+    return bTime - aTime;
+  })[0];
+};
 
 const DURATION_UNIT_LABELS = {
   HOUR: "giờ",
@@ -28,14 +78,43 @@ const PUBLIC_PLAN_NAV_ITEMS = [
   { key: "plans", label: "Gói dịch vụ", to: PATH_AUTH.plans },
 ];
 
+const comparePlanByIdAsc = (firstPlan, secondPlan) => {
+  const firstId = Number(firstPlan?.id);
+  const secondId = Number(secondPlan?.id);
+
+  const hasFirstId = Number.isFinite(firstId);
+  const hasSecondId = Number.isFinite(secondId);
+
+  if (hasFirstId && hasSecondId) {
+    return firstId - secondId;
+  }
+
+  if (hasFirstId) {
+    return -1;
+  }
+
+  if (hasSecondId) {
+    return 1;
+  }
+
+  return 0;
+};
+
 const PublicPlanPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [subscribingPlanId, setSubscribingPlanId] = useState(null);
+  const [loadingCurrentSubscription, setLoadingCurrentSubscription] = useState(false);
+  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    description: "",
+  });
+  const confirmResolverRef = useRef(null);
 
   useEffect(() => {
     const fetchPublicPlans = async () => {
@@ -59,48 +138,136 @@ const PublicPlanPage = () => {
   }, []);
 
   const activePlans = useMemo(
-    () => plans.filter((plan) => {
-      const normalizedStatus = String(plan?.planStatus || "").toUpperCase();
-      return normalizedStatus === "PUBLIC" || normalizedStatus === "ACTIVE";
-    }),
+    () => plans
+      .filter((plan) => {
+        const normalizedStatus = String(plan?.planStatus || "").toUpperCase();
+        return normalizedStatus === "PUBLIC" || normalizedStatus === "ACTIVE";
+      })
+      .sort(comparePlanByIdAsc),
     [plans],
   );
 
-  const handleSelectPlan = async (plan) => {
-    if (!isAuthenticated) {
-      navigate(PATH_AUTH.register, {
-        state: {
-          from: PATH_AUTH.plans,
-          selectedPlanId: plan?.id,
-          selectedPlanName: plan?.name,
-        },
-      });
-      return;
+  const normalizedUserId = Number(user?.id);
+
+  const currentPaidPlan = useMemo(() => {
+    const plan = currentSubscription?.plan;
+
+    if (!plan || isFreePlan(plan)) {
+      return null;
     }
 
-    const planId = Number(plan?.id);
-    if (!Number.isFinite(planId) || planId <= 0) {
-      toast.error("Không thể đăng ký gói do planId không hợp lệ.");
-      return;
-    }
+    return plan;
+  }, [currentSubscription]);
 
-    setSubscribingPlanId(planId);
-    try {
-      await subscriptionApi.createSubscription(planId);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Không thể đăng ký gói. Vui lòng thử lại.");
-      setSubscribingPlanId(null);
-      return;
-    }
+  useEffect(() => {
+    let isMounted = true;
 
-    navigate("/classrooms", {
+    const fetchCurrentSubscription = async () => {
+      if (!isAuthenticated || !Number.isFinite(normalizedUserId) || normalizedUserId <= 0) {
+        setCurrentSubscription(null);
+        return;
+      }
+
+      setLoadingCurrentSubscription(true);
+      try {
+        const response = await subscriptionApi.getSubscriptions({
+          page: 1,
+          size: 50,
+          sortBy: "createdAt",
+          sortDirection: "DESC",
+        });
+
+        const content = Array.isArray(response?.result?.content)
+          ? response.result.content
+          : [];
+        const latestActiveSubscription = getLatestActiveSubscription(content, normalizedUserId);
+
+        if (isMounted) {
+          setCurrentSubscription(latestActiveSubscription);
+        }
+      } catch {
+        if (isMounted) {
+          setCurrentSubscription(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingCurrentSubscription(false);
+        }
+      }
+    };
+
+    fetchCurrentSubscription();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, normalizedUserId]);
+
+  useEffect(() => () => {
+    if (typeof confirmResolverRef.current === "function") {
+      confirmResolverRef.current(false);
+      confirmResolverRef.current = null;
+    }
+  }, []);
+
+  const handleNavigateRegister = (plan) => {
+    navigate(PATH_AUTH.register, {
       state: {
-        selectedPlanId: planId,
+        from: PATH_AUTH.plans,
+        selectedPlanId: plan?.id,
         selectedPlanName: plan?.name,
       },
     });
+  };
 
-    setSubscribingPlanId(null);
+  const openConfirmModal = ({ title, description }) =>
+    new Promise((resolve) => {
+      confirmResolverRef.current = resolve;
+      setConfirmModal({
+        isOpen: true,
+        title,
+        description,
+      });
+    });
+
+  const closeConfirmModal = (confirmed) => {
+    setConfirmModal((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
+
+    if (typeof confirmResolverRef.current === "function") {
+      confirmResolverRef.current(confirmed);
+      confirmResolverRef.current = null;
+    }
+  };
+
+  const handleBeforePayment = async (targetPlan) => {
+    if (!isAuthenticated || !currentPaidPlan) {
+      return true;
+    }
+
+    const currentPlanName = currentPaidPlan?.name || "gói hiện tại";
+    const targetPlanName = targetPlan?.name || "gói mới";
+
+    const currentPlanId = Number(currentPaidPlan?.id);
+    const targetPlanId = Number(targetPlan?.id);
+    const isSamePlan =
+      Number.isFinite(currentPlanId)
+      && Number.isFinite(targetPlanId)
+      && currentPlanId === targetPlanId;
+
+    if (isSamePlan) {
+      return openConfirmModal({
+        title: "Xác nhận gia hạn gói",
+        description: `Bạn đang sở hữu gói ${currentPlanName}. Nếu tiếp tục thanh toán lại gói này, thời hạn sử dụng sẽ được gia hạn thêm tương ứng.`,
+      });
+    }
+
+    return openConfirmModal({
+      title: "Xác nhận chuyển gói dịch vụ",
+      description: `Bạn đang sở hữu gói ${currentPlanName}. Khi đăng ký gói ${targetPlanName}, gói hiện tại sẽ kết thúc nhưng dữ liệu sẽ được giữ lại và được thay bằng gói mới. Bạn có muốn tiếp tục không?`,
+    });
   };
 
   return (
@@ -146,7 +313,6 @@ const PublicPlanPage = () => {
               const normalizedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
               const isFreePlan = normalizedPrice <= 0;
               const planId = Number(plan?.id);
-              const isSubscribingThisPlan = subscribingPlanId === planId;
 
               return (
                 <article className="plan-card" key={plan?.id || plan?.name}>
@@ -181,18 +347,26 @@ const PublicPlanPage = () => {
                   )}
 
                   {!isFreePlan && (
-                    <button
-                      type="button"
-                      className="plan-select-btn"
-                      onClick={() => handleSelectPlan(plan)}
-                      disabled={subscribingPlanId !== null}
-                    >
-                      {isSubscribingThisPlan
-                        ? "Đang xử lý..."
-                        : isAuthenticated
-                          ? "Chọn gói này"
-                          : "Đăng ký gói"}
-                    </button>
+                    !isAuthenticated ? (
+                      <button
+                        type="button"
+                        className="plan-select-btn"
+                        onClick={() => handleNavigateRegister(plan)}
+                      >
+                        Đăng ký gói
+                      </button>
+                    ) : (
+                      <PaymentButton
+                        userId={normalizedUserId}
+                        planId={planId}
+                        amount={normalizedPrice}
+                        label="Thanh toán với PayOS"
+                        className="plan-payment-btn"
+                        disabled={loadingCurrentSubscription}
+                        beforePay={() => handleBeforePayment(plan)}
+                        showInvalidStateMessage
+                      />
+                    )
                   )}
                 </article>
               );
@@ -200,6 +374,16 @@ const PublicPlanPage = () => {
           </section>
         )}
       </div>
+
+      <CenteredConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmText="Tiếp tục thanh toán"
+        cancelText="Để sau"
+        onConfirm={() => closeConfirmModal(true)}
+        onClose={() => closeConfirmModal(false)}
+      />
     </>
   );
 };

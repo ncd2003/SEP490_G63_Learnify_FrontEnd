@@ -20,6 +20,11 @@ export const PATH_AUTH = {
   resetPassword: "/reset-password",
 };
 
+export const PATH_PAYMENT = {
+  success: "/success",
+  cancel: "/cancel",
+};
+
 // ─── COMMON (All authenticated users) ─────────────────────────────────────────
 export const PATH_COMMON = {
   profile: "/profile",

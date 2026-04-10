@@ -16,7 +16,6 @@ import {
   getBenefitCodeLabel,
   getBenefitTypeLabel,
 } from "@/schema/benefit.schema";
-import { getPlanStatusLabel } from "@/schema/plan.schema";
 import { formatCurrency } from "@/lib/utils";
 import "@/assets/css/pages/admin/planManagement.css";
 
@@ -137,6 +136,7 @@ const AdminPlanManagementPage = () => {
 
   const [planToDelete, setPlanToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -434,6 +434,51 @@ const AdminPlanManagementPage = () => {
     setPlanToDelete(plan);
   };
 
+  const handleUpdatePlanStatus = async (plan, nextStatus) => {
+    const planId = Number(plan?.id);
+    if (!Number.isFinite(planId) || planId <= 0) {
+      setError("Không thể cập nhật trạng thái gói do thiếu id từ backend.");
+      return;
+    }
+
+    const normalizedCurrentStatus = normalizePlanStatusValue(plan?.planStatus);
+    const normalizedNextStatus = normalizePlanStatusValue(nextStatus);
+
+    if (normalizedCurrentStatus === normalizedNextStatus) {
+      return;
+    }
+
+    setError("");
+    setUpdatingStatusId(planId);
+
+    try {
+      const response = await planApi.updatePlanStatus(planId, normalizedNextStatus);
+      const updatedPlan = response?.result;
+
+      setPlans((prev) => prev.map((item) => {
+        if (Number(item?.id) !== planId) {
+          return item;
+        }
+
+        if (updatedPlan && typeof updatedPlan === "object") {
+          return {
+            ...item,
+            ...updatedPlan,
+          };
+        }
+
+        return {
+          ...item,
+          planStatus: normalizedNextStatus,
+        };
+      }));
+    } catch (err) {
+      setError(buildErrorMessage(err, "Không thể cập nhật trạng thái gói."));
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
   const closeDeleteModal = () => {
     if (!deleteLoading) {
       setPlanToDelete(null);
@@ -526,11 +571,24 @@ const AdminPlanManagementPage = () => {
                     <td>{formatPrice(plan.price)}</td>
                     <td>{formatDuration(plan.durationUnit, plan.durationValue)}</td>
                     <td>
-                      <span
-                        className={`plan-status-pill ${normalizePlanStatusValue(plan.planStatus).toLowerCase()}`}
-                      >
-                        {getPlanStatusLabel(plan.planStatus)}
-                      </span>
+                      <div className="plan-status-cell">
+                        <select
+                          className={`plan-status-select ${normalizePlanStatusValue(plan.planStatus).toLowerCase()}`}
+                          value={normalizePlanStatusValue(plan.planStatus)}
+                          onChange={(event) => handleUpdatePlanStatus(plan, event.target.value)}
+                          disabled={updatingStatusId === Number(plan.id)}
+                        >
+                          {PLAN_STATUS_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        {updatingStatusId === Number(plan.id) && (
+                          <span className="plan-status-updating">Đang cập nhật...</span>
+                        )}
+                      </div>
                     </td>
                     <td>{Array.isArray(plan.benefits) ? plan.benefits.length : 0}</td>
                     <td className="plan-description-cell">{plan.description || "-"}</td>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, ChevronRight, Calendar, Mail, User, Zap } from "lucide-react";
+import { Search, ChevronRight, Calendar, Mail, Zap } from "lucide-react";
 import { subscriptionApi } from "@/apis/subscription.api";
 import useDebounce from "@/hooks/use-debounce";
 import Pagination from "@/components/Pagination";
@@ -18,6 +18,11 @@ const SUBSCRIPTION_STATUS_LABELS = {
     EXPIRED: "Hết hạn",
 };
 
+const STATUS_FILTER_OPTIONS = [
+    { value: "ALL", label: "Tất cả trạng thái" },
+    ...Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+];
+
 const getSubscriptionStatusLabel = (status) => {
     const normalizedStatus = String(status || "").toUpperCase();
     return SUBSCRIPTION_STATUS_LABELS[normalizedStatus] || status || "UNKNOWN";
@@ -29,6 +34,7 @@ const AdminSubscriptionListPage = () => {
     const [error, setError] = useState("");
     const [search, setSearch] = useState("");
     const [sortValue, setSortValue] = useState("createdAt_DESC");
+    const [statusFilter, setStatusFilter] = useState("ALL");
     const [page, setPage] = useState(1);
     const [paging, setPaging] = useState({
         pageNumber: 1,
@@ -51,6 +57,7 @@ const AdminSubscriptionListPage = () => {
                 size: 10,
                 sortBy,
                 sortDirection,
+                ...(statusFilter !== "ALL" && { subscriptionStatus: statusFilter }),
             });
 
             const result = response?.result ?? {};
@@ -64,6 +71,12 @@ const AdminSubscriptionListPage = () => {
                         sub.user?.email?.toLowerCase().includes(query) ||
                         sub.user?.fullName?.toLowerCase().includes(query) ||
                         sub.plan?.name?.toLowerCase().includes(query)
+                );
+            }
+
+            if (statusFilter !== "ALL") {
+                content = content.filter(
+                    (sub) => String(sub.subscriptionStatus || "").toUpperCase() === statusFilter
                 );
             }
 
@@ -84,7 +97,7 @@ const AdminSubscriptionListPage = () => {
 
     useEffect(() => {
         fetchSubscriptions();
-    }, [page, sortValue, debouncedSearch]);
+    }, [page, sortValue, debouncedSearch, statusFilter]);
 
     const handleRowClick = (subscription) => {
         setSelectedSubscription(subscription);
@@ -103,6 +116,8 @@ const AdminSubscriptionListPage = () => {
         return new Date(dateString).toLocaleDateString("vi-VN");
     };
 
+    const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "ALL";
+
     return (
         <div className="subscription-list-page">
             <div className="subscription-header">
@@ -118,13 +133,33 @@ const AdminSubscriptionListPage = () => {
                         type="text"
                         placeholder="Tìm kiếm theo email, tên người dùng hoặc gói..."
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => {
+                            setSearch(e.target.value);
+                            setPage(1);
+                        }}
                         className="search-input"
                     />
                 </div>
                 <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                        setStatusFilter(e.target.value);
+                        setPage(1);
+                    }}
+                    className="sort-select"
+                >
+                    {STATUS_FILTER_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                        </option>
+                    ))}
+                </select>
+                <select
                     value={sortValue}
-                    onChange={(e) => setSortValue(e.target.value)}
+                    onChange={(e) => {
+                        setSortValue(e.target.value);
+                        setPage(1);
+                    }}
                     className="sort-select"
                 >
                     {SORT_OPTIONS.map((opt) => (
@@ -143,7 +178,7 @@ const AdminSubscriptionListPage = () => {
                     <div className="subscription-empty error">{error}</div>
                 ) : subscriptions.length === 0 ? (
                     <div className="subscription-empty">
-                        {search ? "Không tìm thấy subscription phù hợp" : "Chưa có subscription nào"}
+                        {hasActiveFilters ? "Không tìm thấy subscription phù hợp" : "Chưa có subscription nào"}
                     </div>
                 ) : (
                     <div className="subscription-list">

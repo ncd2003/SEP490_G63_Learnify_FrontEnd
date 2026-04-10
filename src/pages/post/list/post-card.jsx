@@ -18,6 +18,20 @@ const AttachmentIcon = ({ fileType }) => {
 };
 
 const MAX_MEDIA_PREVIEW = 6;
+const COMMENTS_BATCH_SIZE = 5;
+
+const sortCommentsByDate = (commentList, order) => {
+  const safeTime = (value) => {
+    const time = Date.parse(value ?? "");
+    return Number.isNaN(time) ? 0 : time;
+  };
+
+  return [...commentList].sort((a, b) => {
+    const aTime = safeTime(a.createdAt);
+    const bTime = safeTime(b.createdAt);
+    return order === "oldest" ? aTime - bTime : bTime - aTime;
+  });
+};
 
 /**
  * @param {{
@@ -30,7 +44,8 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(5);
+  const [visibleCount, setVisibleCount] = useState(COMMENTS_BATCH_SIZE);
+  const [commentSortOrder, setCommentSortOrder] = useState("newest");
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(null);
 
@@ -69,6 +84,11 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
 
   const previewMedia = mediaAttachments.slice(0, MAX_MEDIA_PREVIEW);
   const remainingMediaCount = Math.max(0, mediaAttachments.length - previewMedia.length);
+
+  const sortedComments = useMemo(
+    () => sortCommentsByDate(comments ?? [], commentSortOrder),
+    [comments, commentSortOrder]
+  );
 
   const handleCommentSubmit = async (data) => {
     const result = await createComment(data);
@@ -230,29 +250,49 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
             {loadingComments ? (
               <div className="comments-loading">Đang tải bình luận...</div>
             ) : comments.length > 0 ? (
-              <div className="comments-list">
-                {/* <div className="comments-header">Bình luận ({totalCommentCount})</div> */}
-                {comments.slice(0, visibleCount).map((comment) => (
-                  <CommentCard 
-                    key={comment.id} 
-                    comment={comment}
-                    postId={post.id}
-                    onReply={handleCommentSubmit}
-                    onEdit={handleCommentUpdate}
-                    onDelete={handleCommentDelete}
-                    submitting={submitting}
-                  />
-                ))}
-                
-                {visibleCount < comments.length && (
-                  <button 
-                    className="comments-load-more" 
-                    onClick={() => setVisibleCount((prev) => prev + 5)}
+              <>
+                <div className="comments-tools">
+                  <label className="comments-sort-label" htmlFor={`comments-sort-${post.id}`}>
+                    Sắp xếp
+                  </label>
+                  <select
+                    id={`comments-sort-${post.id}`}
+                    className="comments-sort-select"
+                    value={commentSortOrder}
+                    onChange={(e) => {
+                      setCommentSortOrder(e.target.value);
+                      setVisibleCount(COMMENTS_BATCH_SIZE);
+                    }}
                   >
-                    Xem thêm bình luận
-                  </button>
-                )}
-              </div>
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                  </select>
+                </div>
+
+                <div className="comments-list">
+                  {/* <div className="comments-header">Bình luận ({totalCommentCount})</div> */}
+                  {sortedComments.slice(0, visibleCount).map((comment) => (
+                    <CommentCard
+                      key={comment.id}
+                      comment={comment}
+                      postId={post.id}
+                      onReply={handleCommentSubmit}
+                      onEdit={handleCommentUpdate}
+                      onDelete={handleCommentDelete}
+                      submitting={submitting}
+                    />
+                  ))}
+
+                  {visibleCount < sortedComments.length && (
+                    <button
+                      className="comments-load-more"
+                      onClick={() => setVisibleCount((prev) => prev + COMMENTS_BATCH_SIZE)}
+                    >
+                      Xem thêm bình luận
+                    </button>
+                  )}
+                </div>
+              </>
             ) : null}
           </div>
         )}

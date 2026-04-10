@@ -15,4 +15,5 @@ export const API_SUFFIX = {
   SUBSCRIPTION: '/subscriptions',
   BENEFIT: '/benefits',
   PLAN: '/plans',
+  PAYMENT: '/payments',
 };
