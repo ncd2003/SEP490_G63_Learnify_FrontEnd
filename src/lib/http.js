@@ -88,10 +88,17 @@ const createHttp = () => {
       const isChangePassword = response.config?.url?.includes(
         "/users/change-password",
       );
+      const isQuestionBankEndpoint =
+        response.config?.url?.includes("/question-banks");
+      const isAssignmentEndpoint =
+        response.config?.url?.includes("/assignments") ||
+        response.config?.url?.includes("/draft-sessions");
 
       if (
         isMutation &&
         !isChangePassword &&
+        !isQuestionBankEndpoint &&
+        !isAssignmentEndpoint &&
         response.data?.code === 1000 &&
         response.data?.message
       ) {
@@ -110,13 +117,23 @@ const createHttp = () => {
           reqConfig?.url?.includes("/auth/forgot-password") ||
           reqConfig?.url?.includes("/auth/reset-password") ||
           reqConfig?.url?.includes("/users/change-password");
+        const isQuestionBankEndpoint =
+          reqConfig?.url?.includes("/question-banks");
+        const isAssignmentEndpoint =
+          reqConfig?.url?.includes("/assignments") ||
+          reqConfig?.url?.includes("/draft-sessions");
 
         // Show error toast
         const errorMessage = data?.message || "Đã có lỗi xảy ra";
         // Avoid showing toast for 401/403 errors that might be handled differently (redirects)
         // or for specific endpoints if needed.
         // Generally good to show error toast for failures.
-        if (status !== 401 && !shouldHandleInlineError) {
+        if (
+          status !== 401 &&
+          !shouldHandleInlineError &&
+          !isQuestionBankEndpoint &&
+          !isAssignmentEndpoint
+        ) {
           toast.error(errorMessage);
         }
 

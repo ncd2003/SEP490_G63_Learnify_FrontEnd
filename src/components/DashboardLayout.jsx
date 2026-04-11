@@ -81,6 +81,11 @@ const DashboardLayout = () => {
     },
     {
       icon: FileText,
+      label: "Bài tập",
+      path: PATH_TEACHER.assignments,
+    },
+    {
+      icon: FileText,
       label: "Tài liệu",
       path: PATH_TEACHER.documents,
     },

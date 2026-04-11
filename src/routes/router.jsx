@@ -7,11 +7,15 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { PATH_AUTH } from "@/routes/paths";
 import { PATH_TEACHER } from "@/routes/paths";
 
-const Loadable = (Component) => (props) => (
-  <Suspense fallback={<LoadingScreen />}>
-    <Component {...props} />
-  </Suspense>
-);
+const Loadable = (Component) => {
+  const WrappedComponent = Component;
+
+  return (props) => (
+    <Suspense fallback={<LoadingScreen />}>
+      <WrappedComponent {...props} />
+    </Suspense>
+  );
+};
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 const LoginPage = Loadable(lazy(() => import("@/pages/Login")));
@@ -46,6 +50,32 @@ const ClassroomPostPage = Loadable(
 );
 const PendingRequestsPage = Loadable(
   lazy(() => import("@/pages/classroom/PendingRequests")),
+);
+const AssignmentPage = Loadable(
+  lazy(() => import("@/pages/assignment/list/assignment-page")),
+);
+const AssignmentHubPage = Loadable(
+  lazy(() => import("@/pages/assignment/hub/assignment-hub-page")),
+);
+const CreateAssignmentMethodPage = Loadable(
+  lazy(() => import("@/pages/assignment/method/create-assignment-method-page")),
+);
+const ManualAssignmentSetupPage = Loadable(
+  lazy(() => import("@/pages/assignment/create/manual-assignment-setup-page")),
+);
+const ManualAssignmentCreatorPage = Loadable(
+  lazy(
+    () => import("@/pages/assignment/create/manual-assignment-creator-page"),
+  ),
+);
+const AssignToClassesPage = Loadable(
+  lazy(() => import("@/pages/assignment/assign/assign-to-classes-page")),
+);
+const CreateAssignmentAiPage = Loadable(
+  lazy(() => import("@/pages/assignment/ai/create-assignment-ai-page")),
+);
+const ImportAssignmentFilePage = Loadable(
+  lazy(() => import("@/pages/assignment/import/import-assignment-file-page")),
 );
 const QuestionBankPage = Loadable(
   lazy(() => import("@/pages/question-bank/list/question-bank-page")),
@@ -169,6 +199,46 @@ const AppRoutes = () =>
         {
           path: PATH_TEACHER.classroom.pendingRequests(":id"),
           element: <PendingRequestsPage />,
+        },
+        {
+          path: PATH_TEACHER.assignments,
+          element: <AssignmentHubPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateMethod,
+          element: <CreateAssignmentMethodPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateAi,
+          element: <CreateAssignmentAiPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateManual,
+          element: <ManualAssignmentSetupPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateManualQuestions,
+          element: <ManualAssignmentCreatorPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentAssignClasses(":assignmentId"),
+          element: <AssignToClassesPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateImport,
+          element: <ImportAssignmentFilePage />,
+        },
+        {
+          path: PATH_TEACHER.classroom.assignments(":id"),
+          element: <AssignmentPage />,
+        },
+        {
+          path: PATH_TEACHER.classroom.assignmentCreateManual(":id"),
+          element: <ManualAssignmentSetupPage />,
+        },
+        {
+          path: PATH_TEACHER.classroom.assignmentCreateManualQuestions(":id"),
+          element: <ManualAssignmentCreatorPage />,
         },
         {
           path: PATH_TEACHER.questionBank,

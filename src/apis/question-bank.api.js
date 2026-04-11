@@ -25,6 +25,7 @@ import {
  */
 
 const BASE = API_SUFFIX.QUESTION_BANK;
+const DELETE_RESOURCE_BANK_TIMEOUT_MS = 4000;
 
 const DEFAULT_LIST_PARAMS = {
   page: 1,
@@ -228,7 +229,9 @@ const updateQuestionBank = (bankId, data) => {
  */
 const deleteQuestionBank = (bankId) => {
   const safeBankId = normalizeBankId(bankId);
-  return apiRequest.delete(`${BASE}/${safeBankId}`);
+  return apiRequest.delete(`${BASE}/${safeBankId}`, {
+    timeout: DELETE_RESOURCE_BANK_TIMEOUT_MS,
+  });
 };
 
 /**
@@ -306,6 +309,32 @@ const createQuestion = (bankId, payload) => {
 
 /**
  * @param {number|string} bankId
+ * @param {Array<{
+ *   content: string,
+ *   questionType: string,
+ *   difficulty: string,
+ *   defaultPoints: number,
+ *   sampleAnswer?: string | null,
+ *   options: Array<{ content: string, correct: boolean }>,
+ * }>} payload
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<Array<{
+ *   id: number,
+ *   questionBankId: number,
+ *   content: string,
+ *   questionType: string,
+ *   difficulty: string,
+ *   defaultPoints: number,
+ *   sampleAnswer: string | null,
+ *   options: Array<{ id?: number, content: string, correct?: boolean, isCorrect?: boolean }> | null,
+ * }>>>}
+ */
+const createQuestionsBatch = (bankId, payload) => {
+  const safeBankId = normalizeBankId(bankId);
+  return apiRequest.post(`${BASE}/${safeBankId}/questions/batch`, payload);
+};
+
+/**
+ * @param {number|string} bankId
  * @param {{
  *   difficulty: string,
  *   quantity: number,
@@ -370,6 +399,28 @@ const getDraftAiSession = (bankId, sessionId) => {
   const safeSessionId = normalizeBankId(sessionId);
   return apiRequest.get(
     `${BASE}/${safeBankId}/questions/sessions/${safeSessionId}`,
+  );
+};
+
+/**
+ * @param {number|string} bankId
+ * @param {number|string} sessionId
+ * @param {{
+ *   prompt: string,
+ *   selectQuestionIds?: number[],
+ * }} payload
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<{
+ *   sessionId: number,
+ *   questions: TQuestionPreviewItem[],
+ *   warnings?: string[],
+ * }>>}
+ */
+const refineAiQuestions = (bankId, sessionId, payload) => {
+  const safeBankId = normalizeBankId(bankId);
+  const safeSessionId = normalizeBankId(sessionId);
+  return apiRequest.post(
+    `${BASE}/${safeBankId}/sessions/${safeSessionId}/refine`,
+    payload,
   );
 };
 
@@ -452,8 +503,10 @@ export const questionBankApi = {
   previewImportQuestions,
   confirmImportQuestions,
   createQuestion,
+  createQuestionsBatch,
   generateQuestionsWithAi,
   getDraftAiSession,
+  refineAiQuestions,
   confirmAiQuestions,
   cancelAiSession,
   updateQuestion,

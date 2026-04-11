@@ -1,5 +1,18 @@
 // ─── GUEST / AUTH ─────────────────────────────────────────────────────────────
-const path = (root, sublink) => `${root}${sublink}`;
+const path = (root, sublink = "") => {
+  const normalizedRoot = String(root ?? "").replace(/\/+$/, "");
+  const normalizedSublink = String(sublink ?? "").replace(/^\/+/, "");
+
+  if (!normalizedRoot) {
+    return `/${normalizedSublink}`;
+  }
+
+  if (!normalizedSublink) {
+    return normalizedRoot;
+  }
+
+  return `${normalizedRoot}/${normalizedSublink}`;
+};
 
 const ROOTS_TEACHER = "/";
 
@@ -32,7 +45,23 @@ export const PATH_TEACHER = {
     edit: (id) => `/classrooms/${id}/edit`,
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
+    assignments: (id) => `/classrooms/${id}/assignments`,
+    assignmentCreateManual: (id) =>
+      `/classrooms/${id}/assignments/create/manual`,
+    assignmentCreateManualQuestions: (id) =>
+      `/classrooms/${id}/assignments/create/manual/questions`,
   },
+  assignments: path(ROOTS_TEACHER, "/assignments"),
+  assignmentCreateMethod: path(ROOTS_TEACHER, "/assignments/create-method"),
+  assignmentCreateAi: path(ROOTS_TEACHER, "/assignments/create/ai"),
+  assignmentCreateManual: path(ROOTS_TEACHER, "/assignments/create/manual"),
+  assignmentCreateManualQuestions: path(
+    ROOTS_TEACHER,
+    "/assignments/create/manual/questions",
+  ),
+  assignmentAssignClasses: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/assign-classes`),
+  assignmentCreateImport: path(ROOTS_TEACHER, "/assignments/create/import"),
   students: path(ROOTS_TEACHER, "/students"),
   documents: path(ROOTS_TEACHER, "/documents"),
   questionBank: path(ROOTS_TEACHER, "/question-bank"),

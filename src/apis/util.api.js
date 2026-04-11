@@ -3,6 +3,8 @@ export const API_SUFFIX = {
   USER: "/users",
   CLASSROOM: "/classrooms",
   QUESTION_BANK: "/question-banks",
+  ASSIGNMENT: "/assignments",
+  DRAFT_SESSION: "/draft-sessions",
   POST: "/posts",
   COMMENT: "/comments",
   SCHEDULE: "/classrooms",
