@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -132,15 +132,24 @@ const DashboardLayout = () => {
     const diffMs = Date.now() - new Date(createdAt).getTime();
     const diffMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
 
-    if (diffMinutes < 1) return "Vua xong";
-    if (diffMinutes < 60) return `${diffMinutes} phut truoc`;
+    if (diffMinutes < 1) return "Vừa xong";
+    if (diffMinutes < 60) return `${diffMinutes} phút trước`;
 
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours} gio truoc`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
 
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} ngay truoc`;
+    return `${diffDays} ngày trước`;
   };
+
+  const fetchUnreadCountOnly = useCallback(async () => {
+    try {
+      const unreadResponse = await notificationApi.getUnreadCount();
+      setUnreadCount(Number(unreadResponse?.result || 0));
+    } catch (error) {
+      console.error("Failed to fetch unread count:", error);
+    }
+  }, []);
 
   const fetchNotificationData = async ({ withList = true } = {}) => {
     if (withList) {
@@ -350,14 +359,19 @@ const DashboardLayout = () => {
         if (!incomingNotification?.id) return;
 
         setNotifications((prev) => {
-          const exists = prev.some((item) => item.id === incomingNotification.id);
-          if (exists) {
-            return prev;
+          const existingIndex = prev.findIndex((item) => item.id === incomingNotification.id);
+
+          if (existingIndex >= 0) {
+            return prev.map((item) =>
+              item.id === incomingNotification.id ? { ...item, ...incomingNotification } : item,
+            );
           }
+
           return [incomingNotification, ...prev];
         });
-
-        setUnreadCount((prev) => prev + (incomingNotification.read ? 0 : 1));
+      },
+      onUnreadCount: (nextUnreadCount) => {
+        setUnreadCount(Math.max(0, Number(nextUnreadCount || 0)));
       },
       onAccountStatus: async (accountStatusEvent) => {
         if (
@@ -371,7 +385,7 @@ const DashboardLayout = () => {
 
         const lockMessage =
           accountStatusEvent?.message ||
-          "Tai khoan cua ban da bi khoa. Vui long lien he bo phan ho tro.";
+          "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ bộ phận hỗ trợ.";
 
         setAccountLockedNotice(lockMessage);
         sessionStorage.setItem("account_locked_realtime", "1");
@@ -389,7 +403,7 @@ const DashboardLayout = () => {
     });
 
     return () => disconnect();
-  }, [user?.id]);
+  }, [logout, navigate, user?.id]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -407,9 +421,9 @@ const DashboardLayout = () => {
       {accountLockedNotice && (
         <div className="account-lock-overlay" role="alert" aria-live="assertive">
           <div className="account-lock-card">
-            <h3>Tai khoan cua ban da bi khoa</h3>
+            <h3>Tài khoản của bạn đã bị khóa</h3>
             <p>{accountLockedNotice}</p>
-            <span>He thong se dang xuat ban trong giay lat...</span>
+            <span>Hệ thống sẽ đăng xuất bạn trong giây lát...</span>
           </div>
         </div>
       )}
@@ -533,7 +547,7 @@ const DashboardLayout = () => {
               <button
                 className="notification-trigger"
                 onClick={handleToggleNotification}
-                aria-label="Thong bao"
+                aria-label="Thông báo"
               >
                 <Bell size={18} />
                 {unreadCount > 0 && (
@@ -546,22 +560,22 @@ const DashboardLayout = () => {
               {isNotificationOpen && (
                 <div className="notification-dropdown">
                   <div className="notification-header">
-                    <h3>Thong bao</h3>
+                    <h3>Thông báo</h3>
                     <button
                       className="mark-all-btn"
                       onClick={handleMarkAllAsRead}
                       disabled={unreadCount === 0}
                     >
                       <CheckCheck size={14} />
-                      <span>Danh dau tat ca da doc</span>
+                      <span>Đánh dấu tất cả đã đọc</span>
                     </button>
                   </div>
 
                   <div className="notification-list">
                     {isNotificationLoading ? (
-                      <div className="notification-empty">Dang tai thong bao...</div>
+                      <div className="notification-empty">Đang tải thông báo...</div>
                     ) : notifications.length === 0 ? (
-                      <div className="notification-empty">Ban chua co thong bao nao</div>
+                      <div className="notification-empty">Bạn chưa có thông báo nào</div>
                     ) : (
                       notifications.slice(0, 8).map((notification) => (
                         <button
@@ -574,7 +588,7 @@ const DashboardLayout = () => {
                             {!notification.read && <span className="notification-dot" />}
                           </div>
                           <div className="notification-item-desc">
-                            {notification.shortDescription || "Khong co mo ta"}
+                            {notification.shortDescription || "Không có mô tả"}
                           </div>
                           <div className="notification-item-time">
                             {formatTimeAgo(notification.createdAt)}
@@ -592,7 +606,7 @@ const DashboardLayout = () => {
                         navigate(PATH_COMMON.notifications);
                       }}
                     >
-                      Xem tat ca
+                      Xem tất cả
                     </button>
                   </div>
                 </div>

@@ -7,14 +7,20 @@ const getWsHttpEndpoint = () => {
     return envConfig.VITE_WS_URL.replace(/\/$/, "");
   }
 
+  const apiBase = String(envConfig.VITE_BASE_API_URL || "").trim();
+
+  if (apiBase.startsWith("/")) {
+    return `${window.location.origin}/ws`;
+  }
+
   try {
-    const apiUrl = new URL(envConfig.VITE_BASE_API_URL);
+    const apiUrl = new URL(apiBase);
     apiUrl.pathname = "/ws";
     apiUrl.search = "";
     apiUrl.hash = "";
     return apiUrl.toString().replace(/\/$/, "");
   } catch {
-    return "http://localhost:8080/ws";
+    return `${window.location.origin}/ws`;
   }
 };
 
@@ -22,6 +28,7 @@ export const createNotificationSocket = ({
   token,
   onConnected,
   onNotification,
+  onUnreadCount,
   onAccountStatus,
   onError,
 }) => {
@@ -44,6 +51,15 @@ export const createNotificationSocket = ({
         try {
           const payload = JSON.parse(message.body);
           onNotification?.(payload);
+        } catch (error) {
+          onError?.(error);
+        }
+      });
+
+      client.subscribe("/user/queue/notifications/unread-count", (message) => {
+        try {
+          const payload = JSON.parse(message.body);
+          onUnreadCount?.(Number(payload || 0));
         } catch (error) {
           onError?.(error);
         }

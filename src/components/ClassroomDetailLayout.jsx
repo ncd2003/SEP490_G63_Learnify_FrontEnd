@@ -21,6 +21,7 @@ import { normalizeRole } from '@/lib/auth-role';
 import { PATH_AUTH, PATH_COMMON, PATH_TEACHER } from '@/routes/paths';
 import { classroomApi } from '@/apis/classroom.api';
 import { notificationApi } from '@/apis/notification.api';
+import { createNotificationSocket } from '@/lib/notification-websocket';
 import '@/assets/css/components/classroomDetailLayout.css';
 
 const MENU_ITEMS = [
@@ -74,10 +75,20 @@ const ClassroomDetailLayout = ({ children }) => {
 
     fetchUnreadCount();
     const timer = window.setInterval(fetchUnreadCount, 30000);
+    const token = localStorage.getItem('accessToken');
+    const disconnect = createNotificationSocket({
+      token,
+      onConnected: fetchUnreadCount,
+      onNotification: fetchUnreadCount,
+      onError: (error) => {
+        console.error('Notification socket error:', error);
+      },
+    });
 
     return () => {
       isMounted = false;
       window.clearInterval(timer);
+      disconnect();
     };
   }, []);
 
@@ -133,10 +144,10 @@ const ClassroomDetailLayout = ({ children }) => {
 
   const roleLabel = (() => {
     const role = normalizeRole(user?.role);
-    if (role === 'TEACHER') return 'Giao vien';
-    if (role === 'STUDENT') return 'Hoc sinh';
-    if (role === 'ADMIN') return 'Quan tri vien';
-    return 'Nguoi dung';
+    if (role === 'TEACHER') return 'Giáo viên';
+    if (role === 'STUDENT') return 'Học sinh';
+    if (role === 'ADMIN') return 'Quản trị viên';
+    return 'Người dùng';
   })();
 
   const safeNumber = (value) => {
@@ -309,7 +320,7 @@ const ClassroomDetailLayout = ({ children }) => {
       <main className="classroom-main-content">
         <header className="classroom-workspace-header">
           <div className="classroom-workspace-left">
-            <div className="classroom-workspace-label">KHU VUC LAM VIEC</div>
+            <div className="classroom-workspace-label">KHU VỰC LÀM VIỆC</div>
             <div className="classroom-workspace-title">{activeMenuLabel}</div>
           </div>
 
@@ -318,8 +329,8 @@ const ClassroomDetailLayout = ({ children }) => {
               type="button"
               className="classroom-workspace-notification"
               onClick={handleOpenNotifications}
-              aria-label="Mo thong bao"
-              title="Thong bao"
+              aria-label="Mở thông báo"
+              title="Thông báo"
             >
               <Bell size={18} />
               {unreadCount > 0 && (
@@ -359,11 +370,11 @@ const ClassroomDetailLayout = ({ children }) => {
                     }}
                   >
                     <Settings size={14} />
-                    <span>Tai khoan cua toi</span>
+                    <span>Tài khoản của tôi</span>
                   </button>
                   <button type="button" onClick={handleLogout}>
                     <LogOut size={14} />
-                    <span>Dang xuat</span>
+                    <span>Đăng xuất</span>
                   </button>
                 </div>
               )}

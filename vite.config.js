@@ -37,6 +37,12 @@ export default defineConfig({
           });
         },
       },
+      "/ws": {
+        target: "http://localhost:8081",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
     },
   },
 });
