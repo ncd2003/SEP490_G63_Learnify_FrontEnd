@@ -326,7 +326,10 @@ const ClassroomDetailLayout = ({ children }) => {
         <header className="classroom-workspace-header">
           <div className="classroom-workspace-left">
             <div className="classroom-workspace-label">KHU VỰC LÀM VIỆC</div>
-            <div className="classroom-workspace-title">{activeMenuLabel}</div>
+            <div className="classroom-workspace-title-row">
+              <div className="classroom-workspace-title">{activeMenuLabel}</div>
+            </div>
+
           </div>
 
           <div className="classroom-workspace-right">
