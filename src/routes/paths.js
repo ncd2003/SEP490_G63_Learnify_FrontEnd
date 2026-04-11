@@ -59,6 +59,8 @@ export const PATH_TEACHER = {
     ROOTS_TEACHER,
     "/assignments/create/manual/questions",
   ),
+  assignmentDetail: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}`),
   assignmentAssignClasses: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}/assign-classes`),
   assignmentCreateImport: path(ROOTS_TEACHER, "/assignments/create/import"),

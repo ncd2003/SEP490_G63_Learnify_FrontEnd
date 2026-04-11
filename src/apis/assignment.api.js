@@ -99,6 +99,8 @@ const getAssignment = (assignmentId) => {
   return apiRequest.get(`${ASSIGNMENT_BASE}/${safeAssignmentId}`);
 };
 
+const getAssignmentById = (assignmentId) => getAssignment(assignmentId);
+
 const deleteAssignment = (assignmentId) => {
   const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
   return apiRequest.delete(`${ASSIGNMENT_BASE}/${safeAssignmentId}`);
@@ -416,6 +418,7 @@ export const assignmentApi = {
   createAssignment,
   getAssignments,
   getAssignment,
+  getAssignmentById,
   deleteAssignment,
   updateAssignment,
   publishAssignment,

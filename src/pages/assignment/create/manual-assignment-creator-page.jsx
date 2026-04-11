@@ -1393,7 +1393,7 @@ const ManualAssignmentCreatorPage = () => {
               title="Xóa"
               onClick={(e) => {
                 e.stopPropagation();
-                if (qs.length > 1) setDelModal(q.id);
+                setDelModal(q.id);
               }}
             >
               <Ic.Trash />

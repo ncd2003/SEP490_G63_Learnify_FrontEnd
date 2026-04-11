@@ -57,6 +57,9 @@ const AssignmentPage = Loadable(
 const AssignmentHubPage = Loadable(
   lazy(() => import("@/pages/assignment/hub/assignment-hub-page")),
 );
+const AssignmentDetailPage = Loadable(
+  lazy(() => import("@/pages/assignment/detail/assignment-detail-page")),
+);
 const CreateAssignmentMethodPage = Loadable(
   lazy(() => import("@/pages/assignment/method/create-assignment-method-page")),
 );
@@ -203,6 +206,10 @@ const AppRoutes = () =>
         {
           path: PATH_TEACHER.assignments,
           element: <AssignmentHubPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentDetail(":id"),
+          element: <AssignmentDetailPage />,
         },
         {
           path: PATH_TEACHER.assignmentCreateMethod,

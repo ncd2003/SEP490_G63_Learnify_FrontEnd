@@ -610,6 +610,10 @@ export default function AssignmentHubPage() {
     setTimeout(() => setToast(null), 2500);
   };
 
+  const goToDetail = (assignmentId) => {
+    navigate(PATH_TEACHER.assignmentDetail(assignmentId));
+  };
+
   const filtered = assignments.filter((item) => {
     if (tab === "published" && item.status !== "published") return false;
     if (tab === "draft" && item.status !== "draft") return false;
@@ -861,6 +865,7 @@ export default function AssignmentHubPage() {
               key={assignment.id}
               className="a-card"
               style={{ animationDelay: `${index * 0.04}s` }}
+              onClick={() => goToDetail(assignment.id)}
             >
               <div className="a-card-top">
                 <div className="a-card-badge-row">
@@ -953,30 +958,55 @@ export default function AssignmentHubPage() {
                 </div>
 
                 <div className="a-card-actions">
-                  <button className="act-btn" title="Xem">
+                  <button
+                    className="act-btn"
+                    title="Xem"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      goToDetail(assignment.id);
+                    }}
+                  >
                     <Ic.Eye />
                   </button>
                   <button
                     className="act-btn"
                     title="Giao bài"
-                    onClick={() => openAssign(assignment)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openAssign(assignment);
+                    }}
                   >
                     <Ic.Share />
                   </button>
-                  <button className="act-btn" title="Chỉnh sửa">
+                  <button
+                    className="act-btn"
+                    title="Chỉnh sửa"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(
+                        `${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`,
+                      );
+                    }}
+                  >
                     <Ic.Edit />
                   </button>
                   <button
                     className="act-btn"
                     title="Nhân bản"
-                    onClick={() => duplicate(assignment)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      duplicate(assignment);
+                    }}
                   >
                     <Ic.Copy />
                   </button>
                   <button
                     className="act-btn danger"
                     title="Xóa"
-                    onClick={() => setDeleteModal(assignment)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setDeleteModal(assignment);
+                    }}
                   >
                     <Ic.Trash />
                   </button>
