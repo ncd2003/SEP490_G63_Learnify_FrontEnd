@@ -79,8 +79,11 @@ const ClassroomDetailLayout = ({ children }) => {
     return Number.isFinite(parsedValue) ? parsedValue : 0;
   };
 
-  const formatStorageInGb = (value) => {
-    const gbValue = Math.max(0, safeNumber(value)) / (1024 * 1024 * 1024);
+  const bytesToGb = (valueInBytes) =>
+    Math.max(0, safeNumber(valueInBytes)) / (1024 * 1024 * 1024);
+
+  const formatGb = (valueInGb) => {
+    const gbValue = Math.max(0, safeNumber(valueInGb));
 
     if (gbValue >= 100) {
       return gbValue.toFixed(0);
@@ -99,15 +102,16 @@ const ClassroomDetailLayout = ({ children }) => {
   const storageUsage = usageItems.find((item) => item?.benefitCode === 'STORAGE');
   const aiRequestUsage = usageItems.find((item) => item?.benefitCode === 'AI_REQUEST');
 
-  const storageUsed = Math.max(0, safeNumber(storageUsage?.used));
-  const storageLimit = Math.max(0, safeNumber(storageUsage?.limitValue));
+  const storageUsedBytes = Math.max(0, safeNumber(storageUsage?.used));
+  const storageUsedGb = bytesToGb(storageUsedBytes);
+  const storageLimitGb = Math.max(0, safeNumber(storageUsage?.limitValue));
   const rawStoragePercent =
-    storageLimit > 0 ? (storageUsed / storageLimit) * 100 : 0;
+    storageLimitGb > 0 ? (storageUsedGb / storageLimitGb) * 100 : 0;
   const storagePercent = Number.isFinite(rawStoragePercent)
     ? Math.max(0, rawStoragePercent)
     : 0;
   const storagePercentLabel =
-    storageUsed <= 0 || storageLimit <= 0
+    storageUsedGb <= 0 || storageLimitGb <= 0
       ? '0%'
       : storagePercent < 0.0001
         ? '<0.0001%'
@@ -118,7 +122,7 @@ const ClassroomDetailLayout = ({ children }) => {
             : `${storagePercent.toFixed(1)}%`;
   const storagePercentBar =
     storagePercent > 0 ? Math.max(1, Math.min(100, storagePercent)) : 0;
-  const storageUsageLabel = `${formatStorageInGb(storageUsed)} / ${formatStorageInGb(storageLimit)} GB`;
+  const storageUsageLabel = `${formatGb(storageUsedGb)} / ${formatGb(storageLimitGb)} GB`;
 
   const aiUsed = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.used)));
   const aiLimit = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.limitValue)));
@@ -162,24 +166,25 @@ const ClassroomDetailLayout = ({ children }) => {
         </div>
 
         {!collapsed && (
-          <>
-            <div className="classroom-info-card">
-              <div className="classroom-info-row">
-                <span className="classroom-info-label">Giảng viên:</span>
-                <span className="classroom-info-value">{user?.fullName || user?.username}</span>
-              </div>
-              <div className="classroom-info-row">
-                <span className="classroom-info-label">Mã lớp:</span>
-                <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>
-              </div>
-              {classroom?.schedule && (
-                <div className="classroom-info-row">
-                  <Calendar size={16} className="classroom-info-icon" />
-                  <span className="classroom-info-schedule">{classroom.schedule}</span>
-                </div>
-              )}
+          <div className="classroom-info-card">
+            <div className="classroom-info-row">
+              <span className="classroom-info-label">Giảng viên:</span>
+              <span className="classroom-info-value">{user?.fullName || user?.username}</span>
             </div>
-          </>
+            {/* <div className="classroom-info-row">
+              <span className="classroom-info-email">{user?.email}</span>
+            </div> */}
+            <div className="classroom-info-row">
+              <span className="classroom-info-label">Mã lớp:</span>
+              <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>
+            </div>
+            {classroom?.schedule && (
+              <div className="classroom-info-row">
+                <Calendar size={16} className="classroom-info-icon" />
+                <span className="classroom-info-schedule">{classroom.schedule}</span>
+              </div>
+            )}
+          </div>
         )}
 
         <nav className="classroom-nav">

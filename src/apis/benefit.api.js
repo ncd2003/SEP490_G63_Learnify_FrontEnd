@@ -1,9 +1,6 @@
 import { apiRequest } from "@/lib/http";
 import { API_SUFFIX } from "./util.api";
-import {
-  CreateBenefitSchema,
-  UpdateBenefitSchema,
-} from "@/schema/benefit.schema";
+import { UpdateBenefitSchema } from "@/schema/benefit.schema";
 
 /**
  * @typedef {import("@/schema/benefit.schema").TBenefit} TBenefit
@@ -38,15 +35,7 @@ const normalizeBenefitId = (id) => {
  */
 const getBenefits = () => apiRequest.get(BASE);
 
-/**
- * POST /api/benefits
- * @param {TBenefitRequest} data
- * @returns {Promise<import("axios").AxiosResponse<BenefitResponse>>}
- */
-const createBenefit = (data) => {
-  const parsed = CreateBenefitSchema.parse(data);
-  return apiRequest.post(BASE, parsed);
-};
+// Note: createBenefit removed by request. Use server-side management or admin endpoints as needed.
 
 /**
  * PUT /api/benefits/{id}
@@ -73,7 +62,6 @@ const deleteBenefit = (id) => {
 /* ─── Export ─────────────────────────────────────────────────────────────── */
 export const benefitApi = {
   getBenefits,
-  createBenefit,
   updateBenefit,
   deleteBenefit,
 };

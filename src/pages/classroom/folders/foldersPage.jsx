@@ -412,6 +412,7 @@ const FoldersPage = () => {
   const {
     materials,
     loading: loadingMaterials,
+    canManageMaterials,
     uploadMaterials,
     moveMaterial,
     renameMaterial,
@@ -433,6 +434,13 @@ const FoldersPage = () => {
   const [materialRenameSubmitting, setMaterialRenameSubmitting] = useState(false);
   const [previewingMaterialId, setPreviewingMaterialId] = useState(null);
   const [materialPreviewState, setMaterialPreviewState] = useState(MATERIAL_PREVIEW_INITIAL_STATE);
+
+  const guardTeacherMaterialAction = useCallback(() => {
+    if (canManageMaterials) {
+      return true;
+    }
+    return false;
+  }, [canManageMaterials]);
 
   useEffect(() => {
     setExpandedIds((prev) => {
@@ -511,6 +519,7 @@ const FoldersPage = () => {
   };
 
   const handleMaterialRename = (material) => {
+    if (!guardTeacherMaterialAction()) return;
     if (!material?.id) return;
     setMaterialRenameState({ open: true, material, name: material.fileName ?? "" });
   };
@@ -518,6 +527,7 @@ const FoldersPage = () => {
   const closeMaterialRename = () => setMaterialRenameState({ open: false, material: null, name: "" });
 
   const confirmMaterialRename = async () => {
+    if (!guardTeacherMaterialAction()) return;
     const { material, name } = materialRenameState;
     if (!material?.id) return;
     const trimmed = name?.trim();
@@ -529,6 +539,7 @@ const FoldersPage = () => {
   };
 
   const handleMaterialMove = async (material) => {
+    if (!guardTeacherMaterialAction()) return;
     if (!material?.id) return;
     setMaterialMoveState({ open: true, material, targetId: selectedId ?? null });
   };
@@ -536,6 +547,7 @@ const FoldersPage = () => {
   const closeMaterialMove = () => setMaterialMoveState({ open: false, material: null, targetId: null });
 
   const confirmMaterialMove = async () => {
+    if (!guardTeacherMaterialAction()) return;
     const { material, targetId } = materialMoveState;
     if (!material?.id || targetId === null) return;
 
@@ -552,6 +564,7 @@ const FoldersPage = () => {
   };
 
   const handleMaterialDelete = async (material) => {
+    if (!guardTeacherMaterialAction()) return;
     if (!material?.id) return;
     setMaterialDeleteState({ open: true, material });
   };
@@ -640,6 +653,7 @@ const FoldersPage = () => {
   const closeMaterialDelete = () => setMaterialDeleteState({ open: false, material: null });
 
   const confirmMaterialDelete = async () => {
+    if (!guardTeacherMaterialAction()) return;
     if (!materialDeleteState.material?.id) return;
     setMaterialDeleteSubmitting(true);
     await deleteMaterial(materialDeleteState.material.id);
@@ -809,12 +823,6 @@ const FoldersPage = () => {
 
           <div className="panel materials-panel">
             <div className="panel-header materials-header">
-              <div>
-                <h2 className="panel-title">Tài liệu</h2>
-                <p className="panel-subtitle">
-                  {selectedFolder ? `Thư mục: ${selectedFolder.name}` : "Chọn thư mục để xem tài liệu"}
-                </p>
-              </div>
               <div className="material-actions">
                 <div className="material-filter-controls">
                   <input
@@ -834,39 +842,44 @@ const FoldersPage = () => {
                     <option value="asc">Cũ nhất</option>
                   </select>
                 </div>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!selectedFolder || !files || files.length === 0) return;
-                    setUploading(true);
-                    try {
-                      await uploadMaterials(Number(classroomId), Array.from(files));
-                      setFiles([]);
-                      e.target.reset();
-                    } catch {
-                      // Upload errors are handled in hook/interceptor; keep form state unchanged.
-                    } finally {
-                      setUploading(false);
-                    }
-                  }}
-                  className="upload-form"
-                >
-                  <input
-                    type="file"
-                    multiple
-                    onChange={(e) => setFiles(e.target.files)}
-                    disabled={!selectedFolder}
-                    className="file-input"
-                  />
-                  <button
-                    type="submit"
-                    disabled={uploading || !selectedFolder || !files || files.length === 0}
-                    className="btn btn-primary"
+                {canManageMaterials ? (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!guardTeacherMaterialAction()) return;
+                      if (!selectedFolder || !files || files.length === 0) return;
+                      setUploading(true);
+                      try {
+                        await uploadMaterials(Number(classroomId), Array.from(files));
+                        setFiles([]);
+                        e.target.reset();
+                      } catch {
+                        // Upload errors are handled in hook/interceptor; keep form state unchanged.
+                      } finally {
+                        setUploading(false);
+                      }
+                    }}
+                    className="upload-form"
                   >
-                    {uploading && <span className="spinner" />}
-                    Tải lên
-                  </button>
-                </form>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(e) => setFiles(e.target.files)}
+                      disabled={!selectedFolder || !canManageMaterials}
+                      className="file-input"
+                    />
+                    <button
+                      type="submit"
+                      disabled={uploading || !selectedFolder || !files || files.length === 0 || !canManageMaterials}
+                      className="btn btn-primary"
+                    >
+                      {uploading && <span className="spinner" />}
+                      Tải lên
+                    </button>
+                  </form>
+                ) : (
+                  <p className="muted-text"></p>
+                )}
               </div>
             </div>
 
@@ -900,30 +913,34 @@ const FoldersPage = () => {
                               {isPreviewingFile && <span className="spinner" />}
                               {isPreviewingFile ? "Đang mở..." : "Xem"}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMaterialRename(file)}
-                              className="icon-btn ghost"
-                              aria-label="Đổi tên tài liệu"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMaterialMove(file)}
-                              className="icon-btn ghost"
-                              aria-label="Di chuyển tài liệu"
-                            >
-                              <ArrowRightLeft size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMaterialDelete(file)}
-                              className="icon-btn ghost"
-                              aria-label="Xóa tài liệu"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {canManageMaterials && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMaterialRename(file)}
+                                  className="icon-btn ghost"
+                                  aria-label="Đổi tên tài liệu"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMaterialMove(file)}
+                                  className="icon-btn ghost"
+                                  aria-label="Di chuyển tài liệu"
+                                >
+                                  <ArrowRightLeft size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMaterialDelete(file)}
+                                  className="icon-btn ghost"
+                                  aria-label="Xóa tài liệu"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </li>
                       );
@@ -945,7 +962,7 @@ const FoldersPage = () => {
       />
 
       <MaterialMoveModal
-        open={materialMoveState.open}
+        open={canManageMaterials && materialMoveState.open}
         folders={folders}
         material={materialMoveState.material}
         targetId={materialMoveState.targetId}
@@ -956,7 +973,7 @@ const FoldersPage = () => {
       />
 
       <MaterialDeleteModal
-        open={materialDeleteState.open}
+        open={canManageMaterials && materialDeleteState.open}
         material={materialDeleteState.material}
         onClose={closeMaterialDelete}
         onConfirm={confirmMaterialDelete}
@@ -964,7 +981,7 @@ const FoldersPage = () => {
       />
 
       <MaterialRenameModal
-        open={materialRenameState.open}
+        open={canManageMaterials && materialRenameState.open}
         material={materialRenameState.material}
         name={materialRenameState.name}
         onChangeName={(value) => setMaterialRenameState((prev) => ({ ...prev, name: value }))}

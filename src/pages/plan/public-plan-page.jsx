@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import PaymentButton from "@/components/payment/PaymentButton";
 import { subscriptionApi } from "@/apis/subscription.api";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { planApi } from "@/apis/plan.api";
 import { getPlanStatusLabel } from "@/schema/plan.schema";
 import { formatCurrency } from "@/lib/utils";
@@ -102,7 +103,7 @@ const comparePlanByIdAsc = (firstPlan, secondPlan) => {
 
 const PublicPlanPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, refreshCurrentUser } = useAuth();
 
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -114,6 +115,7 @@ const PublicPlanPage = () => {
     title: "",
     description: "",
   });
+  const [creatingSubscriptionId, setCreatingSubscriptionId] = useState(null);
   const confirmResolverRef = useRef(null);
 
   useEffect(() => {
@@ -122,8 +124,13 @@ const PublicPlanPage = () => {
       setError("");
       try {
         const response = await planApi.getPublicPlans();
-        const result = Array.isArray(response?.result) ? response.result : [];
-        setPlans(result);
+        const result = response?.result;
+        const plansFromResponse = Array.isArray(result)
+          ? result
+          : Array.isArray(result?.content)
+            ? result.content
+            : [];
+        setPlans(plansFromResponse);
       } catch (err) {
         setError(
           err?.response?.data?.message || "Không thể tải danh sách gói dịch vụ.",
@@ -220,6 +227,48 @@ const PublicPlanPage = () => {
     });
   };
 
+  const handleSelectFreePlan = async (plan) => {
+    if (!plan) return;
+
+    // If user is not authenticated, redirect to register with selected plan
+    if (!isAuthenticated) {
+      handleNavigateRegister(plan);
+      return;
+    }
+
+    const planId = Number(plan?.id);
+    if (!Number.isFinite(planId) || planId <= 0) {
+      toast.error("Gói dịch vụ không hợp lệ.");
+      return;
+    }
+
+    // Confirm when switching from a paid plan
+    const canProceed = await handleBeforePayment(plan);
+    if (!canProceed) return;
+
+    try {
+      setCreatingSubscriptionId(planId);
+      await subscriptionApi.createSubscription(planId);
+
+      // Refresh user data to pick up new subscription/plan
+      try {
+        await refreshCurrentUser();
+      } catch {
+        // ignore refresh errors
+      }
+
+      toast.success("Đăng ký gói thành công.");
+      navigate("/classrooms", {
+        state: { selectedPlanId: planId, selectedPlanName: plan?.name },
+      });
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || "Không thể đăng ký gói.";
+      toast.error(errMsg);
+    } finally {
+      setCreatingSubscriptionId(null);
+    }
+  };
+
   const openConfirmModal = ({ title, description }) =>
     new Promise((resolve) => {
       confirmResolverRef.current = resolve;
@@ -309,9 +358,11 @@ const PublicPlanPage = () => {
         ) : (
           <section className="plan-grid">
             {activePlans.map((plan) => {
+              const isNullPrice = plan?.price === null;
               const parsedPrice = Number(plan?.price);
-              const normalizedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
-              const isFreePlan = normalizedPrice <= 0;
+              const hasNumericPrice = !isNullPrice && Number.isFinite(parsedPrice);
+              const normalizedPrice = hasNumericPrice ? parsedPrice : 0;
+              const isFreePlanByPrice = hasNumericPrice && normalizedPrice <= 0;
               const planId = Number(plan?.id);
 
               return (
@@ -324,7 +375,7 @@ const PublicPlanPage = () => {
                     <span className="plan-status">{getPlanStatusLabel(plan?.planStatus)}</span>
                   </div>
 
-                  {!isFreePlan && (
+                  {hasNumericPrice && !isFreePlanByPrice && (
                     <p className="plan-price">
                       {formatCurrency(normalizedPrice)}
                       <span>
@@ -337,36 +388,69 @@ const PublicPlanPage = () => {
                     {plan?.description || "Gói dịch vụ phù hợp để bắt đầu sử dụng Learnify."}
                   </p>
 
-                  {!isFreePlan && (
-                    <div className="plan-meta">
-                      <Clock3 size={14} />
-                      <span>
-                        Chu kỳ: {plan?.durationValue || 1} {DURATION_UNIT_LABELS[plan?.durationUnit] || "kỳ"}
-                      </span>
-                    </div>
-                  )}
+                  {isNullPrice ? (
+                    <>
+                      <div className="plan-meta">
+                        <Clock3 size={14} />
+                        <span>Miễn phí</span>
+                      </div>
+                    </>
+                  ) : isFreePlanByPrice ? (
+                    <>
+                      <div className="plan-meta">
+                        <Clock3 size={14} />
+                        <span>Miễn phí</span>
+                      </div>
 
-                  {!isFreePlan && (
-                    !isAuthenticated ? (
-                      <button
-                        type="button"
-                        className="plan-select-btn"
-                        onClick={() => handleNavigateRegister(plan)}
-                      >
-                        Đăng ký gói
-                      </button>
-                    ) : (
-                      <PaymentButton
-                        userId={normalizedUserId}
-                        planId={planId}
-                        amount={normalizedPrice}
-                        label="Thanh toán với PayOS"
-                        className="plan-payment-btn"
-                        disabled={loadingCurrentSubscription}
-                        beforePay={() => handleBeforePayment(plan)}
-                        showInvalidStateMessage
-                      />
-                    )
+                      {!isAuthenticated ? (
+                        <button
+                          type="button"
+                          className="plan-select-btn"
+                          onClick={() => handleNavigateRegister(plan)}
+                        >
+                          Chọn gói miễn phí
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="plan-select-btn"
+                          onClick={() => handleSelectFreePlan(plan)}
+                          disabled={loadingCurrentSubscription || creatingSubscriptionId === planId}
+                        >
+                          {creatingSubscriptionId === planId ? "Đang xử lý..." : "Chọn gói miễn phí"}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="plan-meta">
+                        <Clock3 size={14} />
+                        <span>
+                          Chu kỳ: {plan?.durationValue || 1} {DURATION_UNIT_LABELS[plan?.durationUnit] || "kỳ"}
+                        </span>
+                      </div>
+
+                      {!isAuthenticated ? (
+                        <button
+                          type="button"
+                          className="plan-select-btn"
+                          onClick={() => handleNavigateRegister(plan)}
+                        >
+                          Đăng ký gói
+                        </button>
+                      ) : (
+                        <PaymentButton
+                          userId={normalizedUserId}
+                          planId={planId}
+                          amount={normalizedPrice}
+                          label="Thanh toán với PayOS"
+                          className="plan-payment-btn"
+                          disabled={loadingCurrentSubscription}
+                          beforePay={() => handleBeforePayment(plan)}
+                          showInvalidStateMessage
+                        />
+                      )}
+                    </>
                   )}
                 </article>
               );

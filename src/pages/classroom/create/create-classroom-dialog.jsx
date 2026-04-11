@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { X, ImagePlus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { classroomApi } from "@/apis/classroom.api";
+import { folderApi } from "@/apis/folder.api";
 import { CreateClassroomSchema } from "@/schema/classroom.schema";
 import "@/assets/css/pages/classroom/modals.css";
 
@@ -38,7 +39,18 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
 
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
-    setFields((prev) => ({ ...prev, [name]: value }));
+    let newValue = value;
+
+    // Enforce client-side max lengths to match backend DTO
+    if (name === "description" && typeof newValue === "string") {
+      if (newValue.length > 100) newValue = newValue.slice(0, 100);
+    }
+
+    if (name === "name" && typeof newValue === "string") {
+      if (newValue.length > 50) newValue = newValue.slice(0, 50);
+    }
+
+    setFields((prev) => ({ ...prev, [name]: newValue }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -56,7 +68,10 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
   };
 
   const handleSubjectOtherChange = (e) => {
-    setSubjectOther(e.target.value);
+    const v = e.target.value;
+    // enforce max length for subjectOther according to DTO (50)
+    const truncated = typeof v === "string" && v.length > 50 ? v.slice(0, 50) : v;
+    setSubjectOther(truncated);
     if (errors.subject) {
       setErrors((prev) => ({ ...prev, subject: "" }));
     }
@@ -124,13 +139,23 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
         subject: result.data.subject,
         description: result.data.description || undefined,
       };
-      await classroomApi.createClassroom(data, imageFile);
+      const response = await classroomApi.createClassroom(data, imageFile);
+      const classroomId = response?.result?.id;
+
+      if (classroomId) {
+        try {
+          await folderApi.createDefaultFolder(classroomId);
+        } catch {
+          // Keep classroom creation success flow even if default folder creation fails.
+        }
+      }
+
       onSuccess?.();
       onClose?.();
     } catch (err) {
       setServerError(
         err.response?.data?.message ??
-          "Tạo lớp học thất bại. Vui lòng thử lại.",
+        "Tạo lớp học thất bại. Vui lòng thử lại.",
       );
     } finally {
       setSubmitting(false);
@@ -142,7 +167,7 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
       className="modal-overlay"
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
     >
-      <div className="modal-container">
+      <div className="modal-container modal-medium">
         {/* Header */}
         <div className="modal-header">
           <h2 className="modal-title">Tạo lớp học mới</h2>
@@ -152,8 +177,9 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="modal-form">
-          {serverError && <p className="modal-error-alert">{serverError}</p>}
+        <div className="modal-body">
+          <form onSubmit={handleSubmit} className="modal-form">
+            {serverError && <p className="modal-error-alert">{serverError}</p>}
 
           {/* Tên lớp */}
           <div className="form-group">
@@ -167,6 +193,8 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               onChange={handleFieldChange}
               placeholder="Nhập tên lớp học (3–50 ký tự)"
               className={`form-input ${errors.name ? "has-error" : ""}`}
+              minLength={3}
+              maxLength={50}
             />
             {errors.name && <p className="form-error-text">{errors.name}</p>}
           </div>
@@ -200,6 +228,8 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
                   value={subjectOther}
                   onChange={handleSubjectOtherChange}
                   placeholder="Nhập tên môn học khác"
+                  minLength={3}
+                  maxLength={50}
                   className={`form-input ${errors.subject ? "has-error" : ""}`}
                 />
               </div>
@@ -220,14 +250,21 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               name="description"
               value={fields.description}
               onChange={handleFieldChange}
-              placeholder="Mô tả ngắn về lớp học (tối đa 200 ký tự)..."
+              placeholder="Mô tả ngắn về lớp học (tối đa 100 ký tự)..."
               rows={3}
-              maxLength={200}
+              maxLength={100}
               className={`form-textarea ${errors.description ? "has-error" : ""}`}
             />
-            {errors.description && (
-              <p className="form-error-text">{errors.description}</p>
-            )}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginTop: 8,
+              }}
+            >
+              <div>{errors.description && <p className="form-error-text">{errors.description}</p>}</div>
+            </div>
           </div>
 
           {/* Ảnh đại diện */}
@@ -276,7 +313,7 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
           </div>
 
           {/* Actions */}
-          <div className="modal-actions with-padding-top">
+          <div className="modal-actions">
             <button
               type="button"
               onClick={onClose}
@@ -289,7 +326,8 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
               {submitting ? "Đang tạo..." : "Tạo lớp học"}
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
