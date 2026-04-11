@@ -6,6 +6,8 @@ import CommentForm from "@/pages/comment/create/comment-form";
 import EditCommentForm from "@/pages/comment/edit/comment-edit-form";
 import DeleteCommentDialog from "@/pages/comment/delete/delete-comment-dialog";
 
+const REPLIES_BATCH_SIZE = 5;
+
 /**
  * @param {{
  *   comment: {
@@ -34,7 +36,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
-  const [visibleRepliesCount, setVisibleRepliesCount] = useState(3);
+  const [visibleRepliesCount, setVisibleRepliesCount] = useState(REPLIES_BATCH_SIZE);
   const maxDepth = 3; // Giới hạn độ sâu nested comments
 
   const isAuthor = user?.id === comment.user?.id;
@@ -72,7 +74,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
     setIsDeleteModalOpen(false);
   };
 
-  const displayName = comment.authorName || comment.user?.name || "Người dùng";
+  const displayName =  comment.user?.fullName || "Người dùng";
   const role = comment.authorRole || null;
   const hasReplies = comment.replies && comment.replies.length > 0;
 
@@ -86,7 +88,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
             <span className="comment-date">{formatRelativeTime(comment.createdAt)}</span>
           )}
         </div>
-        
+
         {/* Actions Menu */}
         {isAuthor && !isEditing && (
           <div className="comment-actions">
@@ -97,14 +99,14 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
               <>
                 <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
                 <div className="action-menu">
-                  <button 
+                  <button
                     className="action-menu-item"
                     onClick={() => { setMenuOpen(false); setIsEditing(true); }}
                   >
                     <Pencil size={14} />
                     <span>Chỉnh sửa</span>
                   </button>
-                  <button 
+                  <button
                     className="action-menu-item danger"
                     onClick={() => { setMenuOpen(false); handleOpenDelete(); }}
                   >
@@ -137,10 +139,10 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
           {comment.content}
         </div>
       )}
-      
+
       {/* Reply button */}
       {!isEditing && depth < maxDepth && (
-        <button 
+        <button
           className="comment-reply-btn"
           onClick={() => setShowReplyForm(!showReplyForm)}
         >
@@ -166,18 +168,18 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
       {/* Nested replies */}
       {hasReplies && (
         <div style={{ marginTop: '8px' }}>
-          <button 
+          <button
             className="comment-replies-toggle"
             onClick={() => {
-              if (!showReplies) setVisibleRepliesCount(3);
+              if (!showReplies) setVisibleRepliesCount(REPLIES_BATCH_SIZE);
               setShowReplies(!showReplies);
             }}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: '#6366f1', 
-              fontSize: '13px', 
-              cursor: 'pointer', 
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#6366f1',
+              fontSize: '13px',
+              cursor: 'pointer',
               padding: '0',
               fontWeight: 500,
               display: 'flex',
@@ -204,8 +206,8 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
               ))}
 
               {visibleRepliesCount < comment.replies.length && (
-                <button 
-                  onClick={() => setVisibleRepliesCount(prev => prev + 3)}
+                <button
+                  onClick={() => setVisibleRepliesCount(prev => prev + REPLIES_BATCH_SIZE)}
                   style={{
                     background: 'none',
                     border: 'none',

@@ -1,7 +1,7 @@
-import { memo, useState } from "react";
-import { Paperclip, Pin, MoreVertical, Pencil, Trash2, FileText, Image, Film, MessageCircle } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { memo, useMemo, useState } from "react";
+import { Pin, MoreVertical, Pencil, Trash2, FileText, Image, Film, MessageCircle, X } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import useComments from "@/hooks/use-comments";
 import useCommentMutations from "@/hooks/use-comment";
 import CommentCard from "@/pages/comment/list/comment-card";
@@ -12,9 +12,25 @@ import CommentForm from "@/pages/comment/create/comment-form";
  */
 const AttachmentIcon = ({ fileType }) => {
   const type = fileType?.toUpperCase() ?? "";
-  if (["JPG", "JPEG", "PNG", "GIF", "WEBP"].includes(type)) return <Image size={14} />;
+  if (["JPG", "JPEG", "PNG", "GIF"].includes(type)) return <Image size={14} />;
   if (["MP4", "MOV", "AVI", "MKV"].includes(type)) return <Film size={14} />;
   return <FileText size={14} />;
+};
+
+const MAX_MEDIA_PREVIEW = 6;
+const COMMENTS_BATCH_SIZE = 5;
+
+const sortCommentsByDate = (commentList, order) => {
+  const safeTime = (value) => {
+    const time = Date.parse(value ?? "");
+    return Number.isNaN(time) ? 0 : time;
+  };
+
+  return [...commentList].sort((a, b) => {
+    const aTime = safeTime(a.createdAt);
+    const bTime = safeTime(b.createdAt);
+    return order === "oldest" ? aTime - bTime : bTime - aTime;
+  });
 };
 
 /**
@@ -28,7 +44,10 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(3);
+  const [visibleCount, setVisibleCount] = useState(COMMENTS_BATCH_SIZE);
+  const [commentSortOrder, setCommentSortOrder] = useState("newest");
+  const [mediaModalOpen, setMediaModalOpen] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState(null);
 
   // Comment hooks
   const { comments, setComments, loading: loadingComments, refetch } = useComments(post.id);
@@ -48,11 +67,35 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
 
   const totalCommentCount = countTotalComments(comments);
 
+  const mediaExtensions = useMemo(
+    () => new Set(["JPG", "JPEG", "PNG", "GIF", "MP4", "MOV", "AVI"]),
+    []
+  );
+
+  const mediaAttachments = useMemo(
+    () => (post.attachments ?? []).filter((att) => mediaExtensions.has(att.fileType?.toUpperCase?.() ?? "")),
+    [post.attachments, mediaExtensions]
+  );
+
+  const fileAttachments = useMemo(
+    () => (post.attachments ?? []).filter((att) => !mediaExtensions.has(att.fileType?.toUpperCase?.() ?? "")),
+    [post.attachments, mediaExtensions]
+  );
+
+  const previewMedia = mediaAttachments.slice(0, MAX_MEDIA_PREVIEW);
+  const remainingMediaCount = Math.max(0, mediaAttachments.length - previewMedia.length);
+
+  const sortedComments = useMemo(
+    () => sortCommentsByDate(comments ?? [], commentSortOrder),
+    [comments, commentSortOrder]
+  );
+
   const handleCommentSubmit = async (data) => {
     const result = await createComment(data);
-    // If it's a reply, refetch to get updated nested structure
-    if (result?.success && data.parentId) {
-      await refetch();
+    // If it's a reply, ensure list stays updated without losing scroll. No refetch needed now.
+    if (result?.success && !data.parentId) {
+      // Make sure the freshly added top-level comment is visible
+      setVisibleCount((prev) => prev + 1);
     }
     return result;
   };
@@ -70,20 +113,26 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
     return result;
   };
 
+  const postOwnerId = post.user?.id ?? post.userId ?? post.authorId ?? post.createdBy?.id;
+  const canManagePost = user?.id != null && postOwnerId != null && String(user.id) === String(postOwnerId);
+
+  const authorName = post.user?.fullName || post.user?.name || "Người dùng";
+  const authorInitial = authorName?.charAt(0)?.toUpperCase() || "?";
+
   return (
     <div className="post-card">
       {/* Header */}
       <div className="post-card-header">
         <div className="post-author">
           <div className="post-author-avatar">
-            {user?.avatarUrl
-              ? <img src={user.avatarUrl} alt={user.fullName} />
-              : <span>{user?.fullName?.charAt(0)?.toUpperCase() ?? "?"}</span>
+            {post.user?.avatarUrl
+              ? <img src={post.user.avatarUrl} alt={authorName} />
+              : <span>{authorInitial}</span>
             }
           </div>
           <div className="post-author-info">
             <div className="post-author-header">
-              <span className="post-author-name">{user?.fullName ?? "Giáo viên"}</span>
+              <span className="post-author-name">{authorName}</span>
               {post.createdAt && (
                 <span className="post-created-time">{formatRelativeTime(post.createdAt)}</span>
               )}
@@ -98,41 +147,66 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
         </div>
 
         {/* Actions menu */}
-        <div className="post-menu-wrapper">
-          <button className="post-menu-trigger" onClick={() => setMenuOpen((o) => !o)}>
-            <MoreVertical size={18} />
-          </button>
-          {menuOpen && (
-            <>
-              <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
-              <div className="action-menu">
-                <button
-                  className="action-menu-item"
-                  onClick={() => { setMenuOpen(false); onEdit(post); }}
-                >
-                  <Pencil size={14} />
-                  <span>Chỉnh sửa</span>
-                </button>
-                <button
-                  className="action-menu-item danger"
-                  onClick={() => { setMenuOpen(false); onDelete(post); }}
-                >
-                  <Trash2 size={14} />
-                  <span>Xóa bài đăng</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        {canManagePost && (
+          <div className="post-menu-wrapper">
+            <button className="post-menu-trigger" onClick={() => setMenuOpen((o) => !o)}>
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
+                <div className="action-menu">
+                  <button
+                    className="action-menu-item"
+                    onClick={() => { setMenuOpen(false); onEdit(post); }}
+                  >
+                    <Pencil size={14} />
+                    <span>Chỉnh sửa</span>
+                  </button>
+                  <button
+                    className="action-menu-item danger"
+                    onClick={() => { setMenuOpen(false); onDelete(post); }}
+                  >
+                    <Trash2 size={14} />
+                    <span>Xóa bài đăng</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
       <p className="post-content">{post.content}</p>
 
-      {/* Attachments */}
-      {post.attachments?.length > 0 && (
+      {/* Media preview */}
+      {mediaAttachments.length > 0 && (
+        <div className="post-media-grid" onClick={() => setMediaModalOpen(true)}>
+          {previewMedia.map((att, index) => {
+            const isLastTile = index === previewMedia.length - 1 && remainingMediaCount > 0;
+            const type = att.fileType?.toUpperCase?.() ?? "";
+            const isVideo = ["MP4", "MOV", "AVI"].includes(type);
+            return (
+              <div key={att.id} className="media-tile">
+                {isVideo ? (
+                  <video className="media-thumb" src={att.fileUrl} muted playsInline preload="metadata" />
+                ) : (
+                  <img className="media-thumb" src={att.fileUrl} alt={att.fileName} loading="lazy" />
+                )}
+                {isLastTile && (
+                  <div className="media-overlay">+{remainingMediaCount}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* File attachments */}
+      {fileAttachments.length > 0 && (
         <div className="post-attachments">
-          {post.attachments.map((att) => (
+          {fileAttachments.map((att) => (
             <a
               key={att.id}
               href={att.fileUrl}
@@ -164,45 +238,158 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
 
         {showComments && (
           <div className="post-comments-content">
-            {/* Comment list */}
-            {loadingComments ? (
-              <div className="comments-loading">Đang tải bình luận...</div>
-            ) : comments.length > 0 ? (
-              <div className="comments-list">
-                <div className="comments-header">Bình luận ({totalCommentCount})</div>
-                {comments.slice(0, visibleCount).map((comment) => (
-                  <CommentCard 
-                    key={comment.id} 
-                    comment={comment}
-                    postId={post.id}
-                    onReply={handleCommentSubmit}
-                    onEdit={handleCommentUpdate}
-                    onDelete={handleCommentDelete}
-                    submitting={submitting}
-                  />
-                ))}
-                
-                {visibleCount < comments.length && (
-                  <button 
-                    className="comments-load-more" 
-                    onClick={() => setVisibleCount(prev => prev + 3)}
-                  >
-                    Xem thêm bình luận
-                  </button>
-                )}
-              </div>
-            ) : null}
-
-            {/* Comment form */}
+            {/* Comment form at top */}
             <CommentForm
               postId={post.id}
               onSubmit={handleCommentSubmit}
               submitting={submitting}
               onCancel={() => setShowComments(false)}
             />
+
+            {/* Comment list */}
+            {loadingComments ? (
+              <div className="comments-loading">Đang tải bình luận...</div>
+            ) : comments.length > 0 ? (
+              <>
+                <div className="comments-tools">
+                  <label className="comments-sort-label" htmlFor={`comments-sort-${post.id}`}>
+                    Sắp xếp
+                  </label>
+                  <select
+                    id={`comments-sort-${post.id}`}
+                    className="comments-sort-select"
+                    value={commentSortOrder}
+                    onChange={(e) => {
+                      setCommentSortOrder(e.target.value);
+                      setVisibleCount(COMMENTS_BATCH_SIZE);
+                    }}
+                  >
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                  </select>
+                </div>
+
+                <div className="comments-list">
+                  {/* <div className="comments-header">Bình luận ({totalCommentCount})</div> */}
+                  {sortedComments.slice(0, visibleCount).map((comment) => (
+                    <CommentCard
+                      key={comment.id}
+                      comment={comment}
+                      postId={post.id}
+                      onReply={handleCommentSubmit}
+                      onEdit={handleCommentUpdate}
+                      onDelete={handleCommentDelete}
+                      submitting={submitting}
+                    />
+                  ))}
+
+                  {visibleCount < sortedComments.length && (
+                    <button
+                      className="comments-load-more"
+                      onClick={() => setVisibleCount((prev) => prev + COMMENTS_BATCH_SIZE)}
+                    >
+                      Xem thêm bình luận
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : null}
           </div>
         )}
       </div>
+
+      {/* Media modal */}
+      {mediaModalOpen && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setMediaModalOpen(false)}>
+          <div className="modal-container modal-large">
+            <div className="modal-header">
+              <h3 className="modal-title">Tệp đính kèm</h3>
+              <button className="modal-close-btn" onClick={() => setMediaModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {mediaAttachments.length > 0 && (
+                <div className="media-detail-grid">
+                  {mediaAttachments.map((att) => {
+                    const type = att.fileType?.toUpperCase?.() ?? "";
+                    const isVideo = ["MP4", "MOV", "AVI"].includes(type);
+                    return (
+                      <div
+                        key={att.id}
+                        className="media-detail-item"
+                        onClick={() => setSelectedMedia(att)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === "Enter") setSelectedMedia(att); }}
+                      >
+                        {isVideo ? (
+                          <video controls className="media-detail" src={att.fileUrl} preload="metadata" />
+                        ) : (
+                          <img className="media-detail" src={att.fileUrl} alt={att.fileName} loading="lazy" />
+                        )}
+                        <div className="media-detail-name">{att.fileName}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {fileAttachments.length > 0 && (
+                <div className="post-attachments post-attachments--modal">
+                  {fileAttachments.map((att) => (
+                    <a
+                      key={att.id}
+                      href={att.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="post-attachment-chip"
+                    >
+                      <AttachmentIcon fileType={att.fileType} />
+                      <span className="post-attachment-name">{att.fileName}</span>
+                      <span className="post-attachment-size">
+                        {att.fileSize < 1024
+                          ? `${att.fileSize.toFixed(1)} KB`
+                          : `${(att.fileSize / 1024).toFixed(1)} MB`}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedMedia && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setSelectedMedia(null)}>
+          <div className="modal-container modal-large">
+            <div className="modal-header">
+              <h3 className="modal-title">{selectedMedia.fileName}</h3>
+              <button className="modal-close-btn" onClick={() => setSelectedMedia(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {(() => {
+                const type = selectedMedia.fileType?.toUpperCase?.() ?? "";
+                const isVideo = ["MP4", "MOV", "AVI"].includes(type);
+                if (isVideo) {
+                  return <video controls style={{ width: "100%", maxHeight: 520 }} src={selectedMedia.fileUrl} preload="metadata" />;
+                }
+                return <img style={{ width: "100%", maxHeight: 520, objectFit: "contain" }} src={selectedMedia.fileUrl} alt={selectedMedia.fileName} loading="lazy" />;
+              })()}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 13, color: "#4b5563" }}>{selectedMedia.fileType}</span>
+                {/* <a href={selectedMedia.fileUrl} target="_blank" rel="noopener noreferrer" className="post-attachment-chip">
+                  <AttachmentIcon fileType={selectedMedia.fileType} />
+                  <span className="post-attachment-name">Mở trong tab mới</span>
+                </a> */}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

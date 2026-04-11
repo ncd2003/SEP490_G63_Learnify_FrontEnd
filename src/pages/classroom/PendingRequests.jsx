@@ -1,242 +1,645 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Search,
+  Printer,
+  UserPlus,
+  List,
+  ListFilter,
+} from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import { classroomApi } from '@/apis/classroom.api';
+import { enrollmentApi } from '@/apis/enrollment.api';
+import { userApi } from '@/apis/user.api';
+import { reportApi } from '@/apis/report.api';
+import { useAuth } from '@/contexts/AuthContext';
 import ApproveRequestsModal from './ApproveRequestsModal';
 import RejectRequestsModal from './RejectRequestsModal';
+import { copyToClipboard } from '@/lib/utils';
 import '@/assets/css/pages/classroom/pendingRequests.css';
 
+const REPORT_REASON_OPTIONS = [
+  { value: '', label: '-- Chọn lý do --' },
+  { value: 'SPAM', label: 'Spam' },
+  { value: 'HARASSMENT', label: 'Quấy rối' },
+  { value: 'INAPPROPRIATE_CONTENT', label: 'Nội dung phản cảm' },
+];
+
 const PendingRequests = () => {
-  const { id } = useParams(); // classroomId from URL
+  const { id } = useParams();
+  const { user } = useAuth();
+  const isTeacher = (user?.role || '').toUpperCase() === 'ROLE_TEACHER';
+
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [error, setError] = useState('');
+  const [showRejectModal, setShowRejectModal]   = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // { type: 'approve'|'reject', ids: number[] }
+  const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
   const [classroomInfo, setClassroomInfo] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetail, setReportDetail] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState('');
+  const [reportSuccess, setReportSuccess] = useState('');
 
-  useEffect(() => {
-    fetchClassroomInfo();
-    fetchPendingRequests();
-  }, [id]);
-
-  const fetchClassroomInfo = async () => {
+  const fetchClassroomInfo = useCallback(async () => {
     try {
       const response = await classroomApi.getClassroomById(id);
-      if (response.code === 1000) {
-        setClassroomInfo(response.result);
-      }
+      if (response.code === 1000) setClassroomInfo(response.result);
     } catch (err) {
       console.error('Error fetching classroom info:', err);
     }
-  };
+  }, [id]);
 
-  const fetchPendingRequests = async () => {
+  const fetchPendingRequests = useCallback(async () => {
+    if (!isTeacher) {
+      setPendingRequests([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
-      const response = await classroomApi.getPendingRequests(id);
+      const response = await enrollmentApi.getPendingMembers(id);
       if (response.code === 1000) {
-        setPendingRequests(response.result || []);
+        setPendingRequests(response.result ?? []);
       } else {
-        setError('Không thể tải danh sách yêu cầu');
+        setError(response.message || 'Không thể tải danh sách yêu cầu');
       }
     } catch (err) {
-      setError('Đã xảy ra lỗi khi tải dữ liệu');
+      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi tải dữ liệu');
       console.error('Error fetching pending requests:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, isTeacher]);
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(pendingRequests.map((req) => req.id));
-    } else {
-      setSelectedIds([]);
+  const fetchAcceptedMembers = useCallback(async () => {
+    try {
+      setMembersLoading(true);
+      const response = await enrollmentApi.getAcceptedMembers(id);
+      if (response.code === 1000) {
+        const nextMembers = response.result ?? [];
+        setMembers(nextMembers);
+      }
+    } catch (err) {
+      console.error('Error fetching accepted members:', err);
+    } finally {
+      setMembersLoading(false);
     }
-  };
+  }, [id]);
 
-  const handleSelectOne = (requestId) => {
+  useEffect(() => {
+    fetchClassroomInfo();
+    fetchAcceptedMembers();
+    fetchPendingRequests();
+  }, [fetchClassroomInfo, fetchAcceptedMembers, fetchPendingRequests]);
+
+  /* ── Selection helpers ─────────────────────────────────────────────── */
+  const allSelected =
+    pendingRequests.length > 0 && selectedIds.length === pendingRequests.length;
+
+  const handleSelectAll = (e) =>
+    setSelectedIds(e.target.checked ? pendingRequests.map((r) => r.memberId) : []);
+
+  const handleSelectOne = (reqId) =>
     setSelectedIds((prev) =>
-      prev.includes(requestId)
-        ? prev.filter((id) => id !== requestId)
-        : [...prev, requestId]
+      prev.includes(reqId) ? prev.filter((x) => x !== reqId) : [...prev, reqId]
     );
-  };
 
-  const handleApprove = () => {
-    if (selectedIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một yêu cầu để duyệt');
-      return;
-    }
+  /* ── Open confirm modals ───────────────────────────────────────────── */
+  const openApprove = (ids) => {
+    setError('');
+    if (!ids.length) { setError('Vui lòng chọn ít nhất một yêu cầu để duyệt'); return; }
+    setPendingAction({ type: 'approve', ids });
     setShowApproveModal(true);
   };
 
-  const handleReject = () => {
-    if (selectedIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một yêu cầu để từ chối');
-      return;
-    }
+  const openReject = (ids) => {
+    setError('');
+    if (!ids.length) { setError('Vui lòng chọn ít nhất một yêu cầu để từ chối'); return; }
+    setPendingAction({ type: 'reject', ids });
     setShowRejectModal(true);
   };
 
+  /* ── Confirm handlers ──────────────────────────────────────────────── */
   const handleApproveConfirm = async () => {
+    setShowApproveModal(false);
+    setActionLoading(true);
+    setError('');
     try {
-      setError('');
-      const response = await classroomApi.approveRequests(id, selectedIds);
+      const response = await enrollmentApi.approveRequests(id, pendingAction.ids);
       if (response.code === 1000) {
-        setSuccess('Đã duyệt yêu cầu tham gia thành công'); // MSG44
+        setSuccess('Đã phê duyệt yêu cầu tham gia thành công.');
         setSelectedIds([]);
-        await fetchPendingRequests(); // Refresh list
-        setTimeout(() => setSuccess(''), 3000);
-      } else if (response.code === 48) {
-        setError('Lớp học đã đạt sức chứa tối đa (60 học sinh)'); // MSG48
+        await fetchAcceptedMembers();
+        await fetchClassroomInfo();
+        await fetchPendingRequests();
+        setTimeout(() => setSuccess(''), 4000);
       } else {
         setError(response.message || 'Có lỗi xảy ra khi duyệt yêu cầu');
       }
     } catch (err) {
-      setError('Đã xảy ra lỗi khi duyệt yêu cầu');
-      console.error('Error approving requests:', err);
+      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi duyệt yêu cầu');
     } finally {
-      setShowApproveModal(false);
+      setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
   const handleRejectConfirm = async () => {
+    setShowRejectModal(false);
+    setActionLoading(true);
+    setError('');
     try {
-      setError('');
-      const response = await classroomApi.rejectRequests(id, selectedIds);
+      const response = await enrollmentApi.rejectRequests(id, pendingAction.ids);
       if (response.code === 1000) {
-        setSuccess('Đã từ chối yêu cầu tham gia'); // MSG44
+        setSuccess('Đã từ chối các yêu cầu tham gia.');
         setSelectedIds([]);
-        await fetchPendingRequests(); // Refresh list
-        setTimeout(() => setSuccess(''), 3000);
+        await fetchAcceptedMembers();
+        await fetchClassroomInfo();
+        await fetchPendingRequests();
+        setTimeout(() => setSuccess(''), 4000);
       } else {
         setError(response.message || 'Có lỗi xảy ra khi từ chối yêu cầu');
       }
     } catch (err) {
-      setError('Đã xảy ra lỗi khi từ chối yêu cầu');
-      console.error('Error rejecting requests:', err);
+      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi từ chối yêu cầu');
     } finally {
-      setShowRejectModal(false);
+      setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
   const formatDateTime = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleString('vi-VN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
     });
   };
+
+  const getInitials = (name) =>
+    (name ?? '').split(' ').filter(Boolean).slice(-2).map((w) => w[0]).join('').toUpperCase() || '?';
+
+  const formatRoleLabel = (roleName) => {
+    const role = (roleName || '').toUpperCase();
+    if (role.includes('TEACHER')) return 'Giáo viên';
+    if (role.includes('STUDENT')) return 'Học sinh';
+    if (role.includes('ADMIN')) return 'Quản trị viên';
+    return 'Người dùng';
+  };
+
+  const openReportUser = () => {
+    if (!selectedMember?.studentId) return;
+    setReportReason('');
+    setReportDetail('');
+    setReportError('');
+    setReportSuccess('');
+    setIsReportModalOpen(true);
+  };
+
+  const closeReportModal = () => {
+    if (reportSubmitting) return;
+    setIsReportModalOpen(false);
+    setReportError('');
+  };
+
+  const handleSubmitReport = async () => {
+    const targetId = Number(selectedMember?.studentId);
+    if (!targetId) return;
+
+    setReportError('');
+    setReportSuccess('');
+
+    if (!reportReason) {
+      setReportError('MSG136: Vui lòng chọn ít nhất một lý do báo cáo.');
+      return;
+    }
+
+    try {
+      setReportSubmitting(true);
+      const payload = {
+        reportedUserId: targetId,
+        reason: reportReason,
+      };
+
+      if (reportDetail.trim()) {
+        payload.detailedDescription = reportDetail.trim();
+      }
+
+      await reportApi.createUserReport(payload);
+      setReportSuccess('MSG134 (Success): Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét sớm nhất có thể.');
+      setIsReportModalOpen(false);
+      setTimeout(() => setReportSuccess(''), 3500);
+    } catch (err) {
+      const backendMessage = err?.response?.data?.message || 'Không thể gửi báo cáo. Vui lòng thử lại.';
+      setReportError(backendMessage);
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  const openMemberDetail = async (member) => {
+    setSelectedMember(member);
+    setIsMemberModalOpen(true);
+    setSelectedProfile(null);
+    setProfileError('');
+    setProfileLoading(true);
+
+    try {
+      const response = await userApi.getProfile(member.studentId);
+      if (response.code === 1000) {
+        setSelectedProfile(response.result);
+      } else {
+        setProfileError(response.message || 'Không thể tải thông tin người dùng.');
+      }
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Không thể tải thông tin người dùng.');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const closeMemberModal = () => {
+    setIsMemberModalOpen(false);
+    setIsReportModalOpen(false);
+  };
+
+  const filteredMembers = members.filter((member) => {
+    const keyword = memberSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    const name = (member.studentName ?? '').toLowerCase();
+    const email = (member.studentEmail ?? '').toLowerCase();
+    const phone = (member.phoneNumber ?? '').toLowerCase();
+    return name.includes(keyword) || email.includes(keyword) || phone.includes(keyword);
+  });
+
+  const handleCopyClassCode = async () => {
+    if (!classroomInfo?.code) return;
+    await copyToClipboard(classroomInfo.code, 'Mã lớp');
+  };
+
+  const handlePrintMembers = () => {
+    window.print();
+  };
+
+  const classSize = members.length || classroomInfo?.studentCount || 0;
 
   return (
     <ClassroomDetailLayout>
       <div className="pending-requests-page">
-        <h1 className="pending-requests-title">Yêu cầu tham gia đang chờ duyệt</h1>
+        <section className="members-panel">
+          <header className="members-panel-header">
+            <h2>Thành viên lớp học ({classSize})</h2>
+          </header>
 
-        <div className="pending-requests-info-box">
-          <div className="info-box-text">
-            Lớp hiện đang có - {classroomInfo?.name || 'Lớp A'} / Sĩ số: {classroomInfo?.studentCount || 0}/{classroomInfo?.maxStudents || 60} học sinh
-          </div>
-          <div className="info-box-actions">
-            <button
-              className="btn-approve"
-              onClick={handleApprove}
-              disabled={selectedIds.length === 0}
-            >
-              Duyệt
-            </button>
-            <button
-              className="btn-reject"
-              onClick={handleReject}
-              disabled={selectedIds.length === 0}
-            >
-              Từ chối
-            </button>
-          </div>
-        </div>
+          <div className="members-layout">
+            <div className="members-main">
+              <div className="members-toolbar">
+                <div className="members-view-toggle" aria-hidden="true">
+                  <button type="button" className="toggle-btn active">
+                    <List size={18} />
+                  </button>
+                  <button type="button" className="toggle-btn">
+                    <ListFilter size={18} />
+                  </button>
+                </div>
 
-        {error && (
-          <div className="pending-requests-alert alert-error">
-            {error}
-          </div>
-        )}
+                <label className="members-search-box">
+                  <Search size={18} />
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="Nhập và ấn enter để tìm kiếm"
+                  />
+                </label>
 
-        {success && (
-          <div className="pending-requests-alert alert-success">
-            {success}
-          </div>
-        )}
+                <button
+                  type="button"
+                  className="members-icon-btn"
+                  onClick={handlePrintMembers}
+                  title="In danh sách"
+                >
+                  <Printer size={18} />
+                </button>
 
-        {loading ? (
-          <div className="pending-requests-loading">Đang tải...</div>
-        ) : pendingRequests.length === 0 ? (
-          <div className="pending-requests-empty">
-            Không có yêu cầu tham gia nào đang chờ duyệt
+                {isTeacher && (
+                  <button
+                    type="button"
+                    className="members-add-btn"
+                    onClick={handleCopyClassCode}
+                    disabled={!classroomInfo?.code}
+                  >
+                    <UserPlus size={16} />
+                    Thêm học sinh
+                  </button>
+                )}
+              </div>
+
+              {membersLoading ? (
+                <div className="class-members-loading">
+                  <Loader2 size={20} className="spin" />
+                  <span>Đang tải thành viên lớp học...</span>
+                </div>
+              ) : filteredMembers.length === 0 ? (
+                <div className="class-members-empty">
+                  {memberSearch.trim() ? 'Không tìm thấy thành viên phù hợp.' : 'Chưa có học sinh nào trong lớp.'}
+                </div>
+              ) : (
+                <div className="class-members-table-wrapper">
+                  <table className="class-members-table">
+                    <thead>
+                      <tr>
+                        <th>Họ và tên</th>
+                        <th>Vai trò</th>
+                        <th>Email</th>
+                        <th>SĐT</th>
+                        <th>Tham gia lúc</th>
+                        <th>Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMembers.map((member) => (
+                        <tr key={`${member.memberId || 'u'}-${member.studentId}`}>
+                          <td>
+                            <div className="student-cell">
+                              <div className="student-avatar">
+                                {member.avatarUrl ? (
+                                  <img src={member.avatarUrl} alt={member.studentName} />
+                                ) : (
+                                  <span>{getInitials(member.studentName)}</span>
+                                )}
+                              </div>
+                              <span className="student-name">{member.studentName}</span>
+                            </div>
+                          </td>
+                          <td>{formatRoleLabel(member.roleName)}</td>
+                          <td className="cell-email">{member.studentEmail || '—'}</td>
+                          <td>{member.phoneNumber || '—'}</td>
+                          <td className="cell-date">{formatDateTime(member.joinedAt)}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="member-view-btn"
+                              onClick={() => openMemberDetail(member)}
+                            >
+                              Xem
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <aside className="members-sidecard">
+              {isTeacher ? (
+                <>
+                  <h3>Chờ duyệt • {pendingRequests.length}</h3>
+                  <p>
+                    Yêu cầu vào lớp sẽ được hiển thị khi có học sinh tham gia bằng mã lớp
+                    {' '}
+                    <strong>{classroomInfo?.code || '—'}</strong>
+                  </p>
+
+                  {error && <div className="pending-requests-alert alert-error sidebar-alert">{error}</div>}
+                  {success && <div className="pending-requests-alert alert-success sidebar-alert">{success}</div>}
+
+                  {loading ? (
+                    <div className="pending-side-loading">
+                      <Loader2 size={16} className="spin" />
+                      <span>Đang tải yêu cầu...</span>
+                    </div>
+                  ) : pendingRequests.length === 0 ? (
+                    <div className="pending-side-empty">Hiện chưa có yêu cầu đang chờ duyệt.</div>
+                  ) : (
+                    <>
+                      <label className="pending-side-selectall">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={handleSelectAll}
+                          aria-label="Chọn tất cả yêu cầu"
+                        />
+                        <span>Chọn tất cả</span>
+                      </label>
+
+                      <div className="pending-side-list">
+                        {pendingRequests.map((request) => (
+                          <div
+                            key={request.memberId}
+                            className={`pending-side-item ${selectedIds.includes(request.memberId) ? 'selected' : ''}`}
+                          >
+                            <label className="pending-side-item-top">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(request.memberId)}
+                                onChange={() => handleSelectOne(request.memberId)}
+                                aria-label={`Chọn ${request.studentName}`}
+                              />
+                              <div className="pending-side-student">
+                                <span className="pending-side-name">{request.studentName}</span>
+                                <span className="pending-side-email">{request.studentEmail || '—'}</span>
+                                <span className="pending-side-time">{formatDateTime(request.requestedAt)}</span>
+                              </div>
+                            </label>
+
+                            <div className="pending-side-item-actions">
+                              <button
+                                className="row-btn-approve"
+                                title="Duyệt"
+                                disabled={actionLoading}
+                                onClick={() => openApprove([request.memberId])}
+                              >
+                                <CheckCircle size={13} />
+                                Duyệt
+                              </button>
+                              <button
+                                className="row-btn-reject"
+                                title="Từ chối"
+                                disabled={actionLoading}
+                                onClick={() => openReject([request.memberId])}
+                              >
+                                <XCircle size={13} />
+                                Từ chối
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pending-side-actions">
+                        <button
+                          className="btn-approve"
+                          onClick={() => openApprove(selectedIds)}
+                          disabled={selectedIds.length === 0 || actionLoading}
+                        >
+                          {actionLoading ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
+                          Duyệt {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+                        </button>
+                        <button
+                          className="btn-reject"
+                          onClick={() => openReject(selectedIds)}
+                          disabled={selectedIds.length === 0 || actionLoading}
+                        >
+                          {actionLoading ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
+                          Từ chối {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h3>Danh sách thành viên</h3>
+                  <p>Bấm vào nút Xem trong cột Hành động để xem chi tiết và gửi báo cáo.</p>
+                </>
+              )}
+            </aside>
           </div>
-        ) : (
-          <div className="pending-requests-table-wrapper">
-            <table className="pending-requests-table">
-              <thead>
-                <tr>
-                  <th>
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedIds.length === pendingRequests.length &&
-                        pendingRequests.length > 0
-                      }
-                      onChange={handleSelectAll}
-                      aria-label="Chọn tất cả"
+        </section>
+
+        {isMemberModalOpen && (
+          <div className="member-detail-modal-overlay" onClick={closeMemberModal}>
+            <div className="member-detail-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="member-detail-modal-header">
+                <h3>Thông tin người dùng</h3>
+                <button type="button" className="member-detail-close" onClick={closeMemberModal}>Đóng</button>
+              </div>
+
+              {reportSuccess && <div className="pending-requests-alert alert-success sidebar-alert">{reportSuccess}</div>}
+
+              {profileLoading ? (
+                <div className="pending-side-loading">
+                  <Loader2 size={16} className="spin" />
+                  <span>Đang tải hồ sơ...</span>
+                </div>
+              ) : profileError ? (
+                <div className="pending-requests-alert alert-error sidebar-alert">{profileError}</div>
+              ) : selectedMember ? (
+                <div className="member-profile-card">
+                  <div className="member-profile-head">
+                    <div className="member-profile-avatar">
+                      {selectedProfile?.avatarUrl ? (
+                        <img src={selectedProfile.avatarUrl} alt={selectedProfile.fullName || selectedMember.studentName} />
+                      ) : (
+                        <span>{getInitials(selectedProfile?.fullName || selectedMember.studentName)}</span>
+                      )}
+                    </div>
+                    <div className="member-profile-meta">
+                      <strong>{selectedProfile?.fullName || selectedMember.studentName || '—'}</strong>
+                      <span>{formatRoleLabel(selectedMember.roleName)}</span>
+                      <span>{selectedProfile?.email || selectedMember.studentEmail || '—'}</span>
+                    </div>
+                  </div>
+
+                  <div className="member-profile-grid">
+                    <div>
+                      <small>Số điện thoại</small>
+                      <p>{selectedProfile?.phoneNumber || selectedMember.phoneNumber || '—'}</p>
+                    </div>
+                    <div>
+                      <small>Ngày sinh</small>
+                      <p>{selectedProfile?.birthDate || '—'}</p>
+                    </div>
+                    <div className="member-profile-address">
+                      <small>Địa chỉ</small>
+                      <p>{selectedProfile?.address || '—'}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="member-report-btn"
+                    onClick={openReportUser}
+                    disabled={Number(selectedMember.studentId) === Number(user?.id) || reportSubmitting}
+                  >
+                    {Number(selectedMember.studentId) === Number(user?.id) ? 'Không thể tự báo cáo chính mình' : 'Báo cáo người dùng'}
+                  </button>
+                </div>
+              ) : null}
+
+              {isReportModalOpen && (
+                <div className="report-inline-modal">
+                  <div className="report-inline-modal-head">
+                    <h4>Báo cáo người dùng</h4>
+                    <button type="button" className="member-detail-close" onClick={closeReportModal} disabled={reportSubmitting}>
+                      Đóng
+                    </button>
+                  </div>
+
+                  <label className="report-field">
+                    Lý do báo cáo *
+                    <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} disabled={reportSubmitting}>
+                      {REPORT_REASON_OPTIONS.map((option) => (
+                        <option key={option.value || 'empty'} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="report-field">
+                    Mô tả chi tiết (tùy chọn)
+                    <textarea
+                      rows={4}
+                      value={reportDetail}
+                      onChange={(e) => setReportDetail(e.target.value)}
+                      placeholder="Nhập nội dung chi tiết nếu cần"
+                      disabled={reportSubmitting}
                     />
-                  </th>
-                  <th>Họ tên</th>
-                  <th>Email</th>
-                  <th>Thời gian yêu cầu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingRequests.map((request) => (
-                  <tr key={request.id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(request.id)}
-                        onChange={() => handleSelectOne(request.id)}
-                        aria-label={`Chọn ${request.studentName}`}
-                      />
-                    </td>
-                    <td>{request.studentName}</td>
-                    <td>{request.studentEmail}</td>
-                    <td>{formatDateTime(request.requestTime)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </label>
+
+                  {reportError && <div className="pending-requests-alert alert-error sidebar-alert">{reportError}</div>}
+
+                  <div className="report-inline-actions">
+                    <button type="button" className="member-detail-close" onClick={closeReportModal} disabled={reportSubmitting}>
+                      Hủy
+                    </button>
+                    <button type="button" className="member-report-btn" onClick={handleSubmitReport} disabled={reportSubmitting}>
+                      {reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
+        {/* Modals */}
         {showApproveModal && (
           <ApproveRequestsModal
-            count={selectedIds.length}
+            count={pendingAction?.ids.length ?? 0}
             onConfirm={handleApproveConfirm}
-            onCancel={() => setShowApproveModal(false)}
+            onCancel={() => { setShowApproveModal(false); setPendingAction(null); }}
           />
         )}
-
         {showRejectModal && (
           <RejectRequestsModal
-            count={selectedIds.length}
+            count={pendingAction?.ids.length ?? 0}
             onConfirm={handleRejectConfirm}
-            onCancel={() => setShowRejectModal(false)}
+            onCancel={() => { setShowRejectModal(false); setPendingAction(null); }}
           />
         )}
       </div>
@@ -245,3 +648,4 @@ const PendingRequests = () => {
 };
 
 export default PendingRequests;
+

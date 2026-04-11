@@ -1,24 +1,29 @@
-import { lazy, Suspense } from "react";
+import { createElement, lazy, Suspense } from "react";
 import { Navigate, useRoutes } from "react-router-dom";
 import AuthGuard from "@/guards/auth-guard";
 import GuestGuard from "@/guards/guest-guard";
+import RoleBasedGuard from "@/guards/role-base-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
-import { PATH_AUTH } from "@/routes/paths";
-import { PATH_TEACHER } from "@/routes/paths";
+import { useAuth } from "@/contexts/AuthContext";
+import { isAdminRole } from "@/lib/auth-role";
+import {
+  PATH_AUTH,
+  PATH_ADMIN,
+  PATH_COMMON,
+  PATH_PAYMENT,
+  PATH_TEACHER,
+} from "@/routes/paths";
 
-const Loadable = (Component) => {
-  const WrappedComponent = Component;
+const Loadable = (component) => (props) => (
+  <Suspense fallback={<LoadingScreen />}>
+    {createElement(component, props)}
+  </Suspense>
+);
 
-  return (props) => (
-    <Suspense fallback={<LoadingScreen />}>
-      <WrappedComponent {...props} />
-    </Suspense>
-  );
-};
-
-// ─── Auth pages ───────────────────────────────────────────────────────────────
+// Auth pages
 const LoginPage = Loadable(lazy(() => import("@/pages/Login")));
+const AdminLoginPage = Loadable(lazy(() => import("@/pages/AdminLogin")));
 const RegisterPage = Loadable(lazy(() => import("@/pages/Register")));
 const OtpVerificationPage = Loadable(
   lazy(() => import("@/pages/OtpVerification")),
@@ -31,19 +36,39 @@ const ForgotPasswordOtpPage = Loadable(
 );
 const ResetPasswordPage = Loadable(lazy(() => import("@/pages/ResetPassword")));
 const RoleSelectionPage = Loadable(lazy(() => import("@/pages/RoleSelection")));
-
-const HomePage = Loadable(lazy(() => import("@/pages/Home")));
 const OAuth2RedirectPage = Loadable(
   lazy(() => import("@/pages/OAuth2Redirect")),
 );
+const HomePage = Loadable(lazy(() => import("@/pages/Home")));
+const TermsOfServicePage = Loadable(
+  lazy(() => import("@/pages/TermsOfService")),
+);
+const PrivacyPolicyPage = Loadable(lazy(() => import("@/pages/PrivacyPolicy")));
+const PublicPlanPage = Loadable(
+  lazy(() => import("@/pages/plan/public-plan-page")),
+);
+const PaymentSuccessPage = Loadable(
+  lazy(() => import("@/pages/payment/payment-success-page")),
+);
+const PaymentCancelPage = Loadable(
+  lazy(() => import("@/pages/payment/payment-cancel-page")),
+);
 
-// ─── Teacher pages ────────────────────────────────────────────────────────────
+// User / Profile
 const UserProfilePage = Loadable(lazy(() => import("@/pages/UserProfile")));
 const ChangePasswordPage = Loadable(
   lazy(() => import("@/pages/ChangePassword")),
 );
+const NotificationCenterPage = Loadable(
+  lazy(() => import("@/pages/NotificationCenter")),
+);
+
+// Classroom
 const ClassroomListPage = Loadable(
   lazy(() => import("@/pages/classroom/list/classroom-page")),
+);
+const StudentClassroomListPage = Loadable(
+  lazy(() => import("@/pages/classroom/list/student-classroom-page")),
 );
 const ClassroomPostPage = Loadable(
   lazy(() => import("@/pages/classroom/feed/post-page")),
@@ -80,6 +105,18 @@ const CreateAssignmentAiPage = Loadable(
 const ImportAssignmentFilePage = Loadable(
   lazy(() => import("@/pages/assignment/import/import-assignment-file-page")),
 );
+const SchedulePage = Loadable(
+  lazy(() => import("@/pages/classroom/schedule/schedulePage")),
+);
+const AttendanceListPage = Loadable(
+  lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
+);
+const AttendancePage = Loadable(
+  lazy(() => import("@/pages/classroom/attendance/attendance-page")),
+);
+const FoldersPage = Loadable(
+  lazy(() => import("@/pages/classroom/folders/foldersPage")),
+);
 const QuestionBankPage = Loadable(
   lazy(() => import("@/pages/question-bank/list/question-bank-page")),
 );
@@ -104,31 +141,97 @@ const CreateQuestionManualPage = Loadable(
   ),
 );
 
-// ─── Not Found ────────────────────────────────────────────────────────────────
+// Report
+const SendUserReportPage = Loadable(
+  lazy(() => import("@/pages/report/SendUserReportPage")),
+);
+
+// Admin pages
+const AdminDashboardPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminDashboard")),
+);
+const AdminRevenueDashboardPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminRevenueDashboard")),
+);
+const AdminTransactionHistoryPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminTransactionHistory")),
+);
+const AdminUserListPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminUserList")),
+);
+const AdminUserDetailPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminUserDetail")),
+);
+const AdminSystemNotificationPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminSystemNotification")),
+);
+const AdminManageReportPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminManageReport")),
+);
+const AdminSubscriptionListPage = Loadable(
+  lazy(() => import("@/pages/admin/subscription/subscription-list-page")),
+);
+const AdminPlanManagementPage = Loadable(
+  lazy(() => import("@/pages/admin/plan/plan-management-page")),
+);
+
 const NotFoundPage = Loadable(
   lazy(() => import("@/pages/not-found/not-found-page")),
 );
 
+const ClassroomListOrStudentPage = () => {
+  const { user } = useAuth();
+  return user?.role === "ROLE_STUDENT" ? (
+    <StudentClassroomListPage />
+  ) : (
+    <ClassroomListPage />
+  );
+};
+
+const RootRedirect = () => {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to={PATH_AUTH.home} replace />;
+  }
+
+  if (isAdminRole(user?.role)) {
+    return <Navigate to={PATH_ADMIN.dashboard} replace />;
+  }
+
+  return <Navigate to={PATH_TEACHER.classroom.root} replace />;
+};
+
 const AppRoutes = () =>
   useRoutes([
-    // ── Root redirect ─────────────────────────────────────────────────────────
-    {
-      path: "/",
-      element: <Navigate to="/home" replace />,
-    },
+    { path: "/", element: <RootRedirect /> },
 
-    // ── Public routes ─────────────────────────────────────────────────────────
-    {
-      path: "home",
-      element: <HomePage />,
-    },
+    // Public
+    { path: "home", element: <HomePage /> },
+    { path: PATH_AUTH.plans, element: <PublicPlanPage /> },
+    { path: PATH_PAYMENT.success, element: <PaymentSuccessPage /> },
+    { path: PATH_PAYMENT.cancel, element: <PaymentCancelPage /> },
+    { path: PATH_AUTH.terms, element: <TermsOfServicePage /> },
+    { path: PATH_AUTH.privacy, element: <PrivacyPolicyPage /> },
 
-    // ── Auth routes ───────────────────────────────────────────────────────────
+    // Auth
     {
       path: PATH_AUTH.login,
       element: (
         <GuestGuard>
           <LoginPage />
+        </GuestGuard>
+      ),
+    },
+    {
+      path: PATH_AUTH.adminLogin,
+      element: (
+        <GuestGuard>
+          <AdminLoginPage />
         </GuestGuard>
       ),
     },
@@ -140,34 +243,16 @@ const AppRoutes = () =>
         </GuestGuard>
       ),
     },
-    {
-      path: PATH_AUTH.verifyOtp,
-      element: <OtpVerificationPage />,
-    },
-    {
-      path: PATH_AUTH.forgotPassword,
-      element: <ForgotPasswordPage />,
-    },
-    {
-      path: PATH_AUTH.forgotPasswordOtp,
-      element: <ForgotPasswordOtpPage />,
-    },
-    {
-      path: PATH_AUTH.resetPassword,
-      element: <ResetPasswordPage />,
-    },
-    {
-      path: PATH_AUTH.selectRole,
-      element: <RoleSelectionPage />,
-    },
-    {
-      path: PATH_AUTH.oauth2Redirect,
-      element: <OAuth2RedirectPage />,
-    },
+    { path: PATH_AUTH.verifyOtp, element: <OtpVerificationPage /> },
+    { path: PATH_AUTH.forgotPassword, element: <ForgotPasswordPage /> },
+    { path: PATH_AUTH.forgotPasswordOtp, element: <ForgotPasswordOtpPage /> },
+    { path: PATH_AUTH.resetPassword, element: <ResetPasswordPage /> },
+    { path: PATH_AUTH.selectRole, element: <RoleSelectionPage /> },
+    { path: PATH_AUTH.oauth2Redirect, element: <OAuth2RedirectPage /> },
 
-    // ── User Profile (Authenticated) ──────────────────────────────────────────
+    // Profile
     {
-      path: "profile",
+      path: PATH_COMMON.profile,
       element: (
         <AuthGuard>
           <UserProfilePage />
@@ -175,7 +260,7 @@ const AppRoutes = () =>
       ),
     },
     {
-      path: "change-password",
+      path: PATH_COMMON.changePassword,
       element: (
         <AuthGuard>
           <ChangePasswordPage />
@@ -183,7 +268,7 @@ const AppRoutes = () =>
       ),
     },
 
-    // ── Classroom list route (with DashboardLayout) ──────────────────────────
+    // Dashboard layout (main app)
     {
       element: (
         <AuthGuard>
@@ -193,15 +278,7 @@ const AppRoutes = () =>
       children: [
         {
           path: "classrooms",
-          element: <ClassroomListPage />,
-        },
-        {
-          path: PATH_TEACHER.classroom.detail(":id"),
-          element: <ClassroomPostPage />,
-        },
-        {
-          path: PATH_TEACHER.classroom.pendingRequests(":id"),
-          element: <PendingRequestsPage />,
+          element: <ClassroomListOrStudentPage />,
         },
         {
           path: PATH_TEACHER.assignments,
@@ -275,14 +352,108 @@ const AppRoutes = () =>
           path: PATH_TEACHER.questionBankManual(":bankId"),
           element: <CreateQuestionManualPage />,
         },
+
+        // Teacher report
+        { path: PATH_TEACHER.reports, element: <SendUserReportPage /> },
+        {
+          path: PATH_COMMON.notifications,
+          element: <NotificationCenterPage />,
+        },
       ],
     },
 
-    // ── Catch-all ─────────────────────────────────────────────────────────────
+    // Admin routes
     {
-      path: "*",
-      element: <NotFoundPage />,
+      element: (
+        <AuthGuard>
+          <RoleBasedGuard role="ROLE_ADMIN">
+            <DashboardLayout />
+          </RoleBasedGuard>
+        </AuthGuard>
+      ),
+      children: [
+        { path: PATH_ADMIN.dashboard, element: <AdminDashboardPage /> },
+        {
+          path: PATH_ADMIN.revenueDashboard,
+          element: <AdminRevenueDashboardPage />,
+        },
+        {
+          path: PATH_ADMIN.transactionHistory,
+          element: <AdminTransactionHistoryPage />,
+        },
+        { path: PATH_ADMIN.users.root, element: <AdminUserListPage /> },
+        {
+          path: PATH_ADMIN.users.detail(":id"),
+          element: <AdminUserDetailPage />,
+        },
+        {
+          path: PATH_ADMIN.systemNotifications,
+          element: <AdminSystemNotificationPage />,
+        },
+        { path: PATH_ADMIN.reports, element: <AdminManageReportPage /> },
+        {
+          path: PATH_COMMON.notifications,
+          element: <NotificationCenterPage />,
+        },
+        {
+          path: PATH_ADMIN.subscriptions.root,
+          element: <AdminSubscriptionListPage />,
+        },
+        { path: PATH_ADMIN.plans.root, element: <AdminPlanManagementPage /> },
+      ],
     },
+
+    // Classroom detail
+    {
+      path: "classrooms/:id",
+      element: (
+        <AuthGuard>
+          <ClassroomPostPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/pending-requests",
+      element: (
+        <AuthGuard>
+          <PendingRequestsPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/schedule",
+      element: (
+        <AuthGuard>
+          <SchedulePage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/attendance",
+      element: (
+        <AuthGuard>
+          <AttendanceListPage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/attendance/:sessionId",
+      element: (
+        <AuthGuard>
+          <AttendancePage />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/folders",
+      element: (
+        <AuthGuard>
+          <FoldersPage />
+        </AuthGuard>
+      ),
+    },
+
+    { path: "*", element: <NotFoundPage /> },
   ]);
 
 export default AppRoutes;

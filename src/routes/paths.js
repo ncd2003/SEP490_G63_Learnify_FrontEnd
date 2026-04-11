@@ -19,8 +19,12 @@ const ROOTS_TEACHER = "/";
 export const PATH_AUTH = {
   root: "/",
   home: "/home",
+  plans: "/plans",
   login: "/login",
+  adminLogin: "/admin/login",
   register: "/register",
+  terms: "/terms-of-service",
+  privacy: "/privacy-policy",
   verifyOtp: "/verify-otp",
   oauth2Redirect: "/oauth2/redirect",
   selectRole: "/select-role",
@@ -29,10 +33,16 @@ export const PATH_AUTH = {
   resetPassword: "/reset-password",
 };
 
+export const PATH_PAYMENT = {
+  success: "/success",
+  cancel: "/cancel",
+};
+
 // ─── COMMON (All authenticated users) ─────────────────────────────────────────
 export const PATH_COMMON = {
   profile: "/profile",
   changePassword: "/change-password",
+  notifications: "/notifications",
 };
 
 // ─── TEACHER ──────────────────────────────────────────────────────────────────
@@ -50,6 +60,10 @@ export const PATH_TEACHER = {
       `/classrooms/${id}/assignments/create/manual`,
     assignmentCreateManualQuestions: (id) =>
       `/classrooms/${id}/assignments/create/manual/questions`,
+    folders: (id) => `/classrooms/${id}/folders`,
+    attendance: (id) => `/classrooms/${id}/attendance`,
+    attendanceSession: (id, sessionId) =>
+      `/classrooms/${id}/attendance/${sessionId}`,
   },
   assignments: path(ROOTS_TEACHER, "/assignments"),
   assignmentCreateMethod: path(ROOTS_TEACHER, "/assignments/create-method"),
@@ -94,14 +108,26 @@ export const PATH_STUDENT = {
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 export const PATH_ADMIN = {
   root: "/admin",
+  dashboard: "/admin/dashboard",
+  revenueDashboard: "/admin/revenue-dashboard",
+  transactionHistory: "/admin/transaction-history",
   users: {
     root: "/admin/users",
     detail: (id) => `/admin/users/${id}`,
+  },
+  subscriptions: {
+    root: "/admin/subscriptions",
+    detail: (id) => `/admin/subscriptions/${id}`,
+  },
+  plans: {
+    root: "/admin/plans",
+    detail: (id) => `/admin/plans/${id}`,
   },
   classroom: {
     root: "/admin/classrooms",
     detail: (id) => `/admin/classrooms/${id}`,
   },
   reports: "/admin/reports",
+  systemNotifications: "/admin/system-notifications",
   settings: "/admin/settings",
 };

@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Eye, EyeOff, BookOpen, Sparkles } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
-import { PATH_AUTH } from "../routes/paths";
+import AppLogo from "@/components/AppLogo";
+import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
+import { PATH_ADMIN, PATH_AUTH } from "../routes/paths";
 
 const MSG06 = "Email hoặc mật khẩu bạn nhập không chính xác. Vui lòng thử lại.";
 const MSG07 = "Tài khoản của bạn chưa được xác minh.";
@@ -66,6 +68,17 @@ const LoginPage = () => {
   const [focusedInput, setFocusedInput] = useState(null);
   const [successMessage] = useState(location.state?.message || "");
 
+  useEffect(() => {
+    const lockedMessage = sessionStorage.getItem("account_locked_message");
+    if (!lockedMessage) {
+      return;
+    }
+
+    toast.error(lockedMessage, { id: TOAST_ID_LOGIN_MSG08 });
+    sessionStorage.removeItem("account_locked_message");
+    sessionStorage.removeItem("account_locked_realtime");
+  }, []);
+
   const handleResendVerification = async () => {
     if (!email.trim()) {
       toast.error("Vui lòng nhập email để gửi lại mã xác minh.", {
@@ -102,16 +115,15 @@ const LoginPage = () => {
     try {
       const userData = await login({ email, password });
 
-      // Get user role from userData and redirect accordingly
-      const userRole = userData?.role?.toUpperCase();
+      const userRole = userData?.role;
 
-      if (userRole === "ROLE_TEACHER") {
-        navigate("/classrooms");
-      } else if (userRole === "ROLE_STUDENT") {
-        navigate("/classrooms");
+      if (isAdminRole(userRole)) {
+        navigate(PATH_ADMIN.dashboard, { replace: true });
+      } else if (isTeacherRole(userRole) || isStudentRole(userRole)) {
+        navigate("/classrooms", { replace: true });
       } else {
         // Fallback to home if role is not recognized
-        navigate("/home");
+        navigate("/home", { replace: true });
       }
     } catch (err) {
       const status = err.response?.status;
@@ -158,7 +170,7 @@ const LoginPage = () => {
           <div className="brand-content">
             <div className="logo-wrapper">
               <div className="logo-icon">
-                <BookOpen size={36} strokeWidth={2.5} />
+                <AppLogo size={42} showFallbackBackground={false} />
               </div>
               <h1 className="brand-name">Learnify</h1>
             </div>

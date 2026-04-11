@@ -5,12 +5,25 @@ import { toast } from "sonner";
 /* ─── Public endpoints (no auth token needed) ───────────────────────────── */
 const PUBLIC_ENDPOINTS = [
   "/auth/login",
+  "/admin/login",
   "/auth/register",
   "/auth/verify-otp",
   "/auth/resend-otp",
 ];
 
 const isPublic = (url = "") => PUBLIC_ENDPOINTS.some((ep) => url.includes(ep));
+
+const isLockedOrInactiveError = (message = "") => {
+  const normalized = String(message).toLowerCase();
+  return (
+    normalized.includes("locked") ||
+    normalized.includes("inactive") ||
+    normalized.includes("disabled") ||
+    normalized.includes("bị khóa") ||
+    normalized.includes("không hoạt động") ||
+    normalized.includes("bị cấm")
+  );
+};
 
 /* ─── Params serializer (supports array params) ─────────────────────────── */
 const parseParams = (params) => {
@@ -93,10 +106,14 @@ const createHttp = () => {
       const isAssignmentEndpoint =
         response.config?.url?.includes("/assignments") ||
         response.config?.url?.includes("/draft-sessions");
+      const silentSuccess = response.config?.silentSuccess === true;
 
       if (
         isMutation &&
         !isChangePassword &&
+        !isQuestionBankEndpoint &&
+        !isAssignmentEndpoint &&
+        !silentSuccess &&
         !isQuestionBankEndpoint &&
         !isAssignmentEndpoint &&
         response.data?.code === 1000 &&
@@ -112,10 +129,12 @@ const createHttp = () => {
         const { status, config: reqConfig, data } = error.response;
         const shouldHandleInlineError =
           reqConfig?.url?.includes("/auth/login") ||
+          reqConfig?.url?.includes("/admin/login") ||
           reqConfig?.url?.includes("/auth/register") ||
           reqConfig?.url?.includes("/auth/verify-otp") ||
           reqConfig?.url?.includes("/auth/forgot-password") ||
           reqConfig?.url?.includes("/auth/reset-password") ||
+          reqConfig?.url?.includes("/users/me") ||
           reqConfig?.url?.includes("/users/change-password");
         const isQuestionBankEndpoint =
           reqConfig?.url?.includes("/question-banks");
@@ -125,10 +144,16 @@ const createHttp = () => {
 
         // Show error toast
         const errorMessage = data?.message || "Đã có lỗi xảy ra";
+        const isBlockedAccount = isLockedOrInactiveError(errorMessage);
         // Avoid showing toast for 401/403 errors that might be handled differently (redirects)
         // or for specific endpoints if needed.
         // Generally good to show error toast for failures.
-        if (
+        if (isBlockedAccount && !shouldHandleInlineError) {
+          toast.error(
+            "Tai khoan cua ban da bi khoa hoac khong hoat dong. Vui long lien he bo phan ho tro.",
+            { id: "account-locked" },
+          );
+        } else if (
           status !== 401 &&
           !shouldHandleInlineError &&
           !isQuestionBankEndpoint &&
@@ -146,13 +171,27 @@ const createHttp = () => {
           },
         );
 
-        if (status === 401) {
+        if (status === 401 || isBlockedAccount) {
           // Don't auto-redirect from auth or /users/me endpoints
           const isAuthCall =
             isPublic(reqConfig?.url) || reqConfig?.url?.includes("/users/me");
 
+          if (isBlockedAccount) {
+            sessionStorage.setItem(
+              "account_locked_message",
+              "Tai khoan cua ban da bi khoa hoac khong hoat dong. Vui long lien he bo phan ho tro.",
+            );
+          }
+
+          const hasLiveLockNotice = !!sessionStorage.getItem(
+            "account_locked_realtime",
+          );
+          if (hasLiveLockNotice && !isAuthCall) {
+            return Promise.reject(error);
+          }
+
           if (!isAuthCall) {
-            console.warn("[HTTP] 401 Unauthorized - Clearing auth");
+            console.warn("[HTTP] Unauthorized/blocked - Clearing auth");
             localStorage.removeItem("accessToken");
             localStorage.removeItem("user");
             window.location.href = "/login";

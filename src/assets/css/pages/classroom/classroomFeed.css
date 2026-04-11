@@ -12,6 +12,125 @@
   gap: 16px;
 }
 
+.feed-three-col {
+  max-width: 1200px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 0.7fr 1.6fr 0.7fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.feed-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feed-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feed-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  color: #111827;
+}
+
+.pinned-col .post-list {
+  gap: 10px;
+}
+
+.pinned-summary {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pinned-summary:hover {
+  background: #f3f4f6;
+  border-color: #cbd5e1;
+}
+
+.pinned-summary-title {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.pinned-summary-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.filter-col {
+  position: sticky;
+  top: 16px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.filter-input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.filter-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1100px) {
+  .feed-three-col {
+    grid-template-columns: 1fr;
+  }
+  .filter-col {
+    position: static;
+  }
+}
+
 /* ── Feed state (loading / error / empty) ────────────────── */
 .feed-state {
   display: flex;
@@ -220,6 +339,12 @@
   overflow: hidden;
 }
 
+.post-form-file-chip--overflow {
+  background: #e5e7eb;
+  color: #4b5563;
+  font-weight: 600;
+}
+
 .post-form-file-chip button {
   border: none;
   background: none;
@@ -255,6 +380,12 @@
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.post-form-accept-hint {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
 }
 
 .post-form-right-actions {
@@ -515,6 +646,42 @@
   gap: 6px;
 }
 
+/* ── Media grid (images/videos) ─────────────────────────── */
+.post-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.media-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #0f172a;
+  min-height: 180px;
+}
+
+.media-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.media-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+}
+
 .post-attachment-chip {
   display: inline-flex;
   align-items: center;
@@ -547,6 +714,41 @@
   font-size: 11px;
   color: #9ca3af;
   flex-shrink: 0;
+}
+
+.post-attachments--modal {
+  margin-top: 16px;
+}
+
+.media-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.media-detail-item {
+  background: #0f172a;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-detail {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  background: #0f172a;
+}
+
+.media-detail-name {
+  color: #f8fafc;
+  font-size: 12px;
+  padding: 0 10px 10px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* ─── Comments Section ────────────────────────────────────── */
@@ -595,6 +797,33 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.comments-tools {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.comments-sort-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.comments-sort-select {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.comments-sort-select:focus {
+  outline: none;
+  border-color: #6366f1;
 }
 
 .comments-header {

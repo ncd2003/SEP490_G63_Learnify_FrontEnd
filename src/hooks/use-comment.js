@@ -11,38 +11,47 @@ import { commentApi } from "@/apis/comment.api";
 const useCommentMutations = (postId, setComments) => {
   const [submitting, setSubmitting] = useState(false);
 
+  const sortByCreatedDesc = (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
+
   const createComment = async (data) => {
     setSubmitting(true);
     try {
       const newComment = await commentApi.createComment({ postId, ...data });
       const created = newComment?.result ?? newComment;
-      
+
       // Transform to match UI format
-      const transformed = {
-        ...created,
-        authorName: created.user?.name || "Người dùng",
-        replies: created.replies?.map(r => ({
-          ...r,
-          authorName: r.user?.name || "Người dùng",
-          replies: r.replies || [],
-        })) || [],
-      };
-      
-      // If it's a reply (has parentId), need to refetch to get updated nested structure
-      // Otherwise, just append to the list
+      const transform = (item) => ({
+        ...item,
+        authorName: item.user?.fullName || item.user?.name || "Người dùng",
+        replies: (item.replies || []).map(transform).sort(sortByCreatedDesc),
+      });
+
+      const transformed = transform(created);
+
       if (data.parentId) {
-        // Will be handled by parent component refetching
-        return { success: true, needsRefresh: true };
+        // Insert reply into its parent without refetch to keep UI state/scroll
+        setComments((prev) => {
+          const insertReply = (list) =>
+            list.map((c) => {
+              if (c.id === data.parentId) {
+                const replies = [...(c.replies || []), transformed].sort(sortByCreatedDesc);
+                return { ...c, replies };
+              }
+              return { ...c, replies: insertReply(c.replies || []) };
+            });
+          return insertReply(prev);
+        });
       } else {
-        setComments((prev) => [...prev, transformed]);
+        // Prepend so the newest comment is visible immediately
+        setComments((prev) => [transformed, ...prev].sort(sortByCreatedDesc));
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error("Failed to create comment:", error);
-      return { 
-        success: false, 
-        message: error.message ?? "Không thể tạo bình luận." 
+      return {
+        success: false,
+        message: error.message ?? "Không thể tạo bình luận.",
       };
     } finally {
       setSubmitting(false);

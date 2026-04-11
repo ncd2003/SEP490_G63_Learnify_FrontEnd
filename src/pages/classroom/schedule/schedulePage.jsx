@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, MapPin, Video } from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
 import EventDetailModal from '@/components/EventDetailModal';
 import useSchedule from '@/hooks/useSchedule';
+import scheduleApi from '@/apis/schedule.api';
+import { PATH_TEACHER } from '@/routes/paths';
 import { SESSION_TYPE } from '@/schema/scheduleSchema';
 import '@/assets/css/pages/classroom/classroomSchedule.css';
 import '@/assets/css/components/eventDetailModal.css';
@@ -12,19 +14,12 @@ import '@/assets/css/components/eventDetailModal.css';
 const VIEW_MODES = {
   MONTH: 'month',
   WEEK: 'week',
-  DAY: 'day',
 };
 
 const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-const WEEKDAYS_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const MONTHS = [
   'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
   'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
-];
-const TIME_SLOTS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-  '19:00', '20:00', '21:00', '22:00',
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -69,13 +64,44 @@ const getWeekDays = (date) => {
 const formatDateRange = (s, e) =>
   `${s.getDate()}/${s.getMonth() + 1} - ${e.getDate()}/${e.getMonth() + 1}/${e.getFullYear()}`;
 
+const toYmd = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const extractRoomNameFromMeetingLink = (meetingLink) => {
+  if (!meetingLink) return null;
+
+  try {
+    const url = new URL(meetingLink);
+    const segments = url.pathname.split('/').filter(Boolean);
+    return segments.length ? decodeURIComponent(segments[segments.length - 1]) : null;
+  } catch {
+    const raw = meetingLink.split('?')[0];
+    const segments = raw.split('/').filter(Boolean);
+    return segments.length ? decodeURIComponent(segments[segments.length - 1]) : null;
+  }
+};
+
+const getCurrentUserRole = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user?.role || 'ROLE_STUDENT';
+  } catch {
+    return 'ROLE_STUDENT';
+  }
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const SchedulePage = () => {
   const { id: classroomId } = useParams();
+  const routerNavigate = useNavigate();
   const { sessions, loading, error, createSession, updateSession, deleteSession } = useSchedule(classroomId);
 
-  const [viewMode, setViewMode] = useState(VIEW_MODES.MONTH);
+  const [viewMode, setViewMode] = useState(VIEW_MODES.WEEK);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -83,6 +109,7 @@ const SchedulePage = () => {
   const [selectedDayDate, setSelectedDayDate] = useState(null);
   const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
   const [selectedEventForDetail, setSelectedEventForDetail] = useState(null);
+  const [presetSessionDate, setPresetSessionDate] = useState('');
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
 
@@ -100,20 +127,23 @@ const SchedulePage = () => {
     return sessions.filter((s) => isSameDay(parseSessionDate(s.sessionDate), date));
   };
 
-  const getSessionsForDateTime = (date, timeSlot) => {
-    const slotHour = timeSlot.split(':')[0];
-    return getSessionsForDate(date).filter((s) => s.startTime?.split(':')[0] === slotHour);
-  };
-
   // ─── Modal Handlers ────────────────────────────────────────────────────────
 
   const handleCreate = () => {
     setSelectedSession(null);
+    setPresetSessionDate('');
+    setIsModalOpen(true);
+  };
+
+  const handleCreateForDate = (date) => {
+    setSelectedSession(null);
+    setPresetSessionDate(toYmd(date));
     setIsModalOpen(true);
   };
 
   const handleEdit = (session) => {
     setSelectedSession(session);
+    setPresetSessionDate('');
     setIsModalOpen(true);
   };
 
@@ -132,10 +162,17 @@ const SchedulePage = () => {
    */
   const handleSubmit = async (payload, sessionId) => {
     try {
+      const submitPayload = { ...payload };
+
+      // meetingLink sẽ do backend tự động tạo nếu type là ONLINE và link đang trống.
+      if (submitPayload.type !== SESSION_TYPE.ONLINE) {
+        submitPayload.meetingLink = null;
+      }
+
       if (sessionId) {
-        await updateSession(sessionId, payload);
+        await updateSession(sessionId, submitPayload);
       } else {
-        await createSession(payload);
+        await createSession(submitPayload);
       }
       setIsModalOpen(false);
     } catch (err) {
@@ -178,46 +215,39 @@ const SchedulePage = () => {
     await handleDelete(sessionId);
   };
 
-  // ─── Auto scroll to current time on mount (Google Calendar style) ───────
+  const handleOpenAttendance = (session) => {
+    if (!classroomId || !session?.id) return;
+    routerNavigate(PATH_TEACHER.classroom.attendanceSession(classroomId, session.id));
+  };
 
-  useEffect(() => {
-    if (viewMode === VIEW_MODES.WEEK || viewMode === VIEW_MODES.DAY) {
-      // Small delay to ensure DOM is rendered
-      const timer = setTimeout(() => {
-        const now = new Date();
-        const currentHour = now.getHours();
-        
-        // Scroll to current hour or closest available slot
-        let targetHour = currentHour;
-        if (currentHour < 7) targetHour = 7;
-        if (currentHour > 22) targetHour = 22;
-        
-        const targetSlot = `${String(targetHour).padStart(2, '0')}:00`;
-        const timeLabels = document.querySelectorAll('.time-slot-label, .day-time-slot-label');
-        
-        timeLabels.forEach((label) => {
-          if (label.textContent.trim() === targetSlot) {
-            // Scroll with offset from top (Google Calendar style)
-            const container = label.closest('.week-view-container, .day-view-container');
-            if (container) {
-              const offset = label.offsetTop - 100; // 100px from top
-              container.scrollTo({ top: offset, behavior: 'smooth' });
-            }
-          }
-        });
-      }, 100);
-      
-      return () => clearTimeout(timer);
+  const handleJoinMeeting = async (session, e) => {
+    if (e) {
+      e.stopPropagation();
     }
-  }, [viewMode, currentDate]);
 
-  // ─── Current time info for indicator ─────────────────────────────────────
+    const roomName = extractRoomNameFromMeetingLink(session?.meetingLink);
+    if (!roomName) {
+      alert('Không tìm thấy thông tin phòng họp hợp lệ.');
+      return;
+    }
 
-  const getCurrentTimeInfo = () => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    return { hours, minutes, isToday: true };
+    try {
+      const response = await scheduleApi.generateJitsiMeetingLink({
+        roomName,
+        role: getCurrentUserRole(),
+      });
+
+      const joinUrl = response?.result?.meetingLink;
+      if (!joinUrl) {
+        alert('Không thể tạo link tham gia cuộc họp.');
+        return;
+      }
+
+      window.open(joinUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      const msg = err.response?.data?.message ?? 'Không thể tham gia cuộc họp lúc này.';
+      alert(msg);
+    }
   };
 
   // ─── Derived data ──────────────────────────────────────────────────────────
@@ -225,9 +255,6 @@ const SchedulePage = () => {
   const days = getDaysInMonth(currentDate);
   const currentMonth = MONTHS[currentDate.getMonth()];
   const currentYear = currentDate.getFullYear();
-
-  // Always show full time slots (7:00 - 22:00) for week/day view
-  const weekDays = viewMode === VIEW_MODES.WEEK ? getWeekDays(currentDate) : [];
 
   // ─── Render helpers ─────────────────────────────────────────────────────────
 
@@ -246,7 +273,7 @@ const SchedulePage = () => {
 
         {/* View mode tabs */}
         <div className="schedule-tabs">
-          {Object.entries({ [VIEW_MODES.MONTH]: 'Tháng', [VIEW_MODES.WEEK]: 'Tuần', [VIEW_MODES.DAY]: 'Ngày' }).map(
+          {Object.entries({ [VIEW_MODES.WEEK]: 'Tuần', [VIEW_MODES.MONTH]: 'Tháng' }).map(
             ([mode, label]) => (
               <button key={mode} className={`schedule-tab ${viewMode === mode ? 'active' : ''}`} onClick={() => setViewMode(mode)}>
                 {label}
@@ -269,13 +296,6 @@ const SchedulePage = () => {
               <button className="nav-button" onClick={() => navigate(-7, 'day')}><ChevronLeft size={20} /> Tuần trước</button>
               <div className="current-date">{(() => { const w = getWeekDays(currentDate); return formatDateRange(w[0], w[6]); })()}</div>
               <button className="nav-button" onClick={() => navigate(7, 'day')}>Tuần sau <ChevronRight size={20} /></button>
-            </>
-          )}
-          {viewMode === VIEW_MODES.DAY && (
-            <>
-              <button className="nav-button" onClick={() => navigate(-1, 'day')}><ChevronLeft size={20} /> Hôm trước</button>
-              <div className="current-date">{WEEKDAYS[currentDate.getDay()]}, {currentDate.getDate()} {currentMonth} {currentYear}</div>
-              <button className="nav-button" onClick={() => navigate(1, 'day')}>Hôm sau <ChevronRight size={20} /></button>
             </>
           )}
         </div>
@@ -346,125 +366,76 @@ const SchedulePage = () => {
         {/* ─── WEEK VIEW ───────────────────────────────────────────────────── */}
         {!loading && !error && viewMode === VIEW_MODES.WEEK && (() => {
           const weekDaysView = getWeekDays(currentDate);
-          const currentTime = getCurrentTimeInfo();
           return (
-            <div className="week-view-container compact">
-                  <div className="week-view-grid">
-                    <div className="time-column">
-                      <div className="time-header" />
-                      {TIME_SLOTS.map((t) => (<div key={t} className="time-slot-label">{t}</div>))}
-                    </div>
-                    {weekDaysView.map((day, di) => {
-                      const isDayToday = isToday(day);
-                      return (
-                        <div key={di} className="week-day-column">
-                          <div className={`week-day-header ${isDayToday ? 'today' : ''}`}>
-                            <div className="week-day-name">{WEEKDAYS_SHORT[day.getDay()]}</div>
-                            <div className="week-day-number">{day.getDate()}</div>
+            <div className="week-board-container">
+              <div className="week-board-grid">
+                {weekDaysView.map((day, di) => {
+                  const daySessions = getSessionsForDate(day)
+                    .slice()
+                    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                  const isDayToday = isToday(day);
+
+                  return (
+                    <div key={di} className={`week-board-day ${isDayToday ? 'today' : ''}`}>
+                      <div className="week-board-header">
+                        <div className="week-board-day-heading">
+                          <div className="week-board-day-name-row">
+                            <span className="week-board-day-name">{WEEKDAYS[day.getDay()]}</span>
                           </div>
-                          <div className="week-time-slots">
-                          {TIME_SLOTS.map((ts, ti) => {
-                              const slotSessions = getSessionsForDateTime(day, ts);
-                              const [slotHour] = ts.split(':').map(Number);
-                              const showCurrentTimeLine = isDayToday && 
-                                currentTime.hours === slotHour && 
-                                currentTime.minutes < 60;
-                              const currentTimePosition = showCurrentTimeLine 
-                                ? (currentTime.minutes / 60) * 100 
-                                : 0;
-                              
-                              return (
-                                <div key={ti} className="week-time-slot">
-                                  {showCurrentTimeLine && (
-                                    <div 
-                                      className="current-time-indicator" 
-                                      style={{ top: `${currentTimePosition}%` }}
-                                    >
-                                      <div className="current-time-dot" />
-                                      <div className="current-time-line" />
-                                    </div>
-                                  )}
-                                  {slotSessions.map((s) => (
-                                    <div 
-                                      key={s.id} 
-                                      className="week-event-item"
-                                      onClick={() => handleEventClick(s)}
-                                    >
-                                      <div className="week-event-content">
-                                        <div className="week-event-time">{s.startTime} - {s.endTime}</div>
-                                        <div className="week-event-title">{s.title}</div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })}
+                          {isDayToday && (
+                            <div className="week-board-day-subrow">
+                              <span className="week-board-today-badge">Hôm nay</span>
+                            </div>
+                          )}
+                          <div className="week-board-day-date">
+                            {String(day.getDate()).padStart(2, '0')}/{String(day.getMonth() + 1).padStart(2, '0')}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-          );
-        })()}
+                        <button
+                          className="week-board-add-btn"
+                          onClick={() => handleCreateForDate(day)}
+                          title="Thêm lịch học"
+                        >
+                          +
+                        </button>
+                      </div>
 
-        {/* ─── DAY VIEW ────────────────────────────────────────────────────── */}
-        {!loading && !error && viewMode === VIEW_MODES.DAY && (() => {
-          const currentTime = getCurrentTimeInfo();
-          const isDayToday = isToday(currentDate);
-          return (
-            <div className="day-view-container compact">
-                  <div className="day-view-grid">
-                    <div className="time-column">
-                      {TIME_SLOTS.map((t) => (<div key={t} className="day-time-slot-label">{t}</div>))}
-                    </div>
-                    <div className="day-events-column">
-                      {TIME_SLOTS.map((ts, index) => {
-                        const slotSessions = getSessionsForDateTime(currentDate, ts);
-                        const [slotHour] = ts.split(':').map(Number);
-                        const showCurrentTimeLine = isDayToday && 
-                          currentTime.hours === slotHour && 
-                          currentTime.minutes < 60;
-                        const currentTimePosition = showCurrentTimeLine 
-                          ? (currentTime.minutes / 60) * 100 
-                          : 0;
-                        
-                        return (
-                          <div key={index} className="day-time-slot">
-                            {showCurrentTimeLine && (
-                              <div 
-                                className="current-time-indicator" 
-                                style={{ top: `${currentTimePosition}%` }}
-                              >
-                                <div className="current-time-dot" />
-                                <div className="current-time-line" />
+                      <div className="week-board-body">
+                        {daySessions.length === 0 && (
+                          <div className="week-board-empty">Không có lịch học</div>
+                        )}
+
+                        {daySessions.map((s) => (
+                          <div
+                            key={s.id}
+                            className="week-board-event"
+                            onClick={() => handleEventClick(s)}
+                          >
+                            <div className="week-board-event-time">{s.startTime} - {s.endTime}</div>
+                            <div className="week-board-event-title" title={s.title}>{s.title}</div>
+                            <div className="week-board-event-meta">
+                              <span className="week-board-event-type-icon">{renderSessionBadge(s)}</span>
+                              <span className="week-board-event-type-text">{s.type === SESSION_TYPE.ONLINE ? 'Trực tuyến' : (s.location || 'Tại lớp')}</span>
+                            </div>
+                            {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
+                              <div className="week-board-event-actions">
+                                <button
+                                  type="button"
+                                  className="week-board-join-btn"
+                                  onClick={(e) => handleJoinMeeting(s, e)}
+                                >
+                                  Tham gia
+                                </button>
                               </div>
                             )}
-                            {slotSessions.map((s) => (
-                              <div 
-                                key={s.id} 
-                                className="day-event-item"
-                                onClick={() => handleEventClick(s)}
-                              >
-                                <div className="day-event-header">
-                                  <div className="day-event-time">{s.startTime} - {s.endTime} {renderSessionBadge(s)}</div>
-                                  <div className="day-event-title">{s.title}</div>
-                                </div>
-                                {s.description && <div className="day-event-description">{s.description}</div>}
-                                {s.type === SESSION_TYPE.OFFLINE && s.location && (
-                                  <div className="day-event-location"><MapPin size={12} /> {s.location}</div>
-                                )}
-                                {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
-                                  <div className="day-event-location"><Video size={12} /> <a href={s.meetingLink} target="_blank" rel="noopener noreferrer">Tham gia cuộc họp</a></div>
-                                )}
-                              </div>
-                            ))}
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  );
+                })}
               </div>
+            </div>
           );
         })()}
 
@@ -480,6 +451,7 @@ const SchedulePage = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
         session={selectedSession}
+        presetDate={presetSessionDate}
       />
 
       {/* Event Detail Modal – Google Calendar style */}
@@ -487,8 +459,10 @@ const SchedulePage = () => {
         isOpen={isEventDetailOpen}
         onClose={handleCloseEventDetail}
         session={selectedEventForDetail}
+        onJoin={handleJoinMeeting}
         onEdit={handleEventEdit}
         onDelete={handleEventDelete}
+        onOpenAttendance={handleOpenAttendance}
       />
 
       {/* Day Detail Modal */}
@@ -536,10 +510,10 @@ const SchedulePage = () => {
                         )}
                         {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
                           <div className="day-detail-event-location">
-                            <Video size={14} /> 
-                            <a href={s.meetingLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                            <Video size={14} />
+                            <button type="button" className="day-detail-join-btn" onClick={(e) => handleJoinMeeting(s, e)}>
                               Tham gia cuộc họp
-                            </a>
+                            </button>
                           </div>
                         )}
                       </div>

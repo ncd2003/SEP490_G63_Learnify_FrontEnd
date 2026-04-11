@@ -118,7 +118,7 @@ const formatRelativeTime = (isoString) => {
   return `${day}/${month}/${year} ${hours}:${minutes}`;
 };
 
-const allowedExtensions = [".jpeg", ".png", ".jpg", ".gif", ".bmp", ".webp"];
+const allowedExtensions = [".jpeg", ".png", ".jpg", ".gif", ".bmp"];
 const fileValidator = z.any().refine(
   (file) => {
     if (!file) return false;

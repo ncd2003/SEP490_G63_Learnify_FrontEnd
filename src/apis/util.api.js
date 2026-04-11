@@ -1,6 +1,9 @@
 export const API_SUFFIX = {
   AUTH: "/auth",
+  ADMIN: "/admin",
   USER: "/users",
+  REPORT: "/user-reports",
+  NOTIFICATION: "/notifications",
   CLASSROOM: "/classrooms",
   QUESTION_BANK: "/question-banks",
   ASSIGNMENT: "/assignments",
@@ -9,4 +12,10 @@ export const API_SUFFIX = {
   COMMENT: "/comments",
   SCHEDULE: "/classrooms",
   ATTENDANCE: "/attendance",
+  MATERIAL: "/materials",
+  FOLDER: "/folders",
+  SUBSCRIPTION: "/subscriptions",
+  BENEFIT: "/benefits",
+  PLAN: "/plans",
+  PAYMENT: "/payments",
 };

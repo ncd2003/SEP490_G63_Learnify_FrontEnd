@@ -6,12 +6,21 @@ import {
   FileText, 
   FolderOpen, 
   BarChart3,
+  ClipboardCheck,
   ChevronLeft,
-  Calendar 
+  Calendar,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronDown,
+  Bell,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { PATH_TEACHER } from '@/routes/paths';
+import { normalizeRole } from '@/lib/auth-role';
+import { PATH_AUTH, PATH_COMMON, PATH_TEACHER } from '@/routes/paths';
 import { classroomApi } from '@/apis/classroom.api';
+import { notificationApi } from '@/apis/notification.api';
 import '@/assets/css/components/classroomDetailLayout.css';
 
 const MENU_ITEMS = [
@@ -19,21 +28,58 @@ const MENU_ITEMS = [
   { key: 'schedule', label: 'Lịch học', icon: Calendar, path: '/schedule' },
   { key: 'members', label: 'Thành viên', icon: Users, path: '/pending-requests' },
   { key: 'assignments', label: 'Bài tập', icon: FileText, path: '/assignments' },
-  { key: 'documents', label: 'Tài liệu', icon: FolderOpen, path: '/documents' },
+  { key: 'folders', label: 'Tài liệu', icon: FolderOpen, path: '/folders' },
   { key: 'grades', label: 'Bảng điểm', icon: BarChart3, path: '/grades' },
+  { key: 'attendance', label: 'Điểm danh', icon: ClipboardCheck, path: '/attendance' },
 ];
 
 const ClassroomDetailLayout = ({ children }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [classroom, setClassroom] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchClassroomInfo();
   }, [id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.classroom-workspace-user-menu')) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await notificationApi.getUnreadCount();
+        if (!isMounted) return;
+        setUnreadCount(Number(response?.result || 0));
+      } catch (err) {
+        console.error('Failed to fetch unread notifications:', err);
+      }
+    };
+
+    fetchUnreadCount();
+    const timer = window.setInterval(fetchUnreadCount, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const fetchClassroomInfo = async () => {
     try {
@@ -55,18 +101,97 @@ const ClassroomDetailLayout = ({ children }) => {
     navigate(PATH_TEACHER.classroom.root);
   };
 
+  const handleOpenNotifications = () => {
+    navigate(PATH_COMMON.notifications);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate(PATH_AUTH.login, { replace: true });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsUserMenuOpen(false);
+    }
+  };
+
   const getActiveMenuItem = () => {
     const path = location.pathname;
+    if (path.includes('/attendance')) return 'attendance';
     if (path.includes('/schedule')) return 'schedule';
     if (path.includes('/pending-requests')) return 'members';
     if (path.includes('/members')) return 'members';
     if (path.includes('/assignments')) return 'assignments';
-    if (path.includes('/documents')) return 'documents';
+    if (path.includes('/folders')) return 'folders';
     if (path.includes('/grades')) return 'grades';
     return 'feed';
   };
 
   const activeKey = getActiveMenuItem();
+  const activeMenuLabel = MENU_ITEMS.find((item) => item.key === activeKey)?.label || 'Lop hoc';
+
+  const roleLabel = (() => {
+    const role = normalizeRole(user?.role);
+    if (role === 'TEACHER') return 'Giao vien';
+    if (role === 'STUDENT') return 'Hoc sinh';
+    if (role === 'ADMIN') return 'Quan tri vien';
+    return 'Nguoi dung';
+  })();
+
+  const safeNumber = (value) => {
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : 0;
+  };
+
+  const formatStorageInGb = (value) => {
+    const gbValue = Math.max(0, safeNumber(value)) / (1024 * 1024 * 1024);
+
+    if (gbValue >= 100) {
+      return gbValue.toFixed(0);
+    }
+
+    if (gbValue >= 10) {
+      return gbValue.toFixed(1);
+    }
+
+    return gbValue.toFixed(2);
+  };
+
+  const usageItems = Array.isArray(user?.userBenefitUsageDTO)
+    ? user.userBenefitUsageDTO
+    : [];
+  const storageUsage = usageItems.find((item) => item?.benefitCode === 'STORAGE');
+  const aiRequestUsage = usageItems.find((item) => item?.benefitCode === 'AI_REQUEST');
+
+  const storageUsed = Math.max(0, safeNumber(storageUsage?.used));
+  const storageLimit = Math.max(0, safeNumber(storageUsage?.limitValue));
+  const rawStoragePercent =
+    storageLimit > 0 ? (storageUsed / storageLimit) * 100 : 0;
+  const storagePercent = Number.isFinite(rawStoragePercent)
+    ? Math.max(0, rawStoragePercent)
+    : 0;
+  const storagePercentLabel =
+    storageUsed <= 0 || storageLimit <= 0
+      ? '0%'
+      : storagePercent < 0.0001
+        ? '<0.0001%'
+        : storagePercent < 0.01
+          ? `${storagePercent.toFixed(4)}%`
+          : storagePercent < 1
+            ? `${storagePercent.toFixed(2)}%`
+            : `${storagePercent.toFixed(1)}%`;
+  const storagePercentBar =
+    storagePercent > 0 ? Math.max(1, Math.min(100, storagePercent)) : 0;
+  const storageUsageLabel = `${formatStorageInGb(storageUsed)} / ${formatStorageInGb(storageLimit)} GB`;
+
+  const aiUsed = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.used)));
+  const aiLimit = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.limitValue)));
+
+  const planLabel =
+    typeof user?.plan === 'string'
+      ? user.plan.replace(/_/g, ' ')
+      : user?.plan?.name || 'FREE';
 
   if (loading) {
     return (
@@ -77,9 +202,9 @@ const ClassroomDetailLayout = ({ children }) => {
   }
 
   return (
-    <div className="classroom-detail-layout">
+    <div className={`classroom-detail-layout ${collapsed ? 'is-collapsed' : ''}`}>
       {/* Sidebar */}
-      <aside className="classroom-sidebar">
+      <aside className={`classroom-sidebar ${collapsed ? 'collapsed' : ''}`}>
         <div className="classroom-sidebar-header">
           <button 
             className="back-to-classrooms-btn"
@@ -88,28 +213,41 @@ const ClassroomDetailLayout = ({ children }) => {
           >
             <ChevronLeft size={20} />
           </button>
-          <h2 className="classroom-sidebar-title">Thông tin lớp học - {classroom?.name}</h2>
+          {!collapsed && (
+            <h2 className="classroom-sidebar-title">Thông tin lớp học - {classroom?.name}</h2>
+          )}
+          <div className="classroom-header-actions">
+            <button
+              type="button"
+              className="collapse-toggle-btn"
+              onClick={() => setCollapsed((prev) => !prev)}
+              aria-label={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+            >
+              {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+            </button>
+          </div>
         </div>
 
-        <div className="classroom-info-card">
-          <div className="classroom-info-row">
-            <span className="classroom-info-label">Giảng viên:</span>
-            <span className="classroom-info-value">{user?.fullName || user?.username}</span>
-          </div>
-          {/* <div className="classroom-info-row">
-            <span className="classroom-info-email">{user?.email}</span>
-          </div> */}
-          <div className="classroom-info-row">
-            <span className="classroom-info-label">Mã lớp:</span>
-            <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>
-          </div>
-          {classroom?.schedule && (
-            <div className="classroom-info-row">
-              <Calendar size={16} className="classroom-info-icon" />
-              <span className="classroom-info-schedule">{classroom.schedule}</span>
+        {!collapsed && (
+          <>
+            <div className="classroom-info-card">
+              <div className="classroom-info-row">
+                <span className="classroom-info-label">Giảng viên:</span>
+                <span className="classroom-info-value">{user?.fullName || user?.username}</span>
+              </div>
+              <div className="classroom-info-row">
+                <span className="classroom-info-label">Mã lớp:</span>
+                <span className="classroom-info-value">{classroom?.code || 'Chưa có mã'}</span>
+              </div>
+              {classroom?.schedule && (
+                <div className="classroom-info-row">
+                  <Calendar size={16} className="classroom-info-icon" />
+                  <span className="classroom-info-schedule">{classroom.schedule}</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         <nav className="classroom-nav">
           {MENU_ITEMS.map((item) => {
@@ -122,22 +260,118 @@ const ClassroomDetailLayout = ({ children }) => {
                 onClick={() => {
                   if (item.key === 'feed') {
                     navigate(PATH_TEACHER.classroom.detail(id));
+                  } else if (item.key === 'folders') {
+                    navigate(PATH_TEACHER.classroom.folders(id));
                   } else {
                     navigate(`${PATH_TEACHER.classroom.detail(id)}${item.path}`);
                   }
                 }}
               >
                 <Icon size={20} />
-                <span>{item.label}</span>
+                {!collapsed && <span>{item.label}</span>}
               </button>
             );
           })}
         </nav>
+
+        {!collapsed && (
+          <div className="classroom-plan-usage-card">
+            <div className="classroom-plan-usage-head">
+              <span className="classroom-plan-usage-label">Gói hiện tại</span>
+              <strong className="classroom-plan-usage-value">{planLabel}</strong>
+            </div>
+
+            <div className="classroom-benefit-usage-item">
+              <div className="classroom-benefit-usage-row">
+                <span>STORAGE</span>
+                <span>{storagePercentLabel}</span>
+              </div>
+              <div className="classroom-storage-progress" aria-hidden="true">
+                <div
+                  className="classroom-storage-progress-fill"
+                  style={{ width: `${storagePercentBar}%` }}
+                />
+              </div>
+              <div className="classroom-benefit-usage-subtext">{storageUsageLabel}</div>
+            </div>
+
+            <div className="classroom-benefit-usage-item">
+              <div className="classroom-benefit-usage-row">
+                <span>AI_REQUEST</span>
+                <span>{`${aiUsed}/${aiLimit}`}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Main content */}
       <main className="classroom-main-content">
-        {children}
+        <header className="classroom-workspace-header">
+          <div className="classroom-workspace-left">
+            <div className="classroom-workspace-label">KHU VUC LAM VIEC</div>
+            <div className="classroom-workspace-title">{activeMenuLabel}</div>
+          </div>
+
+          <div className="classroom-workspace-right">
+            <button
+              type="button"
+              className="classroom-workspace-notification"
+              onClick={handleOpenNotifications}
+              aria-label="Mo thong bao"
+              title="Thong bao"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="classroom-notification-badge">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            <div className="classroom-workspace-user-menu">
+              <button
+                type="button"
+                className="classroom-workspace-user-trigger"
+                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+              >
+                <div className="classroom-workspace-avatar">
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user?.fullName || 'User'} />
+                  ) : (
+                    <span>{user?.fullName?.charAt(0)?.toUpperCase() || 'U'}</span>
+                  )}
+                </div>
+                <div className="classroom-workspace-user-info">
+                  <div className="classroom-workspace-user-name">{user?.fullName || 'User'}</div>
+                  <div className="classroom-workspace-user-role">{roleLabel}</div>
+                </div>
+                <ChevronDown size={14} />
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="classroom-workspace-user-dropdown">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      navigate(PATH_COMMON.profile);
+                    }}
+                  >
+                    <Settings size={14} />
+                    <span>Tai khoan cua toi</span>
+                  </button>
+                  <button type="button" onClick={handleLogout}>
+                    <LogOut size={14} />
+                    <span>Dang xuat</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="classroom-main-body">{children}</section>
       </main>
     </div>
   );
