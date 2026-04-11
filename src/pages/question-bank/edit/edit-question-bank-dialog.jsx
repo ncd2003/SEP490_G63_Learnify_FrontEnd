@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Clock3, Info, Lock, PencilLine, X } from "lucide-react";
+import { Clock3, Info, Lock, PencilLine, X } from "lucide-react";
+import { toast } from "sonner";
 import { UpdateQuestionBankSchema } from "@/schema/question-bank.schema";
 import {
   getLabelFromOptions,
@@ -9,7 +10,8 @@ import {
 import "@/assets/css/pages/classroom/modals.css";
 import "@/assets/css/pages/question-bank/editQuestionBankDialog.css";
 
-const MSG82 = "Vui lòng nhập tên hợp lệ cho Ngân hàng đề trước khi lưu.";
+const MSG02 =
+  "Các trường bắt buộc phải được điền đầy đủ và tất cả giá trị nhập vào phải hợp lệ.";
 
 const INITIAL_ERRORS = {
   name: "",
@@ -73,10 +75,7 @@ const EditQuestionBankDialog = ({
 
     const trimmedName = String(fields.name ?? "").trim();
     if (trimmedName.length < 3) {
-      setErrors((prev) => ({
-        ...prev,
-        name: MSG82,
-      }));
+      toast.error(MSG02, { id: "update-resource-bank-msg02" });
       return;
     }
 
@@ -85,13 +84,11 @@ const EditQuestionBankDialog = ({
       description: fields.description,
     });
     if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      setErrors({
-        name: fieldErrors.name?.[0] ? MSG82 : "",
-        description: fieldErrors.description?.[0] ?? "",
-      });
+      toast.error(MSG02, { id: "update-resource-bank-msg02" });
       return;
     }
+
+    setErrors(INITIAL_ERRORS);
 
     try {
       await onSubmit?.(questionBank.id, {
@@ -100,6 +97,22 @@ const EditQuestionBankDialog = ({
       });
       onClose?.();
     } catch (err) {
+      const backendMessage = err.response?.data?.message ?? "";
+      const isDuplicate = /ton tai|tồn tại|duplicate|exist|trung|trùng/i.test(
+        backendMessage,
+      );
+      const isValidation =
+        /invalid|validation|required|bad request|khong hop le|không hợp lệ|bat buoc|bắt buộc|empty|trong/i.test(
+          backendMessage,
+        ) ||
+        Number(err?.response?.status) === 400 ||
+        Number(err?.response?.status) === 422;
+
+      if (isDuplicate || isValidation) {
+        setServerError("");
+        return;
+      }
+
       setServerError(
         err.response?.data?.message ??
           "Cập nhật ngân hàng câu hỏi thất bại. Vui lòng thử lại.",
@@ -121,8 +134,6 @@ const EditQuestionBankDialog = ({
     subjectOptions,
     questionBank.subject,
   );
-  const hasValidationError = Boolean(errors.name);
-
   return (
     <div
       className="modal-overlay"
@@ -157,16 +168,6 @@ const EditQuestionBankDialog = ({
             </div>
           </div>
 
-          {hasValidationError && (
-            <div className="qb-edit-alert qb-edit-alert-error">
-              <AlertCircle size={17} />
-              <div>
-                <strong>MSG82: Thông tin không hợp lệ!</strong>
-                <p>{MSG82}</p>
-              </div>
-            </div>
-          )}
-
           {serverError && <p className="modal-error-alert">{serverError}</p>}
 
           <div className="qb-edit-meta-bar">
@@ -195,7 +196,6 @@ const EditQuestionBankDialog = ({
               onChange={handleFieldChange}
               className={`form-input ${errors.name ? "has-error" : ""}`}
             />
-            {errors.name && <p className="form-error-text">{errors.name}</p>}
           </div>
 
           <div className="qb-edit-grid-2">
@@ -247,9 +247,6 @@ const EditQuestionBankDialog = ({
               onChange={handleFieldChange}
               className={`form-textarea ${errors.description ? "has-error" : ""}`}
             />
-            {errors.description && (
-              <p className="form-error-text">{errors.description}</p>
-            )}
             {!errors.description && (
               <p className="form-hint-text qb-edit-hint-text">
                 {fields.description.length}/500 ký tự

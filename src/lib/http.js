@@ -101,12 +101,21 @@ const createHttp = () => {
       const isChangePassword = response.config?.url?.includes(
         "/users/change-password",
       );
+      const isQuestionBankEndpoint =
+        response.config?.url?.includes("/question-banks");
+      const isAssignmentEndpoint =
+        response.config?.url?.includes("/assignments") ||
+        response.config?.url?.includes("/draft-sessions");
       const silentSuccess = response.config?.silentSuccess === true;
 
       if (
         isMutation &&
         !isChangePassword &&
+        !isQuestionBankEndpoint &&
+        !isAssignmentEndpoint &&
         !silentSuccess &&
+        !isQuestionBankEndpoint &&
+        !isAssignmentEndpoint &&
         response.data?.code === 1000 &&
         response.data?.message
       ) {
@@ -127,6 +136,11 @@ const createHttp = () => {
           reqConfig?.url?.includes("/auth/reset-password") ||
           reqConfig?.url?.includes("/users/me") ||
           reqConfig?.url?.includes("/users/change-password");
+        const isQuestionBankEndpoint =
+          reqConfig?.url?.includes("/question-banks");
+        const isAssignmentEndpoint =
+          reqConfig?.url?.includes("/assignments") ||
+          reqConfig?.url?.includes("/draft-sessions");
 
         // Show error toast
         const errorMessage = data?.message || "Đã có lỗi xảy ra";
@@ -139,7 +153,12 @@ const createHttp = () => {
             "Tai khoan cua ban da bi khoa hoac khong hoat dong. Vui long lien he bo phan ho tro.",
             { id: "account-locked" },
           );
-        } else if (status !== 401 && !shouldHandleInlineError) {
+        } else if (
+          status !== 401 &&
+          !shouldHandleInlineError &&
+          !isQuestionBankEndpoint &&
+          !isAssignmentEndpoint
+        ) {
           toast.error(errorMessage);
         }
 
@@ -164,7 +183,9 @@ const createHttp = () => {
             );
           }
 
-          const hasLiveLockNotice = !!sessionStorage.getItem("account_locked_realtime");
+          const hasLiveLockNotice = !!sessionStorage.getItem(
+            "account_locked_realtime",
+          );
           if (hasLiveLockNotice && !isAuthCall) {
             return Promise.reject(error);
           }

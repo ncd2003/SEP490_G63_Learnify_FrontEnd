@@ -43,9 +43,7 @@ const HomePage = Loadable(lazy(() => import("@/pages/Home")));
 const TermsOfServicePage = Loadable(
   lazy(() => import("@/pages/TermsOfService")),
 );
-const PrivacyPolicyPage = Loadable(
-  lazy(() => import("@/pages/PrivacyPolicy")),
-);
+const PrivacyPolicyPage = Loadable(lazy(() => import("@/pages/PrivacyPolicy")));
 const PublicPlanPage = Loadable(
   lazy(() => import("@/pages/plan/public-plan-page")),
 );
@@ -78,6 +76,35 @@ const ClassroomPostPage = Loadable(
 const PendingRequestsPage = Loadable(
   lazy(() => import("@/pages/classroom/PendingRequests")),
 );
+const AssignmentPage = Loadable(
+  lazy(() => import("@/pages/assignment/list/assignment-page")),
+);
+const AssignmentHubPage = Loadable(
+  lazy(() => import("@/pages/assignment/hub/assignment-hub-page")),
+);
+const AssignmentDetailPage = Loadable(
+  lazy(() => import("@/pages/assignment/detail/assignment-detail-page")),
+);
+const CreateAssignmentMethodPage = Loadable(
+  lazy(() => import("@/pages/assignment/method/create-assignment-method-page")),
+);
+const ManualAssignmentSetupPage = Loadable(
+  lazy(() => import("@/pages/assignment/create/manual-assignment-setup-page")),
+);
+const ManualAssignmentCreatorPage = Loadable(
+  lazy(
+    () => import("@/pages/assignment/create/manual-assignment-creator-page"),
+  ),
+);
+const AssignToClassesPage = Loadable(
+  lazy(() => import("@/pages/assignment/assign/assign-to-classes-page")),
+);
+const CreateAssignmentAiPage = Loadable(
+  lazy(() => import("@/pages/assignment/ai/create-assignment-ai-page")),
+);
+const ImportAssignmentFilePage = Loadable(
+  lazy(() => import("@/pages/assignment/import/import-assignment-file-page")),
+);
 const SchedulePage = Loadable(
   lazy(() => import("@/pages/classroom/schedule/schedulePage")),
 );
@@ -90,8 +117,6 @@ const AttendancePage = Loadable(
 const FoldersPage = Loadable(
   lazy(() => import("@/pages/classroom/folders/foldersPage")),
 );
-
-// Question Bank
 const QuestionBankPage = Loadable(
   lazy(() => import("@/pages/question-bank/list/question-bank-page")),
 );
@@ -111,7 +136,9 @@ const CreateQuestionAiPage = Loadable(
   lazy(() => import("@/pages/question-bank/ai/create-question-ai-page")),
 );
 const CreateQuestionManualPage = Loadable(
-  lazy(() => import("@/pages/question-bank/manual/create-question-manual-page")),
+  lazy(
+    () => import("@/pages/question-bank/manual/create-question-manual-page"),
+  ),
 );
 
 // Report
@@ -129,7 +156,9 @@ const AdminRevenueDashboardPage = Loadable(
 const AdminTransactionHistoryPage = Loadable(
   lazy(() => import("@/pages/admin/AdminTransactionHistory")),
 );
-const AdminUserListPage = Loadable(lazy(() => import("@/pages/admin/AdminUserList")));
+const AdminUserListPage = Loadable(
+  lazy(() => import("@/pages/admin/AdminUserList")),
+);
 const AdminUserDetailPage = Loadable(
   lazy(() => import("@/pages/admin/AdminUserDetail")),
 );
@@ -146,13 +175,17 @@ const AdminPlanManagementPage = Loadable(
   lazy(() => import("@/pages/admin/plan/plan-management-page")),
 );
 
-const NotFoundPage = Loadable(lazy(() => import("@/pages/not-found/not-found-page")));
+const NotFoundPage = Loadable(
+  lazy(() => import("@/pages/not-found/not-found-page")),
+);
 
 const ClassroomListOrStudentPage = () => {
   const { user } = useAuth();
-  return user?.role === "ROLE_STUDENT"
-    ? <StudentClassroomListPage />
-    : <ClassroomListPage />;
+  return user?.role === "ROLE_STUDENT" ? (
+    <StudentClassroomListPage />
+  ) : (
+    <ClassroomListPage />
+  );
 };
 
 const RootRedirect = () => {
@@ -188,15 +221,27 @@ const AppRoutes = () =>
     // Auth
     {
       path: PATH_AUTH.login,
-      element: <GuestGuard><LoginPage /></GuestGuard>,
+      element: (
+        <GuestGuard>
+          <LoginPage />
+        </GuestGuard>
+      ),
     },
     {
       path: PATH_AUTH.adminLogin,
-      element: <GuestGuard><AdminLoginPage /></GuestGuard>,
+      element: (
+        <GuestGuard>
+          <AdminLoginPage />
+        </GuestGuard>
+      ),
     },
     {
       path: PATH_AUTH.register,
-      element: <GuestGuard><RegisterPage /></GuestGuard>,
+      element: (
+        <GuestGuard>
+          <RegisterPage />
+        </GuestGuard>
+      ),
     },
     { path: PATH_AUTH.verifyOtp, element: <OtpVerificationPage /> },
     { path: PATH_AUTH.forgotPassword, element: <ForgotPasswordPage /> },
@@ -208,21 +253,81 @@ const AppRoutes = () =>
     // Profile
     {
       path: PATH_COMMON.profile,
-      element: <AuthGuard><UserProfilePage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <UserProfilePage />
+        </AuthGuard>
+      ),
     },
     {
       path: PATH_COMMON.changePassword,
-      element: <AuthGuard><ChangePasswordPage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <ChangePasswordPage />
+        </AuthGuard>
+      ),
     },
 
     // Dashboard layout (main app)
     {
-      element: <AuthGuard><DashboardLayout /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <DashboardLayout />
+        </AuthGuard>
+      ),
       children: [
-        { path: "classrooms", element: <ClassroomListOrStudentPage /> },
-
-        // Question Bank
-        { path: PATH_TEACHER.questionBank, element: <QuestionBankPage /> },
+        {
+          path: "classrooms",
+          element: <ClassroomListOrStudentPage />,
+        },
+        {
+          path: PATH_TEACHER.assignments,
+          element: <AssignmentHubPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentDetail(":id"),
+          element: <AssignmentDetailPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateMethod,
+          element: <CreateAssignmentMethodPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateAi,
+          element: <CreateAssignmentAiPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateManual,
+          element: <ManualAssignmentSetupPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateManualQuestions,
+          element: <ManualAssignmentCreatorPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentAssignClasses(":assignmentId"),
+          element: <AssignToClassesPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateImport,
+          element: <ImportAssignmentFilePage />,
+        },
+        {
+          path: PATH_TEACHER.classroom.assignments(":id"),
+          element: <AssignmentPage />,
+        },
+        {
+          path: PATH_TEACHER.classroom.assignmentCreateManual(":id"),
+          element: <ManualAssignmentSetupPage />,
+        },
+        {
+          path: PATH_TEACHER.classroom.assignmentCreateManualQuestions(":id"),
+          element: <ManualAssignmentCreatorPage />,
+        },
+        {
+          path: PATH_TEACHER.questionBank,
+          element: <QuestionBankPage />,
+        },
         {
           path: PATH_TEACHER.questionBankDetail(":bankId"),
           element: <ResourceBankDetailPage />,
@@ -250,7 +355,10 @@ const AppRoutes = () =>
 
         // Teacher report
         { path: PATH_TEACHER.reports, element: <SendUserReportPage /> },
-        { path: PATH_COMMON.notifications, element: <NotificationCenterPage /> },
+        {
+          path: PATH_COMMON.notifications,
+          element: <NotificationCenterPage />,
+        },
       ],
     },
 
@@ -274,13 +382,19 @@ const AppRoutes = () =>
           element: <AdminTransactionHistoryPage />,
         },
         { path: PATH_ADMIN.users.root, element: <AdminUserListPage /> },
-        { path: PATH_ADMIN.users.detail(":id"), element: <AdminUserDetailPage /> },
+        {
+          path: PATH_ADMIN.users.detail(":id"),
+          element: <AdminUserDetailPage />,
+        },
         {
           path: PATH_ADMIN.systemNotifications,
           element: <AdminSystemNotificationPage />,
         },
         { path: PATH_ADMIN.reports, element: <AdminManageReportPage /> },
-        { path: PATH_COMMON.notifications, element: <NotificationCenterPage /> },
+        {
+          path: PATH_COMMON.notifications,
+          element: <NotificationCenterPage />,
+        },
         {
           path: PATH_ADMIN.subscriptions.root,
           element: <AdminSubscriptionListPage />,
@@ -292,27 +406,51 @@ const AppRoutes = () =>
     // Classroom detail
     {
       path: "classrooms/:id",
-      element: <AuthGuard><ClassroomPostPage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <ClassroomPostPage />
+        </AuthGuard>
+      ),
     },
     {
       path: "classrooms/:id/pending-requests",
-      element: <AuthGuard><PendingRequestsPage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <PendingRequestsPage />
+        </AuthGuard>
+      ),
     },
     {
       path: "classrooms/:id/schedule",
-      element: <AuthGuard><SchedulePage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <SchedulePage />
+        </AuthGuard>
+      ),
     },
     {
       path: "classrooms/:id/attendance",
-      element: <AuthGuard><AttendanceListPage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <AttendanceListPage />
+        </AuthGuard>
+      ),
     },
     {
       path: "classrooms/:id/attendance/:sessionId",
-      element: <AuthGuard><AttendancePage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <AttendancePage />
+        </AuthGuard>
+      ),
     },
     {
       path: "classrooms/:id/folders",
-      element: <AuthGuard><FoldersPage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <FoldersPage />
+        </AuthGuard>
+      ),
     },
 
     { path: "*", element: <NotFoundPage /> },

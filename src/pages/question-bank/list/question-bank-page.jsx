@@ -14,6 +14,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import useDebounce from "@/hooks/use-debounce";
 import useQuestionBanks from "@/hooks/use-question-banks";
+import { usePendingSessions } from "@/hooks/use-pending-sessions";
 import CreateQuestionBankDialog from "@/pages/question-bank/create/create-question-bank-dialog";
 import EditQuestionBankDialog from "@/pages/question-bank/edit/edit-question-bank-dialog";
 import DeleteQuestionBankDialog from "@/pages/question-bank/delete/delete-question-bank-dialog";
@@ -71,6 +72,7 @@ const QuestionBankPage = () => {
     updateBank,
     deleteBank,
   } = useQuestionBanks();
+  const { pendingSessions } = usePendingSessions("BANK");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [gradeFilter, setGradeFilter] = useState("");
@@ -78,6 +80,29 @@ const QuestionBankPage = () => {
   const [sortValue, setSortValue] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState(TABS.ACTIVE);
+
+  // Get the first pending session (if multiple, user can resume latest)
+  const firstPendingSession =
+    pendingSessions.size > 0 ? Array.from(pendingSessions.values())[0] : null;
+
+  const handleResumeDraft = () => {
+    if (firstPendingSession) {
+      navigate(
+        `/question-bank/${firstPendingSession.targetId}/questions/create/manual?bankId=${firstPendingSession.targetId}`,
+      );
+    }
+  };
+
+  const formatTimeAgo = (datetime) => {
+    const now = new Date();
+    const then = new Date(datetime);
+    const diff = Math.floor((now - then) / 1000);
+
+    if (diff < 60) return "vừa xong";
+    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+    return `${Math.floor(diff / 86400)} ngày trước`;
+  };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingBank, setEditingBank] = useState(null);
   const [deletingBank, setDeletingBank] = useState(null);
@@ -212,7 +237,7 @@ const QuestionBankPage = () => {
             }}
           >
             <Plus size={16} />
-            Tạo ngân hàng
+            Tạo ngân hàng đề
           </button>
         </div>
       </div>
@@ -221,6 +246,119 @@ const QuestionBankPage = () => {
         <div className="qb-state-banner">
           <AlertTriangle size={16} />
           Danh sách ngân hàng đã ẩn đang được cập nhật ở phiên bản tiếp theo.
+        </div>
+      )}
+
+      {/* Pending Draft Banner */}
+      {firstPendingSession?.hasPending && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "16px 20px",
+            marginBottom: "24px",
+            borderRadius: "8px",
+            backgroundColor: "#FFFAEB",
+            border: "1px solid #FFE16B",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              flex: 1,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "24px",
+                height: "24px",
+                backgroundColor: "#FCD34D",
+                borderRadius: "50%",
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ color: "#92400E" }}
+              >
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+              </svg>
+            </div>
+            <div>
+              <div
+                style={{ fontSize: "14px", fontWeight: 600, color: "#78350F" }}
+              >
+                Bạn có bản nháp chưa hoàn thành
+              </div>
+              <div
+                style={{ fontSize: "13px", color: "#92400E", marginTop: "2px" }}
+              >
+                {firstPendingSession.targetName || "Ngân hàng câu hỏi"} — Lưu
+                lần cuối: {formatTimeAgo(firstPendingSession.lastSavedAt)} (
+                {firstPendingSession.itemCount} câu hỏi)
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+            <button
+              onClick={() => {}}
+              style={{
+                padding: "8px 16px",
+                border: "1px solid #FFE16B",
+                backgroundColor: "transparent",
+                color: "#92400E",
+                fontSize: "13px",
+                fontWeight: 500,
+                borderRadius: "6px",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = "#FEF3C7";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "transparent";
+              }}
+            >
+              Bỏ qua
+            </button>
+            <button
+              onClick={handleResumeDraft}
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                backgroundColor: "#3B82F6",
+                color: "white",
+                fontSize: "13px",
+                fontWeight: 500,
+                borderRadius: "6px",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = "#2563EB";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "#3B82F6";
+              }}
+            >
+              Tiếp tục chỉnh sửa
+            </button>
+          </div>
         </div>
       )}
 

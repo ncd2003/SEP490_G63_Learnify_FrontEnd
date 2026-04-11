@@ -86,7 +86,9 @@ const DashboardLayout = () => {
   const usageItems = Array.isArray(user?.userBenefitUsageDTO)
     ? user.userBenefitUsageDTO
     : [];
-  const storageUsage = usageItems.find((item) => item?.benefitCode === "STORAGE");
+  const storageUsage = usageItems.find(
+    (item) => item?.benefitCode === "STORAGE",
+  );
   const aiRequestUsage = usageItems.find(
     (item) => item?.benefitCode === "AI_REQUEST",
   );
@@ -113,7 +115,10 @@ const DashboardLayout = () => {
   const storageUsageLabel = `${formatStorageInGb(storageUsed)} / ${formatStorageInGb(storageLimit)} GB`;
 
   const aiUsed = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.used)));
-  const aiLimit = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.limitValue)));
+  const aiLimit = Math.max(
+    0,
+    Math.trunc(safeNumber(aiRequestUsage?.limitValue)),
+  );
 
   const planLabel =
     typeof user?.plan === "string"
@@ -203,7 +208,9 @@ const DashboardLayout = () => {
 
       setNotifications((prev) =>
         prev.map((item) =>
-          item.id === notification.id ? { ...item, ...nextNotification, read: true } : item,
+          item.id === notification.id
+            ? { ...item, ...nextNotification, read: true }
+            : item,
         ),
       );
       setUnreadCount((prev) => Math.max(0, prev - (notification.read ? 0 : 1)));
@@ -257,6 +264,21 @@ const DashboardLayout = () => {
       icon: Users,
       label: "Quản lý lớp học",
       path: PATH_TEACHER.classroom.root,
+    },
+    {
+      icon: Users,
+      label: "Học sinh",
+      path: PATH_TEACHER.students,
+    },
+    {
+      icon: FileText,
+      label: "Bài tập",
+      path: PATH_TEACHER.assignments,
+    },
+    {
+      icon: FileText,
+      label: "Tài liệu",
+      path: PATH_TEACHER.documents,
     },
     {
       icon: Database,
@@ -359,11 +381,15 @@ const DashboardLayout = () => {
         if (!incomingNotification?.id) return;
 
         setNotifications((prev) => {
-          const existingIndex = prev.findIndex((item) => item.id === incomingNotification.id);
+          const existingIndex = prev.findIndex(
+            (item) => item.id === incomingNotification.id,
+          );
 
           if (existingIndex >= 0) {
             return prev.map((item) =>
-              item.id === incomingNotification.id ? { ...item, ...incomingNotification } : item,
+              item.id === incomingNotification.id
+                ? { ...item, ...incomingNotification }
+                : item,
             );
           }
 
@@ -419,7 +445,11 @@ const DashboardLayout = () => {
   return (
     <div className="dashboard-layout">
       {accountLockedNotice && (
-        <div className="account-lock-overlay" role="alert" aria-live="assertive">
+        <div
+          className="account-lock-overlay"
+          role="alert"
+          aria-live="assertive"
+        >
           <div className="account-lock-card">
             <h3>Tài khoản của bạn đã bị khóa</h3>
             <p>{accountLockedNotice}</p>
@@ -474,7 +504,9 @@ const DashboardLayout = () => {
             <div className="sidebar-plan-usage-card">
               <div className="sidebar-plan-usage-head">
                 <span className="sidebar-plan-usage-label">Gói hiện tại</span>
-                <strong className="sidebar-plan-usage-value">{planLabel}</strong>
+                <strong className="sidebar-plan-usage-value">
+                  {planLabel}
+                </strong>
               </div>
 
               <div className="sidebar-benefit-usage-item">
@@ -488,7 +520,9 @@ const DashboardLayout = () => {
                     style={{ width: `${storagePercentBar}%` }}
                   />
                 </div>
-                <div className="sidebar-benefit-usage-subtext">{storageUsageLabel}</div>
+                <div className="sidebar-benefit-usage-subtext">
+                  {storageUsageLabel}
+                </div>
               </div>
 
               <div className="sidebar-benefit-usage-item">
@@ -584,8 +618,12 @@ const DashboardLayout = () => {
                           onClick={() => handleNotificationClick(notification)}
                         >
                           <div className="notification-item-title-row">
-                            <div className="notification-item-title">{notification.title}</div>
-                            {!notification.read && <span className="notification-dot" />}
+                            <div className="notification-item-title">
+                              {notification.title}
+                            </div>
+                            {!notification.read && (
+                              <span className="notification-dot" />
+                            )}
                           </div>
                           <div className="notification-item-desc">
                             {notification.shortDescription || "Không có mô tả"}
