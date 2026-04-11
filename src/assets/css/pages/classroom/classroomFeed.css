@@ -13,11 +13,11 @@
 }
 
 .feed-three-col {
-  max-width: 1200px;
+  max-width: 1280px;
   width: 100%;
   display: grid;
-  grid-template-columns: 0.7fr 1.6fr 0.7fr;
-  gap: 16px;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(560px, 1.8fr) minmax(240px, 0.9fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -27,14 +27,26 @@
   gap: 12px;
 }
 
+.main-col {
+  min-width: 0;
+}
+
 .feed-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e6ebf3;
   border-radius: 12px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.feed-card:hover {
+  transform: translateY(-1px);
+  border-color: #d5ddec;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
 }
 
 .feed-card-header {
@@ -53,19 +65,21 @@
   width: 100%;
   text-align: left;
   padding: 10px 12px;
-  border: 1px dashed #d1d5db;
+  border: 1px solid #dbe5f4;
+  border-left: 3px solid #6b7df3;
   border-radius: 8px;
-  background: #f9fafb;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8ff 100%);
   display: flex;
   flex-direction: column;
   gap: 4px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 
 .pinned-summary:hover {
-  background: #f3f4f6;
-  border-color: #cbd5e1;
+  background: #f0f6ff;
+  border-color: #c8d5ea;
+  transform: translateX(2px);
 }
 
 .pinned-summary-title {
@@ -85,9 +99,16 @@
   color: #6b7280;
 }
 
+.pinned-col,
 .filter-col {
   position: sticky;
   top: 16px;
+}
+
+.pinned-col .feed-card,
+.filter-col .feed-card {
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
 }
 
 .filter-group {
@@ -107,6 +128,13 @@
   border-radius: 8px;
   font-size: 13px;
   color: #111827;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #6b7df3;
+  box-shadow: 0 0 0 3px rgba(107, 125, 243, 0.14);
 }
 
 .filter-checkbox label {
@@ -126,8 +154,14 @@
   .feed-three-col {
     grid-template-columns: 1fr;
   }
+  .pinned-col,
   .filter-col {
     position: static;
+  }
+  .pinned-col .feed-card,
+  .filter-col .feed-card {
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -161,9 +195,10 @@
 /* ── Post create form wrapper ────────────────────────────── */
 .post-form-wrapper {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e6ebf3;
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
 }
 
 /* ── Post form ───────────────────────────────────────────── */
@@ -485,12 +520,13 @@
 /* ── Post card ───────────────────────────────────────────── */
 .post-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e6ebf3;
   border-radius: 10px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
 .post-card-header {

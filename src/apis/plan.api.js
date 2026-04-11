@@ -8,6 +8,16 @@ import {
 
 /** @typedef {import("@/schema/plan.schema").TPlan} TPlan */
 /** @typedef {import("@/schema/type.schema").ApiResponse<TPlan[]>} PlanListResponse */
+/**
+ * @typedef {Object} PlanPagingResult
+ * @property {TPlan[]} content
+ * @property {number} pageNumber
+ * @property {number} pageSize
+ * @property {number} totalElements
+ * @property {number} totalPages
+ * @property {boolean} last
+ */
+/** @typedef {import("@/schema/type.schema").ApiResponse<PlanPagingResult>} PlanPagingResponse */
 /** @typedef {import("@/schema/type.schema").ApiResponse<TPlan>} PlanResponse */
 
 const BASE = API_SUFFIX.PLAN;
@@ -28,9 +38,10 @@ const normalizePlanId = (id) => {
 
 /**
  * GET /api/plans
- * @returns {Promise<import("axios").AxiosResponse<PlanListResponse>>}
+ * @param {{ page?: number, size?: number }} [params]
+ * @returns {Promise<import("axios").AxiosResponse<PlanPagingResponse>>}
  */
-const getPlans = () => apiRequest.get(BASE);
+const getPlans = (params = {}) => apiRequest.get(BASE, { params });
 
 /**
  * GET /api/plans/public

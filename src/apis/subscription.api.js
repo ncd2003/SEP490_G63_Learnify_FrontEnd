@@ -47,7 +47,29 @@ const getSubscriptions = (params = {}) => {
   return apiRequest.get(BASE, { params: queryParams });
 };
 
+/* ─── Subscription Mutations ────────────────────────────────────────────── */
+
+/**
+ * PUT /api/subscriptions
+ * Backend expects a raw numeric planId in the JSON body (e.g. 123)
+ * @param {number|string} planId
+ * @returns {Promise<import("axios").AxiosResponse<import("@/schema/type.schema").ApiResponse<object>>>}
+ */
+const createSubscription = (planId) => {
+  const safePlanId = Number(planId);
+  if (!Number.isFinite(safePlanId) || safePlanId <= 0) {
+    throw new Error("planId không hợp lệ.");
+  }
+
+  return apiRequest.put(BASE, JSON.stringify(safePlanId), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+};
+
 /* ─── Export ─────────────────────────────────────────────────────────────── */
 export const subscriptionApi = {
   getSubscriptions,
+  createSubscription,
 };

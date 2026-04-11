@@ -37,7 +37,8 @@ export const PlanSchema = z.object({
     .trim()
     .min(1, "Tên gói không được để trống")
     .max(100, "Tên gói tối đa 100 ký tự"),
-  price: z.number().min(0, "Giá phải lớn hơn hoặc bằng 0"),
+  // Backend list response can return null price for free/default plans.
+  price: z.number().min(0, "Giá phải lớn hơn hoặc bằng 0").nullable().optional(),
   description: z
     .string()
     .trim()
@@ -45,7 +46,7 @@ export const PlanSchema = z.object({
     .nullable()
     .optional(),
   durationUnit: DurationUnitSchema.nullable().optional(),
-  durationValue: z.number().int().min(0),
+  durationValue: z.number().int().min(0).nullable().optional(),
   planStatus: PlanStatusSchema,
   benefits: z.array(
     z.object({

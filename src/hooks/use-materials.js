@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { materialApi } from "@/apis/material.api";
 import { useAuth } from "@/contexts/AuthContext";
+import { isTeacherRole } from "@/lib/auth-role";
 
 const useMaterials = (folderId) => {
   const { user, adjustStorageUsage, refreshCurrentUser } = useAuth();
+  const canManageMaterials = isTeacherRole(user?.role);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -45,6 +47,12 @@ const useMaterials = (folderId) => {
 
   const uploadMaterials = useCallback(
     async (classroomId, files = []) => {
+      if (!canManageMaterials) {
+        const message = "Bạn không có quyền tải lên tài liệu.";
+        setError(message);
+        return { success: false, message };
+      }
+
       if (!folderId || !classroomId || files.length === 0) return;
 
       const previousStorageUsed = getStorageUsedValue(user);
@@ -97,6 +105,7 @@ const useMaterials = (folderId) => {
       }
     },
     [
+      canManageMaterials,
       folderId,
       user,
       fetchMaterials,
@@ -108,41 +117,60 @@ const useMaterials = (folderId) => {
 
   const moveMaterial = useCallback(
     async ({ materialId, targetFolderId, classroomId }) => {
+      if (!canManageMaterials) {
+        const message = "Bạn không có quyền di chuyển tài liệu.";
+        setError(message);
+        return { success: false, message };
+      }
+
       if (!materialId || !targetFolderId || !classroomId) return { success: false };
       setError(null);
       await materialApi.moveMaterial(materialId, targetFolderId, classroomId);
       await fetchMaterials();
       return { success: true };
     },
-    [fetchMaterials]
+    [canManageMaterials, fetchMaterials]
   );
 
   const renameMaterial = useCallback(
     async ({ materialId, name }) => {
+      if (!canManageMaterials) {
+        const message = "Bạn không có quyền cập nhật tài liệu.";
+        setError(message);
+        return { success: false, message };
+      }
+
       if (!materialId || !name?.trim()) return { success: false };
       setError(null);
       await materialApi.renameMaterial(materialId, name.trim());
       await fetchMaterials();
       return { success: true };
     },
-    [fetchMaterials]
+    [canManageMaterials, fetchMaterials]
   );
 
   const deleteMaterial = useCallback(
     async (materialId) => {
+      if (!canManageMaterials) {
+        const message = "Bạn không có quyền xóa tài liệu.";
+        setError(message);
+        return { success: false, message };
+      }
+
       if (!materialId) return { success: false };
       setError(null);
       await materialApi.deleteMaterial(materialId);
       await fetchMaterials();
       return { success: true };
     },
-    [fetchMaterials]
+    [canManageMaterials, fetchMaterials]
   );
 
   return {
     materials,
     loading,
     error,
+    canManageMaterials,
     fetchMaterials,
     uploadMaterials,
     moveMaterial,

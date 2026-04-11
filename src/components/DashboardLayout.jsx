@@ -62,8 +62,11 @@ const DashboardLayout = () => {
     return Number.isFinite(parsedValue) ? parsedValue : 0;
   };
 
-  const formatStorageInGb = (value) => {
-    const gbValue = Math.max(0, safeNumber(value)) / (1024 * 1024 * 1024);
+  const bytesToGb = (valueInBytes) =>
+    Math.max(0, safeNumber(valueInBytes)) / (1024 * 1024 * 1024);
+
+  const formatGb = (valueInGb) => {
+    const gbValue = Math.max(0, safeNumber(valueInGb));
 
     if (gbValue >= 100) {
       return gbValue.toFixed(0);
@@ -84,15 +87,16 @@ const DashboardLayout = () => {
     (item) => item?.benefitCode === "AI_REQUEST",
   );
 
-  const storageUsed = Math.max(0, safeNumber(storageUsage?.used));
-  const storageLimit = Math.max(0, safeNumber(storageUsage?.limitValue));
+  const storageUsedBytes = Math.max(0, safeNumber(storageUsage?.used));
+  const storageUsedGb = bytesToGb(storageUsedBytes);
+  const storageLimitGb = Math.max(0, safeNumber(storageUsage?.limitValue));
   const rawStoragePercent =
-    storageLimit > 0 ? (storageUsed / storageLimit) * 100 : 0;
+    storageLimitGb > 0 ? (storageUsedGb / storageLimitGb) * 100 : 0;
   const storagePercent = Number.isFinite(rawStoragePercent)
     ? Math.max(0, rawStoragePercent)
     : 0;
   const storagePercentLabel =
-    storageUsed <= 0 || storageLimit <= 0
+    storageUsedGb <= 0 || storageLimitGb <= 0
       ? "0%"
       : storagePercent < 0.0001
         ? "<0.0001%"
@@ -103,7 +107,7 @@ const DashboardLayout = () => {
             : `${storagePercent.toFixed(1)}%`;
   const storagePercentBar =
     storagePercent > 0 ? Math.max(1, Math.min(100, storagePercent)) : 0;
-  const storageUsageLabel = `${formatStorageInGb(storageUsed)} / ${formatStorageInGb(storageLimit)} GB`;
+  const storageUsageLabel = `${formatGb(storageUsedGb)} / ${formatGb(storageLimitGb)} GB`;
 
   const aiUsed = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.used)));
   const aiLimit = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.limitValue)));
@@ -368,7 +372,7 @@ const DashboardLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
-          {isSidebarOpen && (
+          {isSidebarOpen && isTeacher && (
             <div className="sidebar-plan-usage-card">
               <div className="sidebar-plan-usage-head">
                 <span className="sidebar-plan-usage-label">Gói hiện tại</span>

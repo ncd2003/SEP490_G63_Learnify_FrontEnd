@@ -5,7 +5,7 @@ export const ClassroomSchema = z.object({
   name:        z.string().trim().min(3, "Tên lớp phải ít nhất 3 ký tự").max(50, "Tên lớp tối đa 50 ký tự"),
   code:        z.string(),
   subject:     z.string().trim().min(3, "Môn học phải ít nhất 3 ký tự").max(50, "Môn học tối đa 50 ký tự"),
-  description: z.string().trim().max(200, "Mô tả tối đa 200 ký tự").optional(),
+  description: z.string().trim().max(100, "Mô tả tối đa 100 ký tự").optional(),
   imageUrl:    z.string().url("URL ảnh không hợp lệ").nullable().optional(),
 });
 

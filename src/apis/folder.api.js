@@ -20,6 +20,12 @@ export const folderApi = {
   },
 
   /**
+   * @param {number} classroomId
+   */
+  createDefaultFolder: (classroomId) =>
+    apiRequest.post(`${BASE}/default`, null, { params: { classroomId } }),
+
+  /**
    * @param {number} id
    * @param {import("@/schema/folder.schema").TFolderRequest} data
    */

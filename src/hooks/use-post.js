@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { postApi } from "@/apis/post.api";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Sort posts: pinned posts first, then by creation date (newest first)
@@ -23,14 +24,67 @@ const sortPosts = (posts) => {
  */
 const usePostMutations = (setPosts) => {
   const [submitting, setSubmitting] = useState(false);
+  const { user, adjustStorageUsage, refreshCurrentUser } = useAuth();
+
+  const getStorageUsedValue = (currentUser) => {
+    const usageList = Array.isArray(currentUser?.userBenefitUsageDTO)
+      ? currentUser.userBenefitUsageDTO
+      : [];
+    const storageUsage = usageList.find((item) => item?.benefitCode === "STORAGE");
+    const storageUsed = Number(storageUsage?.used);
+
+    if (!Number.isFinite(storageUsed) || storageUsed < 0) {
+      return 0;
+    }
+
+    return storageUsed;
+  };
+
+  const getTotalUploadBytes = (files = []) => {
+    const normalizedFiles = Array.isArray(files) ? files.filter(Boolean) : [];
+    return normalizedFiles.reduce((total, file) => {
+      const fileSize = Number(file?.size);
+      return total + (Number.isFinite(fileSize) ? fileSize : 0);
+    }, 0);
+  };
+
+  const keepOptimisticStorageIfBackendStale = async (optimisticStorageUsed) => {
+    try {
+      const refreshedUser = await refreshCurrentUser();
+      const refreshedStorageUsed = getStorageUsedValue(refreshedUser);
+
+      if (refreshedStorageUsed < optimisticStorageUsed) {
+        adjustStorageUsage(optimisticStorageUsed - refreshedStorageUsed);
+      }
+    } catch {
+      // Ignore sync errors to avoid breaking successful post actions.
+    }
+  };
 
   const createPost = async (data, files = []) => {
+    const totalUploadBytes = getTotalUploadBytes(files);
+    const previousStorageUsed = getStorageUsedValue(user);
+    const optimisticStorageUsed = previousStorageUsed + totalUploadBytes;
+
+    if (totalUploadBytes > 0) {
+      adjustStorageUsage(totalUploadBytes);
+    }
+
     setSubmitting(true);
     try {
       const response = await postApi.createPost(data, files);
       setPosts((prev) => sortPosts([response.result, ...prev]));
+
+      if (totalUploadBytes > 0) {
+        await keepOptimisticStorageIfBackendStale(optimisticStorageUsed);
+      }
+
       return { success: true };
     } catch (err) {
+      if (totalUploadBytes > 0) {
+        adjustStorageUsage(-totalUploadBytes);
+      }
+
       return {
         success: false,
         message: err.response?.data?.message ?? "Không thể tạo bài đăng.",
@@ -41,7 +95,13 @@ const usePostMutations = (setPosts) => {
   };
 
   const updatePost = async (id, data, files = []) => {
-      console.log("Updated post response:", files);
+    const totalUploadBytes = getTotalUploadBytes(files);
+    const previousStorageUsed = getStorageUsedValue(user);
+    const optimisticStorageUsed = previousStorageUsed + totalUploadBytes;
+
+    if (totalUploadBytes > 0) {
+      adjustStorageUsage(totalUploadBytes);
+    }
 
     setSubmitting(true);
     try {
@@ -63,8 +123,17 @@ const usePostMutations = (setPosts) => {
           })
         )
       );
+
+      if (totalUploadBytes > 0) {
+        await keepOptimisticStorageIfBackendStale(optimisticStorageUsed);
+      }
+
       return { success: true };
     } catch (err) {
+      if (totalUploadBytes > 0) {
+        adjustStorageUsage(-totalUploadBytes);
+      }
+
       return {
         success: false,
         message: err.response?.data?.message ?? "Không thể cập nhật bài đăng.",
