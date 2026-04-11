@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Eye, EyeOff, BookOpen, Sparkles } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
+import AppLogo from "@/components/AppLogo";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
 import { PATH_ADMIN, PATH_AUTH } from "../routes/paths";
 
@@ -66,6 +67,17 @@ const LoginPage = () => {
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
   const [successMessage] = useState(location.state?.message || "");
+
+  useEffect(() => {
+    const lockedMessage = sessionStorage.getItem("account_locked_message");
+    if (!lockedMessage) {
+      return;
+    }
+
+    toast.error(lockedMessage, { id: TOAST_ID_LOGIN_MSG08 });
+    sessionStorage.removeItem("account_locked_message");
+    sessionStorage.removeItem("account_locked_realtime");
+  }, []);
 
   const handleResendVerification = async () => {
     if (!email.trim()) {
@@ -158,7 +170,7 @@ const LoginPage = () => {
           <div className="brand-content">
             <div className="logo-wrapper">
               <div className="logo-icon">
-                <BookOpen size={36} strokeWidth={2.5} />
+                <AppLogo size={42} showFallbackBackground={false} />
               </div>
               <h1 className="brand-name">Learnify</h1>
             </div>

@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LogoutDialog from "@/components/LogoutDialog";
+import NotificationDetailModal from "@/components/NotificationDetailModal";
+import AppLogo from "@/components/AppLogo";
 import { notificationApi } from "@/apis/notification.api";
+import { createNotificationSocket } from "@/lib/notification-websocket";
 import "@/assets/css/components/dashboardLayout.css";
 import { normalizeRole } from "@/lib/auth-role";
 import {
@@ -19,7 +22,6 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
-  BarChart2,
   Bell,
   CheckCheck,
   CreditCard,
@@ -46,6 +48,9 @@ const DashboardLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [accountLockedNotice, setAccountLockedNotice] = useState("");
+  const forcedLogoutTriggeredRef = useRef(false);
 
   const normalizedRole = normalizeRole(user?.role);
   const isTeacher = normalizedRole === "TEACHER";
@@ -84,7 +89,9 @@ const DashboardLayout = () => {
   const usageItems = Array.isArray(user?.userBenefitUsageDTO)
     ? user.userBenefitUsageDTO
     : [];
-  const storageUsage = usageItems.find((item) => item?.benefitCode === "STORAGE");
+  const storageUsage = usageItems.find(
+    (item) => item?.benefitCode === "STORAGE",
+  );
   const aiRequestUsage = usageItems.find(
     (item) => item?.benefitCode === "AI_REQUEST",
   );
@@ -112,7 +119,10 @@ const DashboardLayout = () => {
   const storageUsageLabel = `${formatGb(storageUsedGb)} / ${formatGb(storageLimitGb)} GB`;
 
   const aiUsed = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.used)));
-  const aiLimit = Math.max(0, Math.trunc(safeNumber(aiRequestUsage?.limitValue)));
+  const aiLimit = Math.max(
+    0,
+    Math.trunc(safeNumber(aiRequestUsage?.limitValue)),
+  );
 
   const planLabel =
     typeof user?.plan === "string"
@@ -131,18 +141,29 @@ const DashboardLayout = () => {
     const diffMs = Date.now() - new Date(createdAt).getTime();
     const diffMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
 
-    if (diffMinutes < 1) return "Vua xong";
-    if (diffMinutes < 60) return `${diffMinutes} phut truoc`;
+    if (diffMinutes < 1) return "Vừa xong";
+    if (diffMinutes < 60) return `${diffMinutes} phút trước`;
 
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours} gio truoc`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
 
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} ngay truoc`;
+    return `${diffDays} ngày trước`;
   };
 
+  const fetchUnreadCountOnly = useCallback(async () => {
+    try {
+      const unreadResponse = await notificationApi.getUnreadCount();
+      setUnreadCount(Number(unreadResponse?.result || 0));
+    } catch (error) {
+      console.error("Failed to fetch unread count:", error);
+    }
+  }, []);
+
   const fetchNotificationData = async ({ withList = true } = {}) => {
-    setIsNotificationLoading(true);
+    if (withList) {
+      setIsNotificationLoading(true);
+    }
     try {
       const calls = [notificationApi.getUnreadCount()];
       if (withList) {
@@ -158,7 +179,9 @@ const DashboardLayout = () => {
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
-      setIsNotificationLoading(false);
+      if (withList) {
+        setIsNotificationLoading(false);
+      }
     }
   };
 
@@ -176,21 +199,38 @@ const DashboardLayout = () => {
     if (!notification?.id) return;
 
     try {
+      let nextNotification = notification;
+
       if (!notification.read) {
-        await notificationApi.markAsRead(notification.id);
+        const response = await notificationApi.markAsRead(notification.id);
+        nextNotification = {
+          ...notification,
+          ...(response?.result || {}),
+          read: true,
+        };
       }
 
       setNotifications((prev) =>
         prev.map((item) =>
-          item.id === notification.id ? { ...item, read: true } : item,
+          item.id === notification.id
+            ? { ...item, ...nextNotification, read: true }
+            : item,
         ),
       );
       setUnreadCount((prev) => Math.max(0, prev - (notification.read ? 0 : 1)));
 
-      if (notification.redirectUrl) {
-        navigate(notification.redirectUrl);
+      const redirectUrl =
+        typeof nextNotification?.redirectUrl === "string"
+          ? nextNotification.redirectUrl.trim()
+          : "";
+
+      if (redirectUrl) {
+        setIsNotificationOpen(false);
+        navigate(redirectUrl);
+        return;
       }
-      setIsNotificationOpen(false);
+
+      setSelectedNotification(nextNotification);
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -230,14 +270,24 @@ const DashboardLayout = () => {
       path: PATH_TEACHER.classroom.root,
     },
     {
+      icon: Users,
+      label: "Học sinh",
+      path: PATH_TEACHER.students,
+    },
+    {
+      icon: FileText,
+      label: "Bài tập",
+      path: PATH_TEACHER.assignments,
+    },
+    {
+      icon: FileText,
+      label: "Tài liệu",
+      path: PATH_TEACHER.documents,
+    },
+    {
       icon: Database,
       label: "Ngân hàng đề",
       path: PATH_TEACHER.questionBank,
-    },
-    {
-      icon: BarChart2,
-      label: "Báo cáo",
-      path: PATH_TEACHER.reports,
     },
   ];
 
@@ -325,12 +375,65 @@ const DashboardLayout = () => {
     if (!user?.id) return;
 
     fetchNotificationData({ withList: false });
-    const timer = window.setInterval(() => {
-      fetchNotificationData({ withList: false });
-    }, 30000);
+    const token = localStorage.getItem("accessToken");
+    const disconnect = createNotificationSocket({
+      token,
+      onConnected: () => {
+        fetchNotificationData({ withList: false });
+      },
+      onNotification: (incomingNotification) => {
+        if (!incomingNotification?.id) return;
 
-    return () => window.clearInterval(timer);
-  }, [user?.id]);
+        setNotifications((prev) => {
+          const existingIndex = prev.findIndex(
+            (item) => item.id === incomingNotification.id,
+          );
+
+          if (existingIndex >= 0) {
+            return prev.map((item) =>
+              item.id === incomingNotification.id
+                ? { ...item, ...incomingNotification }
+                : item,
+            );
+          }
+
+          return [incomingNotification, ...prev];
+        });
+      },
+      onUnreadCount: (nextUnreadCount) => {
+        setUnreadCount(Math.max(0, Number(nextUnreadCount || 0)));
+      },
+      onAccountStatus: async (accountStatusEvent) => {
+        if (
+          accountStatusEvent?.status !== "BANNED" ||
+          forcedLogoutTriggeredRef.current
+        ) {
+          return;
+        }
+
+        forcedLogoutTriggeredRef.current = true;
+
+        const lockMessage =
+          accountStatusEvent?.message ||
+          "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ bộ phận hỗ trợ.";
+
+        setAccountLockedNotice(lockMessage);
+        sessionStorage.setItem("account_locked_realtime", "1");
+        sessionStorage.setItem("account_locked_message", lockMessage);
+
+        window.setTimeout(async () => {
+          sessionStorage.removeItem("account_locked_realtime");
+          await logout();
+          navigate(PATH_AUTH.login, { replace: true });
+        }, 2500);
+      },
+      onError: (error) => {
+        console.error("Notification socket error:", error);
+      },
+    });
+
+    return () => disconnect();
+  }, [logout, navigate, user?.id]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -345,11 +448,28 @@ const DashboardLayout = () => {
 
   return (
     <div className="dashboard-layout">
+      {accountLockedNotice && (
+        <div
+          className="account-lock-overlay"
+          role="alert"
+          aria-live="assertive"
+        >
+          <div className="account-lock-card">
+            <h3>Tài khoản của bạn đã bị khóa</h3>
+            <p>{accountLockedNotice}</p>
+            <span>Hệ thống sẽ đăng xuất bạn trong giây lát...</span>
+          </div>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className={`sidebar ${isSidebarOpen ? "open" : "closed"}`}>
         <div className="sidebar-header">
           <div className="logo" onClick={() => navigate(PATH_AUTH.home)}>
-            <BookOpen size={28} strokeWidth={2.5} />
+            <AppLogo
+              size={isSidebarOpen ? 56 : 34}
+              imageScale={1.9}
+              showFallbackBackground={false}
+            />
             <span className={`logo-text ${!isSidebarOpen ? "hidden" : ""}`}>
               Learnify
             </span>
@@ -388,7 +508,9 @@ const DashboardLayout = () => {
             <div className="sidebar-plan-usage-card">
               <div className="sidebar-plan-usage-head">
                 <span className="sidebar-plan-usage-label">Gói hiện tại</span>
-                <strong className="sidebar-plan-usage-value">{planLabel}</strong>
+                <strong className="sidebar-plan-usage-value">
+                  {planLabel}
+                </strong>
               </div>
 
               <div className="sidebar-benefit-usage-item">
@@ -402,7 +524,9 @@ const DashboardLayout = () => {
                     style={{ width: `${storagePercentBar}%` }}
                   />
                 </div>
-                <div className="sidebar-benefit-usage-subtext">{storageUsageLabel}</div>
+                <div className="sidebar-benefit-usage-subtext">
+                  {storageUsageLabel}
+                </div>
               </div>
 
               <div className="sidebar-benefit-usage-item">
@@ -461,7 +585,7 @@ const DashboardLayout = () => {
               <button
                 className="notification-trigger"
                 onClick={handleToggleNotification}
-                aria-label="Thong bao"
+                aria-label="Thông báo"
               >
                 <Bell size={18} />
                 {unreadCount > 0 && (
@@ -474,22 +598,22 @@ const DashboardLayout = () => {
               {isNotificationOpen && (
                 <div className="notification-dropdown">
                   <div className="notification-header">
-                    <h3>Thong bao</h3>
+                    <h3>Thông báo</h3>
                     <button
                       className="mark-all-btn"
                       onClick={handleMarkAllAsRead}
                       disabled={unreadCount === 0}
                     >
                       <CheckCheck size={14} />
-                      <span>Danh dau tat ca da doc</span>
+                      <span>Đánh dấu tất cả đã đọc</span>
                     </button>
                   </div>
 
                   <div className="notification-list">
                     {isNotificationLoading ? (
-                      <div className="notification-empty">Dang tai thong bao...</div>
+                      <div className="notification-empty">Đang tải thông báo...</div>
                     ) : notifications.length === 0 ? (
-                      <div className="notification-empty">Ban chua co thong bao nao</div>
+                      <div className="notification-empty">Bạn chưa có thông báo nào</div>
                     ) : (
                       notifications.slice(0, 8).map((notification) => (
                         <button
@@ -498,11 +622,15 @@ const DashboardLayout = () => {
                           onClick={() => handleNotificationClick(notification)}
                         >
                           <div className="notification-item-title-row">
-                            <div className="notification-item-title">{notification.title}</div>
-                            {!notification.read && <span className="notification-dot" />}
+                            <div className="notification-item-title">
+                              {notification.title}
+                            </div>
+                            {!notification.read && (
+                              <span className="notification-dot" />
+                            )}
                           </div>
                           <div className="notification-item-desc">
-                            {notification.shortDescription || "Khong co mo ta"}
+                            {notification.shortDescription || "Không có mô tả"}
                           </div>
                           <div className="notification-item-time">
                             {formatTimeAgo(notification.createdAt)}
@@ -515,9 +643,12 @@ const DashboardLayout = () => {
                   <div className="notification-footer">
                     <button
                       className="view-all-btn"
-                      onClick={() => setIsNotificationOpen(false)}
+                      onClick={() => {
+                        setIsNotificationOpen(false);
+                        navigate(PATH_COMMON.notifications);
+                      }}
                     >
-                      Xem tat ca
+                      Xem tất cả
                     </button>
                   </div>
                 </div>
@@ -626,6 +757,12 @@ const DashboardLayout = () => {
         isOpen={isLogoutDialogOpen}
         onClose={() => setIsLogoutDialogOpen(false)}
         onConfirm={handleConfirmLogout}
+      />
+
+      <NotificationDetailModal
+        isOpen={Boolean(selectedNotification)}
+        notification={selectedNotification}
+        onClose={() => setSelectedNotification(null)}
       />
     </div>
   );

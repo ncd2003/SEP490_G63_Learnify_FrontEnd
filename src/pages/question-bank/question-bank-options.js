@@ -1,16 +1,27 @@
 export const gradeOptions = [
   { value: "", label: "-- Chọn khối lớp --" },
+  { value: "6", label: "Khối 6" },
+  { value: "7", label: "Khối 7" },
+  { value: "8", label: "Khối 8" },
+  { value: "9", label: "Khối 9" },
   { value: "10", label: "Khối 10" },
   { value: "11", label: "Khối 11" },
   { value: "12", label: "Khối 12" },
-  { value: "THCS", label: "THCS - Khối 6-9" },
   { value: "university", label: "Đại học" },
+  { value: "college", label: "Cao đẳng" },
   { value: "other", label: "Khác" },
 ];
 
 export const subjectOptions = [
   { value: "", label: "-- Chọn môn học --" },
   { value: "math", label: "Toán học" },
+  { value: "arithmetic", label: "Số học" },
+  { value: "algebra", label: "Đại số" },
+  { value: "algebra-calculus", label: "Đại số và Giải tích" },
+  { value: "calculus", label: "Giải tích" },
+  { value: "geometry", label: "Hình học" },
+  { value: "civic-education", label: "GDCD" },
+  { value: "technology", label: "Công nghệ" },
   { value: "physics", label: "Vật lý" },
   { value: "chemistry", label: "Hóa học" },
   { value: "biology", label: "Sinh học" },

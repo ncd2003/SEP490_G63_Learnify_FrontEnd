@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LogoutDialog from "@/components/LogoutDialog";
+import AppLogo from "@/components/AppLogo";
 import "@/assets/css/components/header.css";
-import { BookOpen, Menu, X, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut, User } from "lucide-react";
 import { isAdminRole, isStudentRole, isTeacherRole } from "@/lib/auth-role";
 import { PATH_ADMIN, PATH_AUTH, PATH_COMMON } from "@/routes/paths";
 
@@ -94,7 +95,11 @@ const Header = ({ navItems = DEFAULT_NAV_ITEMS, activeNavKey = "" }) => {
             className="site-header-logo"
             onClick={() => navigate(PATH_AUTH.home)}
           >
-            <BookOpen size={32} strokeWidth={2.5} />
+            <AppLogo
+              size={42}
+              imageScale={1.9}
+              showFallbackBackground={false}
+            />
             <span className="site-header-logo-text">Learnify</span>
           </div>
 
