@@ -180,7 +180,8 @@ const ClassroomDetailLayout = ({ children }) => {
 
   const storageUsedBytes = Math.max(0, safeNumber(storageUsage?.used));
   const storageUsedGb = bytesToGb(storageUsedBytes);
-  const storageLimitGb = Math.max(0, safeNumber(storageUsage?.limitValue));
+  const storageLimitBytes = Math.max(0, safeNumber(storageUsage?.limitValue));
+  const storageLimitGb = bytesToGb(storageLimitBytes);
   const rawStoragePercent =
     storageLimitGb > 0 ? (storageUsedGb / storageLimitGb) * 100 : 0;
   const storagePercent = Number.isFinite(rawStoragePercent)

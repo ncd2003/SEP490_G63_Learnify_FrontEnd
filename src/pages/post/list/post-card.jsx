@@ -48,10 +48,12 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   const [commentSortOrder, setCommentSortOrder] = useState("newest");
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(null);
+  const isOptimisticPost = Boolean(post?.isOptimistic);
+  const commentsPostId = isOptimisticPost ? null : post.id;
 
   // Comment hooks
-  const { comments, setComments, loading: loadingComments, refetch } = useComments(post.id);
-  const { createComment, updateComment, deleteComment, submitting } = useCommentMutations(post.id, setComments);
+  const { comments, setComments, loading: loadingComments, refetch } = useComments(commentsPostId);
+  const { createComment, updateComment, deleteComment, submitting } = useCommentMutations(commentsPostId, setComments);
 
   // Count total comments including all nested replies
   const countTotalComments = (commentsList) => {
@@ -114,13 +116,14 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   };
 
   const postOwnerId = post.user?.id ?? post.userId ?? post.authorId ?? post.createdBy?.id;
-  const canManagePost = user?.id != null && postOwnerId != null && String(user.id) === String(postOwnerId);
+  const canManagePost =
+    !isOptimisticPost && user?.id != null && postOwnerId != null && String(user.id) === String(postOwnerId);
 
   const authorName = post.user?.fullName || post.user?.name || "Người dùng";
   const authorInitial = authorName?.charAt(0)?.toUpperCase() || "?";
 
   return (
-    <div className="post-card">
+    <div className={`post-card${isOptimisticPost ? " post-card--optimistic" : ""}`}>
       {/* Header */}
       <div className="post-card-header">
         <div className="post-author">
@@ -143,6 +146,7 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
                 Đã ghim
               </span>
             )}
+            {isOptimisticPost && <span className="post-syncing-badge">Đang đồng bộ...</span>}
           </div>
         </div>
 
@@ -228,73 +232,79 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
 
       {/* Comments section */}
       <div className="post-comments-section">
-        <button 
-          className="post-comments-toggle"
-          onClick={() => setShowComments(!showComments)}
-        >
-          <MessageCircle size={16} />
-          {totalCommentCount} bình luận
-        </button>
+        {isOptimisticPost ? (
+          <p className="post-syncing-note">Bài đăng đang đồng bộ, bình luận sẽ khả dụng sau khi hoàn tất.</p>
+        ) : (
+          <>
+            <button
+              className="post-comments-toggle"
+              onClick={() => setShowComments(!showComments)}
+            >
+              <MessageCircle size={16} />
+              {totalCommentCount} bình luận
+            </button>
 
-        {showComments && (
-          <div className="post-comments-content">
-            {/* Comment form at top */}
-            <CommentForm
-              postId={post.id}
-              onSubmit={handleCommentSubmit}
-              submitting={submitting}
-              onCancel={() => setShowComments(false)}
-            />
+            {showComments && (
+              <div className="post-comments-content">
+                {/* Comment form at top */}
+                <CommentForm
+                  postId={post.id}
+                  onSubmit={handleCommentSubmit}
+                  submitting={submitting}
+                  onCancel={() => setShowComments(false)}
+                />
 
-            {/* Comment list */}
-            {loadingComments ? (
-              <div className="comments-loading">Đang tải bình luận...</div>
-            ) : comments.length > 0 ? (
-              <>
-                <div className="comments-tools">
-                  <label className="comments-sort-label" htmlFor={`comments-sort-${post.id}`}>
-                    Sắp xếp
-                  </label>
-                  <select
-                    id={`comments-sort-${post.id}`}
-                    className="comments-sort-select"
-                    value={commentSortOrder}
-                    onChange={(e) => {
-                      setCommentSortOrder(e.target.value);
-                      setVisibleCount(COMMENTS_BATCH_SIZE);
-                    }}
-                  >
-                    <option value="newest">Mới nhất</option>
-                    <option value="oldest">Cũ nhất</option>
-                  </select>
-                </div>
+                {/* Comment list */}
+                {loadingComments ? (
+                  <div className="comments-loading">Đang tải bình luận...</div>
+                ) : comments.length > 0 ? (
+                  <>
+                    <div className="comments-tools">
+                      <label className="comments-sort-label" htmlFor={`comments-sort-${post.id}`}>
+                        Sắp xếp
+                      </label>
+                      <select
+                        id={`comments-sort-${post.id}`}
+                        className="comments-sort-select"
+                        value={commentSortOrder}
+                        onChange={(e) => {
+                          setCommentSortOrder(e.target.value);
+                          setVisibleCount(COMMENTS_BATCH_SIZE);
+                        }}
+                      >
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                      </select>
+                    </div>
 
-                <div className="comments-list">
-                  {/* <div className="comments-header">Bình luận ({totalCommentCount})</div> */}
-                  {sortedComments.slice(0, visibleCount).map((comment) => (
-                    <CommentCard
-                      key={comment.id}
-                      comment={comment}
-                      postId={post.id}
-                      onReply={handleCommentSubmit}
-                      onEdit={handleCommentUpdate}
-                      onDelete={handleCommentDelete}
-                      submitting={submitting}
-                    />
-                  ))}
+                    <div className="comments-list">
+                      {/* <div className="comments-header">Bình luận ({totalCommentCount})</div> */}
+                      {sortedComments.slice(0, visibleCount).map((comment) => (
+                        <CommentCard
+                          key={comment.id}
+                          comment={comment}
+                          postId={post.id}
+                          onReply={handleCommentSubmit}
+                          onEdit={handleCommentUpdate}
+                          onDelete={handleCommentDelete}
+                          submitting={submitting}
+                        />
+                      ))}
 
-                  {visibleCount < sortedComments.length && (
-                    <button
-                      className="comments-load-more"
-                      onClick={() => setVisibleCount((prev) => prev + COMMENTS_BATCH_SIZE)}
-                    >
-                      Xem thêm bình luận
-                    </button>
-                  )}
-                </div>
-              </>
-            ) : null}
-          </div>
+                      {visibleCount < sortedComments.length && (
+                        <button
+                          className="comments-load-more"
+                          onClick={() => setVisibleCount((prev) => prev + COMMENTS_BATCH_SIZE)}
+                        >
+                          Xem thêm bình luận
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            )}
+          </>
         )}
       </div>
 

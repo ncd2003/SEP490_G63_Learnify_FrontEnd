@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, AlertCircle, Filter } from "lucide-react";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
@@ -24,9 +24,6 @@ const ClassroomFeedPage = () => {
   /* ── Handlers ─────────────────────────────────────────────────────────── */
   const handleCreate = async (data, files) => {
     const result = await createPost(data, files);
-    if (result.success) {
-      refetch();
-    }
     return result;
   };
 
@@ -34,7 +31,6 @@ const ClassroomFeedPage = () => {
     const result = await updatePost(editingPost.id, data, files);
     if (result.success) {
       setEditingPost(null);
-      refetch();
     }
     return result;
   };
@@ -44,12 +40,12 @@ const ClassroomFeedPage = () => {
     setDeleteConfirmPost(null);
   };
 
-  const matchesFilter = (post) => {
+  const matchesFilter = useCallback((post) => {
     const q = searchText.trim().toLowerCase();
     if (q && !post.content?.toLowerCase().includes(q)) return false;
     if (onlyHasAttachments && !(post.attachments?.length > 0)) return false;
     return true;
-  };
+  }, [searchText, onlyHasAttachments]);
 
   const { pinnedPosts, regularPosts } = useMemo(() => {
     const pinned = [];
@@ -62,12 +58,7 @@ const ClassroomFeedPage = () => {
       pinnedPosts: pinned.filter(matchesFilter),
       regularPosts: regular.filter(matchesFilter),
     };
-  }, [posts, searchText, onlyHasAttachments]);
-
-  const resetFilters = () => {
-    setSearchText("");
-    setOnlyHasAttachments(false);
-  };
+  }, [posts, matchesFilter]);
 
   const allPostsForMain = useMemo(() => [...pinnedPosts, ...regularPosts], [pinnedPosts, regularPosts]);
 
