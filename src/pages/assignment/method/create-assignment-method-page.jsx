@@ -102,7 +102,7 @@ const CSS = `
 
 .methods-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, minmax(250px, 1fr));
   gap: 16px;
   align-items: stretch;
 }
@@ -208,6 +208,7 @@ const CSS = `
 .mc-icon.blue { background: var(--primary-light); color: var(--primary); }
 .mc-icon.purple { background: var(--purple-l); color: var(--purple); }
 .mc-icon.sky { background: var(--sky-l); color: var(--sky); }
+.mc-icon.green { background: var(--green-l); color: var(--green); }
 
 .method-card:hover .mc-icon { transform: scale(1.08); }
 
@@ -491,6 +492,7 @@ const CSS = `
 .fade-up-1 { animation-delay: .05s; }
 .fade-up-2 { animation-delay: .12s; }
 .fade-up-3 { animation-delay: .19s; }
+.fade-up-4 { animation-delay: .26s; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
@@ -638,6 +640,20 @@ const Ic = {
       <line x1="12" y1="3" x2="12" y2="15" />
     </svg>
   ),
+  BookOpen: () => (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M2 5a3 3 0 013-3h6a3 3 0 013 3v14a3 3 0 00-3-3H5a3 3 0 00-3 3V5z" />
+      <path d="M22 5a3 3 0 00-3-3h-6a3 3 0 00-3 3v14a3 3 0 013-3h6a3 3 0 013 3V5z" />
+    </svg>
+  ),
   Zap: () => (
     <svg
       width="13"
@@ -767,7 +783,7 @@ const CreateAssignmentMethodPage = () => {
           </div>
 
           <Link
-            to={withQuery(PATH_TEACHER.assignmentCreateAi)}
+            to={withQuery(PATH_TEACHER.assignmentCreateAiSetup)}
             className="mc-cta primary"
           >
             <Ic.Sparkles /> Bắt đầu với AI <Ic.ChevR />
@@ -852,6 +868,45 @@ const CreateAssignmentMethodPage = () => {
             Import file <Ic.ChevR />
           </Link>
         </article>
+
+        <article className="method-card fade-up fade-up-4">
+          <div className="mc-header">
+            <div className="mc-icon green">
+              <Ic.BookOpen />
+            </div>
+            <div className="mc-badge fast">Tái sử dụng</div>
+          </div>
+
+          <div className="mc-title">Tạo từ ngân hàng câu hỏi</div>
+          <div className="mc-desc">
+            Chọn nhanh câu hỏi có sẵn trong ngân hàng để tạo bài tập. Phù hợp
+            khi bạn đã có kho câu hỏi theo môn/chủ đề và muốn ra đề ổn định.
+          </div>
+
+          <div className="mc-bullets">
+            <div className="mc-bullet">
+              <div className="mc-bullet-dot sky" /> Tận dụng kho câu hỏi đã có
+            </div>
+            <div className="mc-bullet">
+              <div className="mc-bullet-dot sky" /> Lọc theo môn, chủ đề, mức độ
+            </div>
+            <div className="mc-bullet">
+              <div className="mc-bullet-dot sky" /> Tiết kiệm thời gian nhập lại
+              nội dung
+            </div>
+            <div className="mc-bullet">
+              <div className="mc-bullet-dot sky" /> Vẫn có thể chỉnh sửa sau khi
+              chọn
+            </div>
+          </div>
+
+          <Link
+            to={withQuery(PATH_TEACHER.assignmentQuestionBankPicker)}
+            className="mc-cta outline"
+          >
+            Chọn từ ngân hàng <Ic.ChevR />
+          </Link>
+        </article>
       </div>
 
       <div className="compare-section fade-up">
@@ -867,6 +922,7 @@ const CreateAssignmentMethodPage = () => {
               <th className="highlight">Tạo với AI</th>
               <th>Tạo thủ công</th>
               <th>Import file</th>
+              <th>Từ ngân hàng</th>
             </tr>
           </thead>
           <tbody>
@@ -879,12 +935,18 @@ const CreateAssignmentMethodPage = () => {
               </td>
               <td>Chậm</td>
               <td>Nhanh</td>
+              <td>Nhanh</td>
             </tr>
             <tr>
               <td>Tự động sinh câu hỏi</td>
               <td className="highlight">
                 <div className="check-icon">
                   <Ic.Check />
+                </div>
+              </td>
+              <td>
+                <div className="cross-icon">
+                  <Ic.X />
                 </div>
               </td>
               <td>
@@ -915,6 +977,11 @@ const CreateAssignmentMethodPage = () => {
                   <Ic.Minus />
                 </div>
               </td>
+              <td>
+                <div className="check-icon">
+                  <Ic.Check />
+                </div>
+              </td>
             </tr>
             <tr>
               <td>Import hàng loạt</td>
@@ -931,6 +998,11 @@ const CreateAssignmentMethodPage = () => {
               <td>
                 <div className="check-icon">
                   <Ic.Check />
+                </div>
+              </td>
+              <td>
+                <div className="cross-icon">
+                  <Ic.X />
                 </div>
               </td>
             </tr>
@@ -951,10 +1023,43 @@ const CreateAssignmentMethodPage = () => {
                   <Ic.Check />
                 </div>
               </td>
+              <td>
+                <div className="check-icon">
+                  <Ic.Check />
+                </div>
+              </td>
             </tr>
             <tr>
               <td>Yêu cầu file có sẵn</td>
               <td className="highlight">
+                <div className="cross-icon">
+                  <Ic.X />
+                </div>
+              </td>
+              <td>
+                <div className="cross-icon">
+                  <Ic.X />
+                </div>
+              </td>
+              <td>
+                <div className="check-icon">
+                  <Ic.Check />
+                </div>
+              </td>
+              <td>
+                <div className="cross-icon">
+                  <Ic.X />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Yêu cầu ngân hàng câu hỏi</td>
+              <td className="highlight">
+                <div className="cross-icon">
+                  <Ic.X />
+                </div>
+              </td>
+              <td>
                 <div className="cross-icon">
                   <Ic.X />
                 </div>
@@ -993,6 +1098,11 @@ const CreateAssignmentMethodPage = () => {
                   Đã có sẵn ngân hàng
                 </span>
               </td>
+              <td>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
+                  Tái sử dụng câu hỏi chuẩn
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -1010,7 +1120,7 @@ const CreateAssignmentMethodPage = () => {
         </div>
         <div className="bottom-cta-actions">
           <Link
-            to={PATH_TEACHER.assignmentCreateAi}
+            to={PATH_TEACHER.assignmentCreateAiSetup}
             className="mc-cta primary"
             style={{ width: "auto", padding: "13px 28px" }}
           >
