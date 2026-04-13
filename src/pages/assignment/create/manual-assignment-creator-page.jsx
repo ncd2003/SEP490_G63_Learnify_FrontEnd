@@ -60,7 +60,9 @@ const makeQuestion = (type = "MULTIPLE_CHOICE") => ({
   options:
     type === "MULTIPLE_CHOICE"
       ? [makeOption(), makeOption(), makeOption(), makeOption()]
-      : [],
+      : type === "FILL_IN_BLANK"
+        ? [makeOption()]
+        : [],
   correct:
     type === "TRUE_FALSE" ? null : type === "MULTIPLE_CHOICE" ? [] : undefined,
   answer: "",
@@ -242,6 +244,12 @@ const mapBackendQuestion = (item, sectionId = null) => {
     }, []);
   }
 
+  const fillOptionText = String(
+    opts.find((option) => String(option?.text || "").trim().length > 0)?.text ||
+      item?.sampleAnswer ||
+      "",
+  );
+
   return {
     id: Date.now() + Math.random(),
     assignmentQuestionId: null,
@@ -258,14 +266,19 @@ const mapBackendQuestion = (item, sectionId = null) => {
         ? opts.length
           ? opts
           : [makeOption(), makeOption(), makeOption(), makeOption()]
-        : [],
+        : type === "FILL_IN_BLANK"
+          ? [{ id: Date.now() + Math.random(), text: fillOptionText }]
+          : [],
     correct,
-    answer: item?.sampleAnswer || "",
+    answer: type === "ESSAY" ? item?.sampleAnswer || "" : "",
     collapsed: false,
   };
 };
 
-const mapAssignmentQuestionToEditorQuestion = (questionItem, sectionId = null) => {
+const mapAssignmentQuestionToEditorQuestion = (
+  questionItem,
+  sectionId = null,
+) => {
   const source =
     questionItem &&
     typeof questionItem === "object" &&
@@ -306,7 +319,9 @@ const mapAssignmentQuestionToEditorQuestion = (questionItem, sectionId = null) =
 
 const mapAssignmentSectionsToEditorQuestions = (sections = []) =>
   (Array.isArray(sections) ? sections : []).flatMap((section) => {
-    const questions = Array.isArray(section?.questions) ? section.questions : [];
+    const questions = Array.isArray(section?.questions)
+      ? section.questions
+      : [];
 
     const sortedQuestions = [...questions].sort((left, right) => {
       const leftOrder = Number(left?.orderIndex);
@@ -888,7 +903,12 @@ const ManualAssignmentCreatorPage = () => {
     return () => {
       alive = false;
     };
-  }, [assignmentId, formatMode, singleModeSectionId, sourceModeFromStatusQuery]);
+  }, [
+    assignmentId,
+    formatMode,
+    singleModeSectionId,
+    sourceModeFromStatusQuery,
+  ]);
 
   const groupedQuestions = useMemo(() => {
     const indexed = qs.map((q, idx) => ({ q, idx }));
@@ -1232,9 +1252,7 @@ const ManualAssignmentCreatorPage = () => {
 
     if (isAssignmentUpdateMode && removedRelationId) {
       setRemovedAssignmentQuestionIds((prev) =>
-        prev.includes(removedRelationId)
-          ? prev
-          : [...prev, removedRelationId],
+        prev.includes(removedRelationId) ? prev : [...prev, removedRelationId],
       );
     }
 
@@ -1259,6 +1277,16 @@ const ManualAssignmentCreatorPage = () => {
     const nw = [...q.options];
     nw[oIdx] = { ...nw[oIdx], text };
     updateQ(qId, { options: nw });
+  };
+
+  const updateFillOption = (qId, text) => {
+    const q = qs.find((x) => x.id === qId);
+    if (!q) return;
+
+    const currentOption = q.options?.[0] || makeOption();
+    updateQ(qId, {
+      options: [{ ...currentOption, text }],
+    });
   };
 
   const focusQuestionCard = (qId) => {
@@ -1346,6 +1374,9 @@ const ManualAssignmentCreatorPage = () => {
         { content: "Đúng", correct: q.correct === true },
         { content: "Sai", correct: q.correct === false },
       ];
+    } else if (q.type === "FILL_IN_BLANK") {
+      const fillAnswer = String(q.options?.[0]?.text || "").trim();
+      options = fillAnswer ? [{ content: fillAnswer, correct: true }] : null;
     }
 
     return {
@@ -1354,7 +1385,8 @@ const ManualAssignmentCreatorPage = () => {
       questionType: API_TYPE_MAP[q.type],
       cognitiveLevel: API_COG_MAP[q.cogLevel] || "APPLYING",
       defaultPoints: Number.isFinite(Number(q.points)) ? Number(q.points) : 1,
-      sampleAnswer: String(q.answer || "").trim() || null,
+      sampleAnswer:
+        q.type === "ESSAY" ? String(q.answer || "").trim() || null : null,
       options,
       sectionId: resolveSectionIdForQuestion(q),
       orderIndex:
@@ -1474,8 +1506,7 @@ const ManualAssignmentCreatorPage = () => {
           const points = Number(q.points);
           const payload = {
             id: relationId,
-            points:
-              Number.isFinite(points) && points > 0 ? points : 1,
+            points: Number.isFinite(points) && points > 0 ? points : 1,
           };
 
           if (questionId) {
@@ -1544,7 +1575,10 @@ const ManualAssignmentCreatorPage = () => {
       return;
     }
 
-    if (!isAssignmentUpdateMode && (!Number.isFinite(sessionId) || sessionId <= 0)) {
+    if (
+      !isAssignmentUpdateMode &&
+      (!Number.isFinite(sessionId) || sessionId <= 0)
+    ) {
       showToast("Chưa khởi tạo được phiên nháp. Vui lòng thử lại.", "error");
       return;
     }
@@ -1557,7 +1591,8 @@ const ManualAssignmentCreatorPage = () => {
           clearTimeout(saveTimer.current);
         }
 
-        const questionsNeedDraft = collectQuestionsNeedDraftForAssignmentUpdate();
+        const questionsNeedDraft =
+          collectQuestionsNeedDraftForAssignmentUpdate();
         if (questionsNeedDraft.length > 0) {
           if (!Number.isFinite(sessionId) || sessionId <= 0) {
             throw new Error("MISSING_DRAFT_SESSION_FOR_UPDATE");
@@ -1575,7 +1610,8 @@ const ManualAssignmentCreatorPage = () => {
 
         let currentMeta = assignmentMeta;
         if (!String(currentMeta?.title || "").trim()) {
-          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          const assignmentResp =
+            await assignmentApi.getAssignment(assignmentId);
           currentMeta = {
             title: String(assignmentResp?.result?.title || "").trim(),
             description: String(assignmentResp?.result?.description || ""),
@@ -1584,7 +1620,8 @@ const ManualAssignmentCreatorPage = () => {
           hydrateAssignmentMeta(assignmentResp?.result || null);
         }
 
-        const { sectionsPayload, invalidQuestions } = buildUpdateSectionsPayload();
+        const { sectionsPayload, invalidQuestions } =
+          buildUpdateSectionsPayload();
         if (invalidQuestions.length > 0) {
           throw new Error("INVALID_UPDATE_QUESTION_REFERENCE");
         }
@@ -1634,10 +1671,7 @@ const ManualAssignmentCreatorPage = () => {
               : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
         : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
 
-      showToast(
-        apiMessage || fallbackMessage,
-        "error",
-      );
+      showToast(apiMessage || fallbackMessage, "error");
     } finally {
       setPublishing(false);
     }
@@ -1735,7 +1769,8 @@ const ManualAssignmentCreatorPage = () => {
             ? resp.result.sections
             : [];
         } else if (Number.isFinite(assignmentId) && assignmentId > 0) {
-          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          const assignmentResp =
+            await assignmentApi.getAssignment(assignmentId);
           hydrateAssignmentMeta(assignmentResp?.result || null);
           sections = Array.isArray(assignmentResp?.result?.sections)
             ? assignmentResp.result.sections
@@ -1758,7 +1793,9 @@ const ManualAssignmentCreatorPage = () => {
 
             if (matchedSection) {
               setSingleModeSectionMeta({
-                id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+                id: toPositiveId(
+                  matchedSection?.id || matchedSection?.sectionId,
+                ),
                 title: String(matchedSection?.title || "").trim(),
                 sectionType: normalizeSectionType(matchedSection?.sectionType),
               });
@@ -1830,9 +1867,12 @@ const ManualAssignmentCreatorPage = () => {
           Number.isFinite(assignmentId) &&
           assignmentId > 0
         ) {
-          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          const assignmentResp =
+            await assignmentApi.getAssignment(assignmentId);
           hydrateAssignmentMeta(assignmentResp?.result || null);
-          const assignmentSections = Array.isArray(assignmentResp?.result?.sections)
+          const assignmentSections = Array.isArray(
+            assignmentResp?.result?.sections,
+          )
             ? assignmentResp.result.sections
             : [];
 
@@ -1852,15 +1892,22 @@ const ManualAssignmentCreatorPage = () => {
 
               if (matchedSection) {
                 setSingleModeSectionMeta({
-                  id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+                  id: toPositiveId(
+                    matchedSection?.id || matchedSection?.sectionId,
+                  ),
                   title: String(matchedSection?.title || "").trim(),
-                  sectionType: normalizeSectionType(matchedSection?.sectionType),
+                  sectionType: normalizeSectionType(
+                    matchedSection?.sectionType,
+                  ),
                 });
               }
             }
           }
 
-          if (formatMode === FORMAT_MODE.MIXED && assignmentSections.length > 0) {
+          if (
+            formatMode === FORMAT_MODE.MIXED &&
+            assignmentSections.length > 0
+          ) {
             const nextSections = assignmentSections
               .map((section, index) => {
                 const normalizedSectionType = normalizeSectionType(
@@ -2209,12 +2256,29 @@ const ManualAssignmentCreatorPage = () => {
                           makeOption(),
                         ];
                         upd.correct = [];
+                      } else if (t === "FILL_IN_BLANK") {
+                        upd.options = [
+                          {
+                            ...makeOption(),
+                            text: String(
+                              q.options?.[0]?.text || q.answer || "",
+                            ),
+                          },
+                        ];
+                        upd.correct = undefined;
+                        upd.answer = "";
                       } else {
                         upd.options = [];
                       }
                       if (t === "TRUE_FALSE") upd.correct = null;
-                      if (t === "ESSAY" || t === "FILL_IN_BLANK")
-                        upd.answer = q.answer || "";
+                      if (t === "ESSAY") {
+                        upd.answer =
+                          String(q.answer || "") ||
+                          String(q.options?.[0]?.text || "");
+                      }
+                      if (t !== "ESSAY" && t !== "FILL_IN_BLANK") {
+                        upd.answer = "";
+                      }
                       updateQ(q.id, upd);
                     }}
                   >
@@ -2325,14 +2389,18 @@ const ManualAssignmentCreatorPage = () => {
 
             {q.type === "FILL_IN_BLANK" && (
               <div className="fg">
-                <label className="fl">Đáp án</label>
-                <input
-                  className="f-input"
-                  style={{ minHeight: "auto" }}
-                  placeholder="Nhập đáp án đúng..."
-                  value={q.answer}
-                  onChange={(e) => updateQ(q.id, { answer: e.target.value })}
-                />
+                <label className="fl">Option đáp án đúng</label>
+                <div className="opts">
+                  <div className="opt-row">
+                    <div className="opt-letter">A</div>
+                    <input
+                      className="opt-input"
+                      placeholder="Nhập đáp án đúng cho ô trống..."
+                      value={q.options?.[0]?.text || ""}
+                      onChange={(e) => updateFillOption(q.id, e.target.value)}
+                    />
+                  </div>
+                </div>
                 <div className="fb-hint">
                   Dùng dấu ___ trong câu hỏi để đánh dấu chỗ trống
                 </div>
