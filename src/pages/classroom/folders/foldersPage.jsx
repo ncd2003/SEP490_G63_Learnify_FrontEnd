@@ -670,6 +670,34 @@ const FoldersPage = () => {
     return `${bytes.toFixed(1)} B`;
   };
 
+  const formatFileSizeForMaterial = (file) => {
+    // If uploader provided an explicit unit, honor it by converting bytes -> that unit.
+    const rawUnit = String(file?.sizeUnit ?? "").trim();
+    const size = file?.fileSize;
+    if (rawUnit && size !== null && size !== undefined) {
+      const bytes = Number(size);
+      if (Number.isFinite(bytes)) {
+        const unit = rawUnit.toUpperCase();
+        const factorMap = {
+          B: 1,
+          BYTE: 1,
+          BYTES: 1,
+          KB: 1024,
+          MB: 1024 * 1024,
+          GB: 1024 * 1024 * 1024,
+        };
+        const factor = factorMap[unit] ?? 1;
+        const value = bytes / factor;
+        // normalize display unit (use common shortlabels)
+        const displayUnit = unit === "BYTE" || unit === "BYTES" ? "B" : unit;
+        return `${value.toFixed(1)} ${displayUnit}`;
+      }
+    }
+
+    // Fallback to automatic formatting by magnitude
+    return formatFileSize(size);
+  };
+
   const getCreatedAtTimestamp = useCallback((value) => {
     if (!value) return null;
     const parsedDate = new Date(value);
@@ -900,7 +928,7 @@ const FoldersPage = () => {
                         <li key={`${file.id ?? file.fileUrl}`} className="material-item">
                           <div className="material-meta">
                             <span className="material-name">{file.fileName}</span>
-                            <span className="material-subtext">{formatFileSize(file.fileSize)} • {file.fileType}</span>
+                            <span className="material-subtext">{formatFileSizeForMaterial(file)} • {file.fileType}</span>
                             <span className="material-subtext">Ngày tạo: {formatCreatedAt(file.createdAt)}</span>
                           </div>
                           <div className="material-actions-inline">

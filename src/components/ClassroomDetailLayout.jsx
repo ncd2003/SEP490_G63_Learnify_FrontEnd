@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   MessageSquare, 
@@ -46,10 +46,6 @@ const ClassroomDetailLayout = ({ children }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
-    fetchClassroomInfo();
-  }, [id]);
-
-  useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.classroom-workspace-user-menu')) {
         setIsUserMenuOpen(false);
@@ -92,7 +88,7 @@ const ClassroomDetailLayout = ({ children }) => {
     };
   }, []);
 
-  const fetchClassroomInfo = async () => {
+  const fetchClassroomInfo = useCallback(async () => {
     try {
       setLoading(true);
       const response = await classroomApi.getClassroomById(id);
@@ -106,7 +102,11 @@ const ClassroomDetailLayout = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchClassroomInfo();
+  }, [fetchClassroomInfo]);
 
   const handleBackToClassrooms = () => {
     navigate(PATH_TEACHER.classroom.root);
@@ -142,11 +142,13 @@ const ClassroomDetailLayout = ({ children }) => {
   const activeKey = getActiveMenuItem();
   const activeMenuLabel = MENU_ITEMS.find((item) => item.key === activeKey)?.label || 'Lop hoc';
 
+  const normalizedRole = normalizeRole(user?.role);
+  const isTeacher = normalizedRole === 'TEACHER';
+
   const roleLabel = (() => {
-    const role = normalizeRole(user?.role);
-    if (role === 'TEACHER') return 'Giáo viên';
-    if (role === 'STUDENT') return 'Học sinh';
-    if (role === 'ADMIN') return 'Quản trị viên';
+    if (normalizedRole === 'TEACHER') return 'Giáo viên';
+    if (normalizedRole === 'STUDENT') return 'Học sinh';
+    if (normalizedRole === 'ADMIN') return 'Quản trị viên';
     return 'Người dùng';
   })();
 
@@ -291,7 +293,7 @@ const ClassroomDetailLayout = ({ children }) => {
           })}
         </nav>
 
-        {!collapsed && (
+        {!collapsed && isTeacher && (
           <div className="classroom-plan-usage-card">
             <div className="classroom-plan-usage-head">
               <span className="classroom-plan-usage-label">Gói hiện tại</span>

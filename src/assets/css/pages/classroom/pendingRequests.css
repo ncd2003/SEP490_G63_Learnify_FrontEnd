@@ -701,6 +701,15 @@
   background: #ffffff;
 }
 
+/* When aside is hidden (non-teacher), make main area full width */
+.members-layout.no-aside {
+  grid-template-columns: 1fr;
+}
+
+.members-layout.no-aside .members-main {
+  border-right: none;
+}
+
 .members-main {
   border-right: 1px solid #dbe3ef;
   min-width: 0;

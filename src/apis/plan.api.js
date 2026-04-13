@@ -21,6 +21,43 @@ import {
 /** @typedef {import("@/schema/type.schema").ApiResponse<TPlan>} PlanResponse */
 
 const BASE = API_SUFFIX.PLAN;
+const BYTES_PER_GB = 1024 * 1024 * 1024;
+
+const normalizeStorageLimitToGb = (limitValue) => {
+  const numericLimit = Number(limitValue);
+  if (!Number.isFinite(numericLimit) || numericLimit <= 0) {
+    return 0;
+  }
+
+  const gbValue = numericLimit / BYTES_PER_GB;
+  return Number.isInteger(gbValue) ? gbValue : Number(gbValue.toFixed(2));
+};
+
+const normalizePlanStorageBenefitsToGb = (plan) => {
+  if (!plan || typeof plan !== "object") {
+    return plan;
+  }
+
+  const normalizedBenefits = Array.isArray(plan.benefits)
+    ? plan.benefits.map((benefitItem) => {
+      const benefitCode = String(benefitItem?.benefit?.code || "").toUpperCase();
+
+      if (benefitCode !== "STORAGE") {
+        return benefitItem;
+      }
+
+      return {
+        ...benefitItem,
+        limitValue: normalizeStorageLimitToGb(benefitItem?.limitValue),
+      };
+    })
+    : [];
+
+  return {
+    ...plan,
+    benefits: normalizedBenefits,
+  };
+};
 
 /**
  * @param {number|string} id
@@ -41,7 +78,21 @@ const normalizePlanId = (id) => {
  * @param {{ page?: number, size?: number }} [params]
  * @returns {Promise<import("axios").AxiosResponse<PlanPagingResponse>>}
  */
-const getPlans = (params = {}) => apiRequest.get(BASE, { params });
+const getPlans = async (params = {}) => {
+  const response = await apiRequest.get(BASE, { params });
+
+  if (!Array.isArray(response?.result?.content)) {
+    return response;
+  }
+
+  return {
+    ...response,
+    result: {
+      ...response.result,
+      content: response.result.content.map((plan) => normalizePlanStorageBenefitsToGb(plan)),
+    },
+  };
+};
 
 /**
  * GET /api/plans/public

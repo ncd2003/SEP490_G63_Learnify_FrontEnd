@@ -73,8 +73,8 @@ const StudentClassroomListPage = Loadable(
 const ClassroomPostPage = Loadable(
   lazy(() => import("@/pages/classroom/feed/post-page")),
 );
-const PendingRequestsPage = Loadable(
-  lazy(() => import("@/pages/classroom/PendingRequests")),
+const MemberClassPage = Loadable(
+  lazy(() => import("@/pages/classroom/MemberClass")),
 );
 const AssignmentPage = Loadable(
   lazy(() => import("@/pages/assignment/list/assignment-page")),
@@ -425,7 +425,7 @@ const AppRoutes = () =>
       path: "classrooms/:id/pending-requests",
       element: (
         <AuthGuard>
-          <PendingRequestsPage />
+          <MemberClassPage />
         </AuthGuard>
       ),
     },
