@@ -67,6 +67,7 @@ export const PATH_TEACHER = {
   },
   assignments: path(ROOTS_TEACHER, "/assignments"),
   assignmentCreateMethod: path(ROOTS_TEACHER, "/assignments/create-method"),
+  assignmentCreateAiSetup: path(ROOTS_TEACHER, "/assignments/create/ai/setup"),
   assignmentCreateAi: path(ROOTS_TEACHER, "/assignments/create/ai"),
   assignmentCreateManual: path(ROOTS_TEACHER, "/assignments/create/manual"),
   assignmentCreateManualQuestions: path(
@@ -78,6 +79,10 @@ export const PATH_TEACHER = {
   assignmentAssignClasses: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}/assign-classes`),
   assignmentCreateImport: path(ROOTS_TEACHER, "/assignments/create/import"),
+  assignmentQuestionBankPicker: path(
+    ROOTS_TEACHER,
+    "/assignments/question-bank-picker",
+  ),
   students: path(ROOTS_TEACHER, "/students"),
   documents: path(ROOTS_TEACHER, "/documents"),
   questionBank: path(ROOTS_TEACHER, "/question-bank"),

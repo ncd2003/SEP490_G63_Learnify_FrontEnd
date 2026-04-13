@@ -59,33 +59,78 @@ const toDisplayDateTime = (v) => {
   }
 };
 
-const normalizeQuestion = (item, idx) => ({
-  id: item.id || item.itemId || idx,
-  type: String(
-    item.questionType || item.type || "MULTIPLE_CHOICE",
-  ).toUpperCase(),
-  content: item.content || item.prompt || "",
-  points: Number(item.defaultPoints ?? item.points ?? 1),
-  cognitiveLevel: item.cognitiveLevel || "APPLYING",
-  options: Array.isArray(item.options)
-    ? item.options.map((o) => ({
-        text: o.content || o.text || "",
-        correct: Boolean(o.correct),
-      }))
-    : [],
-  sampleAnswer: item.sampleAnswer || "",
-});
+const toOrderNumber = (value, fallback = Number.MAX_SAFE_INTEGER) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeRichText = (value) =>
+  String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+const normalizeQuestion = (item, idx) => {
+  const source =
+    item && typeof item.question === "object" && item.question
+      ? item.question
+      : item;
+
+  return {
+    id: item?.id || item?.itemId || source?.id || idx,
+    orderIndex: toOrderNumber(item?.orderIndex ?? source?.orderIndex, idx + 1),
+    type: String(
+      source?.questionType || source?.type || "MULTIPLE_CHOICE",
+    ).toUpperCase(),
+    content: normalizeRichText(source?.content || source?.prompt || ""),
+    points: Number(
+      item?.points ?? source?.defaultPoints ?? source?.points ?? 1,
+    ),
+    cognitiveLevel:
+      source?.cognitiveLevel || item?.cognitiveLevel || "APPLYING",
+    options: Array.isArray(source?.options)
+      ? source.options.map((o) => ({
+          text: normalizeRichText(o.content || o.text || ""),
+          correct: Boolean(o.correct),
+        }))
+      : [],
+    sampleAnswer: normalizeRichText(
+      source?.sampleAnswer || item?.sampleAnswer || "",
+    ),
+  };
+};
 
 const toDetailAssignment = (item) => {
   const sectionQuestions = Array.isArray(item.sections)
-    ? item.sections.flatMap((section) =>
-        Array.isArray(section?.questions) ? section.questions : [],
-      )
+    ? [...item.sections]
+        .sort(
+          (left, right) =>
+            toOrderNumber(left?.orderIndex) - toOrderNumber(right?.orderIndex),
+        )
+        .flatMap((section) => {
+          const questions = Array.isArray(section?.questions)
+            ? section.questions
+            : [];
+
+          return [...questions].sort(
+            (left, right) =>
+              toOrderNumber(left?.orderIndex) -
+              toOrderNumber(right?.orderIndex),
+          );
+        })
     : [];
 
-  const questionSource = Array.isArray(item.questions)
-    ? item.questions
-    : sectionQuestions;
+  const normalizedQuestions = Array.isArray(item.questions)
+    ? [...item.questions]
+        .sort(
+          (left, right) =>
+            toOrderNumber(left?.orderIndex) - toOrderNumber(right?.orderIndex),
+        )
+        .map(normalizeQuestion)
+    : sectionQuestions.map(normalizeQuestion);
 
   return {
     id: item.id,
@@ -98,7 +143,7 @@ const toDetailAssignment = (item) => {
     questionCount: Number(
       item.numberOfQuestions ??
         item.questionCount ??
-        questionSource.length ??
+        normalizedQuestions.length ??
         0,
     ),
     duration:
@@ -124,7 +169,7 @@ const toDetailAssignment = (item) => {
         : [],
     submissions: Number(item.submissions ?? item.submissionCount ?? 0),
     avgScore: Number(item.avgScore ?? item.averageScore ?? 0),
-    questions: questionSource.map(normalizeQuestion),
+    questions: normalizedQuestions,
     description: item.description || "",
   };
 };
@@ -460,7 +505,7 @@ const CSS = `
 
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text)}
-.page{padding:24px 28px 64px;min-height:100vh;font-family:var(--font)}
+.page{padding:24px 28px 64px;min-height:100vh;font-family:var(--font);max-width:100%;overflow-x:hidden}
 .breadcrumb{font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .breadcrumb span{cursor:pointer;transition:color .15s}
 .breadcrumb span:hover{color:var(--primary)}
@@ -503,17 +548,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text)}
 .stat-card:nth-child(4) .stat-icon{background:var(--purple-l);color:var(--purple)}
 .stat-val{font-size:28px;font-weight:800;color:var(--text);line-height:1;margin-bottom:4px}
 .stat-label{font-size:12px;font-weight:600;color:var(--text3)}
-.detail-grid{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
-.section-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-l);overflow:hidden;box-shadow:var(--sh-s);margin-bottom:16px}
+.detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;min-width:0;max-width:100%}
+.section-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-l);overflow:hidden;box-shadow:var(--sh-s);margin-bottom:16px;min-width:0}
 .section-hdr{padding:16px 22px;border-bottom:1px solid var(--border-l);display:flex;align-items:center;justify-content:space-between;background:var(--sidebar-bg)}
 .section-title{font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px}
 .section-title-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center}
-.section-body{padding:20px 22px}
-.q-list{display:flex;flex-direction:column;gap:10px}
-.q-card{border:1.5px solid var(--border);border-radius:var(--r-m);overflow:hidden;transition:all .2s var(--ease);animation:cardIn .3s ease-out both}
+.section-body{padding:20px 22px;min-width:0}
+.q-list{display:flex;flex-direction:column;gap:10px;min-width:0}
+.q-card{border:1.5px solid var(--border);border-radius:var(--r-m);overflow:hidden;transition:all .2s var(--ease);animation:cardIn .3s ease-out both;min-width:0;max-width:100%}
 .q-card:hover{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow),var(--sh-m)}
 @keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.q-card-hdr{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--sidebar-bg);border-bottom:1px solid var(--border-l);user-select:none}
+.q-card-hdr{padding:12px 16px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:var(--sidebar-bg);border-bottom:1px solid var(--border-l);user-select:none;min-width:0;max-width:100%;overflow:hidden}
 .q-card-hdr:hover{background:var(--hover)}
 .q-num{width:28px;height:28px;border-radius:50%;background:var(--primary);color:var(--inv);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .q-type-badge{padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
@@ -522,13 +567,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text)}
 .q-type-fb{background:var(--orange-l);color:var(--orange)}
 .q-type-es{background:var(--purple-l);color:var(--purple)}
 .q-cog-badge{padding:2px 8px;border-radius:10px;font-size:9px;font-weight:600;background:var(--border-l);color:var(--text3);flex-shrink:0}
-.q-content-preview{flex:1;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-content-preview{flex:1;display:block;min-width:0;max-width:100%;font-size:12px;font-weight:600;color:var(--text);white-space:normal;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .q-content-preview.empty{color:var(--text3);font-style:italic;font-weight:400}
 .q-pts{font-size:11px;font-weight:700;color:var(--primary);background:var(--primary-light);padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0}
 .q-chev{color:var(--text3);transition:transform .2s var(--ease);flex-shrink:0}
 .q-chev.open{transform:rotate(180deg)}
 .q-card-body{padding:16px 18px}
-.q-full-content{font-size:13px;color:var(--text);line-height:1.7;margin-bottom:14px;padding:12px 14px;background:var(--input-bg);border-radius:var(--r-s);border-left:3px solid var(--primary)}
+.q-full-content{font-size:13px;color:var(--text);line-height:1.7;margin-bottom:14px;padding:12px 14px;background:var(--input-bg);border-radius:var(--r-s);border-left:3px solid var(--primary);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 .q-opts{display:flex;flex-direction:column;gap:7px}
 .q-opt-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-s);font-size:12px;color:var(--text2)}
 .q-opt-row.correct{border-color:var(--green);background:var(--green-l);color:var(--green)}
@@ -536,10 +581,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text)}
 .q-opt-row.correct .q-opt-letter{background:var(--green);color:var(--inv)}
 .q-opt-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .q-opt-row.correct .q-opt-check{border-color:var(--green);background:var(--green);color:var(--inv)}
+.q-opt-text{flex:1;font-size:12px;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 .q-tf-row{display:flex;gap:8px}
 .q-tf-btn{flex:1;padding:10px;border:1.5px solid var(--border);border-radius:var(--r-m);font-size:13px;font-weight:700;text-align:center;background:var(--card);color:var(--text3)}
 .q-tf-btn.correct{border-color:var(--green);background:var(--green-l);color:var(--green)}
-.q-sample-ans{padding:10px 14px;background:var(--input-bg);border-radius:var(--r-s);font-size:12px;color:var(--text2);line-height:1.6;border-left:3px solid var(--purple)}
+.q-sample-ans{padding:10px 14px;background:var(--input-bg);border-radius:var(--r-s);font-size:12px;color:var(--text2);line-height:1.6;border-left:3px solid var(--purple);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 .q-ans-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 .settings-grid{display:flex;flex-direction:column;gap:0}
 .setting-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border-l)}
@@ -575,9 +621,31 @@ body{font-family:var(--font);background:var(--bg);color:var(--text)}
 .confirm-title{font-family:var(--font-d);font-size:20px;font-weight:700;margin-bottom:8px}
 .confirm-text{font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:24px}
 .confirm-btns{display:flex;gap:10px;justify-content:center}
+.edit-mode-modal{max-width:600px;width:95%}
+.edit-mode-hero{padding:20px;border-radius:14px;background:linear-gradient(135deg,#EFF6FF,#DBEAFE 45%,#E0E7FF);border:1px solid rgba(37,99,235,.14);margin-bottom:12px;text-align:left}
+.edit-mode-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#FFFFFF;border:1px solid rgba(37,99,235,.18);font-size:10px;font-weight:800;color:var(--primary-dark);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.edit-mode-title{font-family:var(--font-d);font-size:24px;font-weight:700;color:var(--text);line-height:1.28;margin-bottom:6px}
+.edit-mode-sub{font-size:13px;color:var(--text2);line-height:1.6}
+.edit-choice-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+.edit-choice-btn{width:100%;border:1.5px solid var(--border);border-radius:14px;background:var(--card);padding:14px 16px;text-align:left;cursor:pointer;transition:all .2s var(--ease);position:relative;overflow:hidden}
+.edit-choice-btn::after{content:'';position:absolute;top:0;left:0;width:4px;height:100%;opacity:.85}
+.edit-choice-btn:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+.edit-choice-btn.setup::after{background:linear-gradient(180deg,#0EA5E9,#2563EB)}
+.edit-choice-btn.setup:hover{border-color:#60A5FA;background:#F8FBFF}
+.edit-choice-btn.questions::after{background:linear-gradient(180deg,#10B981,#22C55E)}
+.edit-choice-btn.questions:hover{border-color:#6EE7B7;background:#F7FFF9}
+.edit-choice-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.edit-choice-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.edit-choice-btn.setup .edit-choice-icon{background:#E0F2FE;color:#0369A1}
+.edit-choice-btn.questions .edit-choice-icon{background:#DCFCE7;color:#047857}
+.edit-choice-tag{padding:4px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
+.edit-choice-btn.setup .edit-choice-tag{background:#EFF6FF;color:#1D4ED8}
+.edit-choice-btn.questions .edit-choice-tag{background:#ECFDF5;color:#047857}
+.edit-choice-title{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px}
+.edit-choice-desc{font-size:12px;color:var(--text2);line-height:1.5}
 .loading-state{text-align:center;padding:60px 20px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-l)}
 .loading-title{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--text3);margin-bottom:6px}
-@media(max-width:1100px){.detail-grid{grid-template-columns:1fr}}
+@media(max-width:1280px){.detail-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.dh-top{flex-direction:column}.dh-actions{width:100%;justify-content:flex-start}}
 @media(max-width:640px){.page{padding:14px 12px 48px}.stats-row{grid-template-columns:1fr}.dh-title{font-size:20px}.detail-header{padding:20px 18px}}
 `;
@@ -636,7 +704,7 @@ const QuestionCard = ({ q, index }) => {
                     {opt.correct && <Ic.Check />}
                   </div>
                   <div className="q-opt-letter">{LETTERS[oi]}</div>
-                  <span style={{ flex: 1, fontSize: 12 }}>
+                  <span className="q-opt-text">
                     {opt.text || "(trống)"}
                   </span>
                 </div>
@@ -685,6 +753,7 @@ export default function AssignmentDetailPage() {
   const [assignment, setAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editModeModal, setEditModeModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [qTab, setQTab] = useState("all");
@@ -730,6 +799,31 @@ export default function AssignmentDetailPage() {
     } finally {
       setDeleteModal(false);
     }
+  };
+
+  const handleOpenEditModeModal = () => {
+    setEditModeModal(true);
+  };
+
+  const handleEditRawAssignment = () => {
+    if (!assignment?.id) return;
+    setEditModeModal(false);
+    navigate(`${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`);
+  };
+
+  const handleEditQuestions = () => {
+    if (!assignment?.id) return;
+
+    const formatParam = assignment.format === "mc" ? "multiple_choice" : assignment.format;
+    const params = new URLSearchParams({
+      assignmentId: String(assignment.id),
+      format: String(formatParam || "mixed"),
+      category: String(assignment.category || "homework"),
+      status: String(assignment.status || "draft"),
+    });
+
+    setEditModeModal(false);
+    navigate(`${PATH_TEACHER.assignmentCreateManualQuestions}?${params.toString()}`);
   };
 
   const filteredQuestions = assignment
@@ -857,11 +951,7 @@ export default function AssignmentDetailPage() {
             </button>
             <button
               className="btn btn-ghost"
-              onClick={() =>
-                navigate(
-                  `${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`,
-                )
-              }
+              onClick={handleOpenEditModeModal}
             >
               <Ic.Edit /> Chỉnh sửa
             </button>
@@ -1227,11 +1317,7 @@ export default function AssignmentDetailPage() {
               <button
                 className="btn btn-ghost"
                 style={{ width: "100%", justifyContent: "center" }}
-                onClick={() =>
-                  navigate(
-                    `${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`,
-                  )
-                }
+                onClick={handleOpenEditModeModal}
               >
                 <Ic.Edit /> Chỉnh sửa bài tập
               </button>
@@ -1299,6 +1385,73 @@ export default function AssignmentDetailPage() {
                   onClick={handleDelete}
                 >
                   <Ic.Trash /> Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editModeModal ? (
+        <div className="modal-overlay" onClick={() => setEditModeModal(false)}>
+          <div
+            className="modal-box edit-mode-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-body-center">
+              <div className="edit-mode-hero">
+                <div className="edit-mode-badge">
+                  <Ic.Edit /> Chỉnh sửa bài tập
+                </div>
+                <div className="edit-mode-title">Chọn kiểu chỉnh sửa phù hợp</div>
+                <div className="edit-mode-sub">
+                  Bạn có thể chỉnh nhanh thông tin bài tập hoặc đi vào màn hình
+                  chỉnh sửa câu hỏi với auto save.
+                </div>
+              </div>
+
+              <div className="edit-choice-grid">
+                <button
+                  className="edit-choice-btn setup"
+                  onClick={handleEditRawAssignment}
+                >
+                  <div className="edit-choice-top">
+                    <div className="edit-choice-icon">
+                      <Ic.FileText />
+                    </div>
+                    <div className="edit-choice-tag">Thiết lập</div>
+                  </div>
+                  <div className="edit-choice-title">Sửa phần thô assignment</div>
+                  <div className="edit-choice-desc">
+                    Mở màn hình setup để sửa title, mô tả, category, format và
+                    cấu hình hiện tại.
+                  </div>
+                </button>
+
+                <button
+                  className="edit-choice-btn questions"
+                  onClick={handleEditQuestions}
+                >
+                  <div className="edit-choice-top">
+                    <div className="edit-choice-icon">
+                      <Ic.Layers />
+                    </div>
+                    <div className="edit-choice-tag">Nội dung đề</div>
+                  </div>
+                  <div className="edit-choice-title">Sửa câu hỏi trong assignment</div>
+                  <div className="edit-choice-desc">
+                    Mở màn hình soạn thủ công để thêm, sửa, xóa câu hỏi và tự
+                    động lưu mỗi thay đổi.
+                  </div>
+                </button>
+              </div>
+
+              <div className="confirm-btns" style={{ marginTop: 14 }}>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setEditModeModal(false)}
+                >
+                  Hủy
                 </button>
               </div>
             </div>

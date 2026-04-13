@@ -105,6 +105,9 @@ const CreateAssignmentAiPage = Loadable(
 const ImportAssignmentFilePage = Loadable(
   lazy(() => import("@/pages/assignment/import/import-assignment-file-page")),
 );
+const QuestionBankPickerPage = Loadable(
+  lazy(() => import("@/pages/assignment/bank/question-bank-picker-page")),
+);
 const SchedulePage = Loadable(
   lazy(() => import("@/pages/classroom/schedule/schedulePage")),
 );
@@ -302,12 +305,16 @@ const AppRoutes = () =>
           element: <CreateAssignmentMethodPage />,
         },
         {
+          path: PATH_TEACHER.assignmentCreateAiSetup,
+          element: <ManualAssignmentSetupPage mode="ai" />,
+        },
+        {
           path: PATH_TEACHER.assignmentCreateAi,
           element: <CreateAssignmentAiPage />,
         },
         {
           path: PATH_TEACHER.assignmentCreateManual,
-          element: <ManualAssignmentSetupPage />,
+          element: <ManualAssignmentSetupPage mode="manual" />,
         },
         {
           path: PATH_TEACHER.assignmentCreateManualQuestions,
@@ -320,6 +327,10 @@ const AppRoutes = () =>
         {
           path: PATH_TEACHER.assignmentCreateImport,
           element: <ImportAssignmentFilePage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentQuestionBankPicker,
+          element: <QuestionBankPickerPage />,
         },
         {
           path: PATH_TEACHER.classroom.assignments(":id"),
