@@ -4,7 +4,9 @@ import { ChevronLeft, ChevronRight, Plus, MapPin, Video } from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
 import EventDetailModal from '@/components/EventDetailModal';
+import { useAuth } from '@/contexts/AuthContext';
 import useSchedule from '@/hooks/useSchedule';
+import { isStudentRole } from '@/lib/auth-role';
 import { PATH_TEACHER } from '@/routes/paths';
 import { SESSION_TYPE } from '@/schema/scheduleSchema';
 import '@/assets/css/pages/classroom/classroomSchedule.css';
@@ -100,7 +102,9 @@ const toYmd = (date) => {
 const SchedulePage = () => {
   const { id: classroomId } = useParams();
   const routerNavigate = useNavigate();
+  const { user } = useAuth();
   const { sessions, loading, error, createSession, updateSession, deleteSession } = useSchedule(classroomId);
+  const isStudent = isStudentRole(user?.role);
 
   const [viewMode, setViewMode] = useState(VIEW_MODES.WEEK);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -131,24 +135,28 @@ const SchedulePage = () => {
   // ─── Modal Handlers ────────────────────────────────────────────────────────
 
   const handleCreate = () => {
+    if (isStudent) return;
     setSelectedSession(null);
     setPresetSessionDate('');
     setIsModalOpen(true);
   };
 
   const handleCreateForDate = (date) => {
+    if (isStudent) return;
     setSelectedSession(null);
     setPresetSessionDate(toYmd(date));
     setIsModalOpen(true);
   };
 
   const handleEdit = (session) => {
+    if (isStudent) return;
     setSelectedSession(session);
     setPresetSessionDate('');
     setIsModalOpen(true);
   };
 
   const handleDelete = async (sessionId) => {
+    if (isStudent) return;
     if (!window.confirm('Bạn có chắc chắn muốn xóa buổi học này?')) return;
     try {
       await deleteSession(sessionId);
@@ -162,6 +170,7 @@ const SchedulePage = () => {
    * @param {number|undefined} sessionId - present when editing
    */
   const handleSubmit = async (payload, sessionId) => {
+    if (isStudent) return;
     try {
       const submitPayload = { ...payload };
 
@@ -217,6 +226,7 @@ const SchedulePage = () => {
   };
 
   const handleOpenAttendance = (session) => {
+    if (isStudent) return;
     if (!classroomId || !session?.id) return;
     routerNavigate(PATH_TEACHER.classroom.attendanceSession(classroomId, session.id));
   };
@@ -398,7 +408,7 @@ const SchedulePage = () => {
                             {String(day.getDate()).padStart(2, '0')}/{String(day.getMonth() + 1).padStart(2, '0')}
                           </div>
                         </div>
-                        {!isDayPast && (
+                        {!isStudent && !isDayPast && (
                           <button
                             className="week-board-add-btn"
                             onClick={() => handleCreateForDate(day)}
@@ -451,9 +461,11 @@ const SchedulePage = () => {
         })()}
 
         {/* Floating Create Button */}
-        <button className="floating-create-btn" onClick={handleCreate} title="Tạo buổi học mới">
-          <Plus size={24} />
-        </button>
+        {!isStudent && (
+          <button className="floating-create-btn" onClick={handleCreate} title="Tạo buổi học mới">
+            <Plus size={24} />
+          </button>
+        )}
       </div>
 
       {/* Session Modal – mapped to CreateClassSessionRequestDTO */}
@@ -473,9 +485,9 @@ const SchedulePage = () => {
         onJoin={handleJoinMeeting}
         canJoinSession={canJoinSession}
         getJoinDisabledReason={getJoinDisabledReason}
-        onEdit={handleEventEdit}
-        onDelete={handleEventDelete}
-        onOpenAttendance={handleOpenAttendance}
+        onEdit={!isStudent ? handleEventEdit : undefined}
+        onDelete={!isStudent ? handleEventDelete : undefined}
+        onOpenAttendance={!isStudent ? handleOpenAttendance : undefined}
       />
 
       {/* Day Detail Modal */}

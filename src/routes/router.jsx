@@ -465,7 +465,9 @@ const AppRoutes = () =>
       path: "classrooms/:id/attendance",
       element: (
         <AuthGuard>
-          <AttendanceListPage />
+          <RoleBasedGuard role="ROLE_TEACHER">
+            <AttendanceListPage />
+          </RoleBasedGuard>
         </AuthGuard>
       ),
     },
@@ -481,7 +483,9 @@ const AppRoutes = () =>
       path: "classrooms/:id/attendance/:sessionId",
       element: (
         <AuthGuard>
-          <AttendancePage />
+          <RoleBasedGuard role="ROLE_TEACHER">
+            <AttendancePage />
+          </RoleBasedGuard>
         </AuthGuard>
       ),
     },
