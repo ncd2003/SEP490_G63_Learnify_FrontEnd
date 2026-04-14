@@ -5,6 +5,8 @@ import { questionBankApi } from "@/apis/question-bank.api";
 const MSG39 = "Ngân hàng đề đã được tạo thành công.";
 const MSG40 =
   "Tên ngân hàng đề bị trùng trong Khối lớp/Môn học này. Vui lòng đổi tên khác.";
+const MSG02 =
+  "Các trường bắt buộc phải được điền đầy đủ và tất cả giá trị nhập vào phải hợp lệ.";
 const MSG81 = "Ngân hàng đề đã được cập nhật thành công.";
 const MSG83 = "Ngân hàng đề đã được xóa thành công.";
 const MSG84 = "Hiện tại không thể xóa Ngân hàng đề. Vui lòng thử lại sau.";
@@ -74,13 +76,35 @@ const useQuestionBanks = () => {
       toast.success(MSG39);
       return created;
     } catch (err) {
+      const httpStatus = Number(err.response?.status ?? 0);
       const backendMessage = err.response?.data?.message ?? "";
       const isDuplicate = /ton tai|tồn tại|duplicate|exist|trung|trùng/i.test(
         backendMessage,
       );
+      const isValidation =
+        /invalid|validation|required|bad request|khong hop le|không hợp lệ|bat buoc|bắt buộc|empty|trong/i.test(
+          backendMessage,
+        ) ||
+        httpStatus === 400 ||
+        httpStatus === 422;
+
       const message = isDuplicate
         ? MSG40
-        : backendMessage || "Không thể tạo ngân hàng câu hỏi.";
+        : isValidation
+          ? MSG02
+          : backendMessage || "Không thể tạo ngân hàng câu hỏi.";
+
+      if (isDuplicate) {
+        toast.error(MSG40, { id: "create-resource-bank-msg40" });
+      } else if (isValidation) {
+        toast.error(MSG02, { id: "create-resource-bank-msg02" });
+      } else {
+        setError(message);
+        toast.error(message, {
+          id: `create-resource-bank-error-${Date.now()}`,
+        });
+      }
+
       throw err;
     } finally {
       setActionLoading(false);
@@ -107,9 +131,35 @@ const useQuestionBanks = () => {
       toast.success(MSG81);
       return updated ?? data;
     } catch (err) {
-      const message =
-        err.response?.data?.message ?? "Không thể cập nhật ngân hàng câu hỏi.";
-      setError(message);
+      const httpStatus = Number(err.response?.status ?? 0);
+      const backendMessage = err.response?.data?.message ?? "";
+      const isDuplicate = /ton tai|tồn tại|duplicate|exist|trung|trùng/i.test(
+        backendMessage,
+      );
+      const isValidation =
+        /invalid|validation|required|bad request|khong hop le|không hợp lệ|bat buoc|bắt buộc|empty|trong/i.test(
+          backendMessage,
+        ) ||
+        httpStatus === 400 ||
+        httpStatus === 422;
+
+      const message = isDuplicate
+        ? MSG40
+        : isValidation
+          ? MSG02
+          : backendMessage || "Không thể cập nhật ngân hàng câu hỏi.";
+
+      if (isDuplicate) {
+        toast.error(MSG40, { id: "update-resource-bank-msg40" });
+      } else if (isValidation) {
+        toast.error(MSG02, { id: "update-resource-bank-msg02" });
+      } else {
+        setError(message);
+        toast.error(message, {
+          id: `update-resource-bank-error-${Date.now()}`,
+        });
+      }
+
       throw err;
     } finally {
       setActionLoading(false);

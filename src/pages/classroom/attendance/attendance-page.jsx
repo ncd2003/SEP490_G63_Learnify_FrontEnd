@@ -4,7 +4,7 @@ import { CheckCircle2, CircleX, Loader2, Pencil, RotateCcw, Save, X, ArrowLeft }
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import useSchedule from "@/hooks/useSchedule";
 import useAttendance, { STATUS } from "@/hooks/use-attendance";
-import { enrollmentApi } from "@/apis/enrollment.api";
+import { classroomMemberApi } from "@/apis/classroom-member.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PATH_TEACHER } from "@/routes/paths";
 import "@/assets/css/pages/classroom/attendancePage.css";
@@ -135,7 +135,7 @@ const AttendancePage = () => {
       try {
         setClassroomLoading(true);
         setClassroomError("");
-        const response = await enrollmentApi.getAcceptedMembers(classroomId);
+        const response = await classroomMemberApi.getAcceptedMembers(classroomId);
         setClassroom({ acceptedMembers: response?.result ?? [] });
       } catch (err) {
         setClassroomError(err?.response?.data?.message ?? "Không thể tải danh sách thành viên lớp học.");

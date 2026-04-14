@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, XCircle, Info, FolderPlus } from "lucide-react";
+import { toast } from "sonner";
 import { CreateQuestionBankSchema } from "@/schema/question-bank.schema";
 import {
   gradeOptions,
@@ -10,20 +11,22 @@ import "@/assets/css/pages/question-bank/createQuestionBankDialog.css";
 
 const MSG02 =
   "Các trường bắt buộc phải được điền đầy đủ và tất cả giá trị nhập vào phải hợp lệ.";
-const MSG40 =
-  "Tên ngân hàng đề bị trùng trong Khối lớp/Môn học này. Vui lòng đổi tên khác.";
 
 const INITIAL_FIELDS = {
   name: "",
   gradeLevel: "",
+  customGradeLevel: "",
   subject: "",
+  customSubject: "",
   description: "",
 };
 
 const INITIAL_ERRORS = {
   name: "",
   gradeLevel: "",
+  customGradeLevel: "",
   subject: "",
+  customSubject: "",
   description: "",
 };
 
@@ -41,9 +44,36 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
 
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
-    setFields((prev) => ({ ...prev, [name]: value }));
+    setFields((prev) => {
+      if (name === "gradeLevel") {
+        return {
+          ...prev,
+          gradeLevel: value,
+          customGradeLevel: value === "other" ? prev.customGradeLevel : "",
+        };
+      }
+
+      if (name === "subject") {
+        return {
+          ...prev,
+          subject: value,
+          customSubject: value === "other" ? prev.customSubject : "",
+        };
+      }
+
+      return { ...prev, [name]: value };
+    });
+
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+
+    if (name === "gradeLevel" || name === "customGradeLevel") {
+      setErrors((prev) => ({ ...prev, customGradeLevel: "" }));
+    }
+
+    if (name === "subject" || name === "customSubject") {
+      setErrors((prev) => ({ ...prev, customSubject: "" }));
     }
   };
 
@@ -52,7 +82,20 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
     setStatus(null);
     setServerError("");
 
-    const result = CreateQuestionBankSchema.safeParse(fields);
+    const normalizedPayload = {
+      name: String(fields.name ?? "").trim(),
+      gradeLevel:
+        fields.gradeLevel === "other"
+          ? String(fields.customGradeLevel ?? "").trim()
+          : String(fields.gradeLevel ?? "").trim(),
+      subject:
+        fields.subject === "other"
+          ? String(fields.customSubject ?? "").trim()
+          : String(fields.subject ?? "").trim(),
+      description: String(fields.description ?? ""),
+    };
+
+    const result = CreateQuestionBankSchema.safeParse(normalizedPayload);
     const fieldErrors = result.success
       ? {}
       : result.error.flatten().fieldErrors;
@@ -60,44 +103,66 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
     const nextErrors = {
       name: fieldErrors.name?.[0] ?? "",
       gradeLevel: fieldErrors.gradeLevel?.[0] ?? "",
+      customGradeLevel:
+        fields.gradeLevel === "other" && !normalizedPayload.gradeLevel
+          ? MSG02
+          : "",
       subject: fieldErrors.subject?.[0] ?? "",
+      customSubject:
+        fields.subject === "other" && !normalizedPayload.subject ? MSG02 : "",
       description: fieldErrors.description?.[0] ?? "",
     };
 
     if (Object.values(nextErrors).some(Boolean)) {
       setErrors(nextErrors);
       setStatus("missing");
+      toast.error(MSG02, { id: "create-resource-bank-msg02" });
       return;
     }
 
     setErrors(INITIAL_ERRORS);
 
     try {
-      await onSubmit?.({
-        name: fields.name,
-        gradeLevel: fields.gradeLevel,
-        subject: fields.subject,
-        description: fields.description || "",
-      });
+      await onSubmit?.(normalizedPayload);
       onClose?.();
     } catch (err) {
       const message =
         err.response?.data?.message ??
         "Tạo ngân hàng câu hỏi thất bại. Vui lòng thử lại.";
-      setServerError(message);
-      setStatus(
-        /ton tai|tồn tại|exist|duplicate|trung|trùng/i.test(message)
-          ? "duplicate"
-          : "failed",
+
+      const isDuplicate = /ton tai|tồn tại|exist|duplicate|trung|trùng/i.test(
+        message,
       );
+      const isValidation =
+        /invalid|validation|required|bad request|khong hop le|không hợp lệ|bat buoc|bắt buộc|empty|trong/i.test(
+          message,
+        ) ||
+        Number(err?.response?.status) === 400 ||
+        Number(err?.response?.status) === 422;
+
+      if (isDuplicate) {
+        setServerError("");
+        setStatus(null);
+        return;
+      }
+
+      if (isValidation) {
+        setServerError("");
+        setStatus(null);
+        return;
+      }
+
+      setServerError(message);
+      setStatus("failed");
     }
   };
 
-  const handleReset = () => {
+  const handleCancel = () => {
     setFields(INITIAL_FIELDS);
     setErrors(INITIAL_ERRORS);
     setServerError("");
     setStatus(null);
+    onClose?.();
   };
 
   return (
@@ -123,25 +188,6 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form qb-create-form">
-          {status === "missing" && (
-            <div className="qb-create-alert qb-create-alert-error">
-              <XCircle size={18} />
-              <div>
-                <strong>MSG02: Thông tin không hợp lệ!</strong>
-                <p>{MSG02}</p>
-              </div>
-            </div>
-          )}
-
-          {status === "duplicate" && (
-            <div className="qb-create-alert qb-create-alert-error">
-              <XCircle size={18} />
-              <div>
-                <p>{MSG40}</p>
-              </div>
-            </div>
-          )}
-
           {status === "failed" && serverError && (
             <div className="qb-create-alert qb-create-alert-error">
               <XCircle size={18} />
@@ -186,10 +232,6 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
               placeholder="Ví dụ: Toán 10 - Chương 1"
               className={`form-input ${errors.name ? "has-error" : ""}`}
             />
-            {errors.name && <p className="form-error-text">{errors.name}</p>}
-            {status === "missing" && !errors.name && (
-              <p className="form-error-text">{MSG02}</p>
-            )}
             {!errors.name && (
               <p className="form-hint-text qb-create-hint-text">
                 Tên nên phản ánh nội dung để dễ tìm lại trong danh sách ngân
@@ -215,8 +257,18 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
                   </option>
                 ))}
               </select>
-              {errors.gradeLevel && (
-                <p className="form-error-text">{errors.gradeLevel}</p>
+
+              {fields.gradeLevel === "other" && (
+                <input
+                  type="text"
+                  name="customGradeLevel"
+                  value={fields.customGradeLevel}
+                  onChange={handleFieldChange}
+                  placeholder="Nhập khối lớp tùy chỉnh"
+                  className={`form-input qb-create-custom-input ${
+                    errors.customGradeLevel ? "has-error" : ""
+                  }`}
+                />
               )}
             </div>
 
@@ -236,8 +288,18 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
                   </option>
                 ))}
               </select>
-              {errors.subject && (
-                <p className="form-error-text">{errors.subject}</p>
+
+              {fields.subject === "other" && (
+                <input
+                  type="text"
+                  name="customSubject"
+                  value={fields.customSubject}
+                  onChange={handleFieldChange}
+                  placeholder="Nhập môn học tùy chỉnh"
+                  className={`form-input qb-create-custom-input ${
+                    errors.customSubject ? "has-error" : ""
+                  }`}
+                />
               )}
             </div>
           </div>
@@ -254,9 +316,6 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
               placeholder="Mô tả ngắn về ngân hàng câu hỏi..."
               className={`form-textarea ${errors.description ? "has-error" : ""}`}
             />
-            {errors.description && (
-              <p className="form-error-text">{errors.description}</p>
-            )}
             {!errors.description && (
               <p className="form-hint-text qb-create-hint-text">
                 {fields.description.length}/500 ký tự
@@ -267,11 +326,11 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
           <div className="modal-actions with-padding-top">
             <button
               type="button"
-              onClick={handleReset}
+              onClick={handleCancel}
               disabled={submitting}
               className="btn-cancel"
             >
-              Làm Mới
+              Hủy
             </button>
             <button type="submit" disabled={submitting} className="btn-primary">
               {submitting ? "Đang tạo..." : "Tạo ngân hàng đề"}

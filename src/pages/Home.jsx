@@ -261,12 +261,12 @@ export default function Homepage() {
               © 2024 Learnify. All rights reserved.
             </span>
             <div style={{ display: "flex", gap: 20 }}>
-              <a href="#" style={s.footerLink}>
+              <Link to={PATH_AUTH.terms} style={s.footerLink}>
                 Điều khoản
-              </a>
-              <a href="#" style={s.footerLink}>
+              </Link>
+              <Link to={PATH_AUTH.privacy} style={s.footerLink}>
                 Chính sách
-              </a>
+              </Link>
             </div>
           </div>
         </div>

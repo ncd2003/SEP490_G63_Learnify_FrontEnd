@@ -16,7 +16,6 @@ import {
   getBenefitCodeLabel,
   getBenefitTypeLabel,
 } from "@/schema/benefit.schema";
-import { getPlanStatusLabel } from "@/schema/plan.schema";
 import { formatCurrency } from "@/lib/utils";
 import "@/assets/css/pages/admin/planManagement.css";
 
@@ -33,8 +32,45 @@ const PLAN_STATUS_OPTIONS = [
   { value: "HIDE", label: "Ẩn" },
 ];
 
-const DEFAULT_BENEFIT_CODE = BENEFIT_CODE_VALUES[0] || "AI_REQUEST";
-const DEFAULT_BENEFIT_TYPE = BENEFIT_TYPE_VALUES[0] || "COUNTER";
+// Benefit creation inside form removed; DEFAULT_BENEFIT_* not required.
+const PLAN_FETCH_PARAMS = { page: 1, size: 100 };
+const BYTES_PER_GB = 1024 * 1024 * 1024;
+
+const mapBenefitLimitForForm = (benefitCode, limitValue) => {
+  const normalizedCode = String(benefitCode || "").toUpperCase();
+  const numericLimit = Number(limitValue);
+
+  if (!Number.isFinite(numericLimit) || numericLimit <= 0) {
+    return "";
+  }
+
+  if (normalizedCode === "STORAGE") {
+    // Support both old payloads (bytes) and normalized payloads (GB).
+    const gbValue = numericLimit >= BYTES_PER_GB
+      ? (numericLimit / BYTES_PER_GB)
+      : numericLimit;
+    return Number.isInteger(gbValue)
+      ? String(gbValue)
+      : String(Number(gbValue.toFixed(2)));
+  }
+
+  return String(numericLimit);
+};
+
+const mapBenefitLimitForPayload = (benefitCode, limitValue) => {
+  const normalizedCode = String(benefitCode || "").toUpperCase();
+  const numericLimit = Number(limitValue);
+
+  if (!Number.isFinite(numericLimit) || numericLimit <= 0) {
+    return 0;
+  }
+
+  if (normalizedCode === "STORAGE") {
+    return Math.round(numericLimit * BYTES_PER_GB);
+  }
+
+  return Math.round(numericLimit);
+};
 
 const EMPTY_FORM = {
   name: "",
@@ -65,10 +101,19 @@ const normalizePlanStatusValue = (status) => {
 };
 
 const formatPrice = (price) => {
+  if (price === null || price === undefined) {
+    return "Miễn phí";
+  }
+
   const number = Number(price);
   if (!Number.isFinite(number)) {
     return "-";
   }
+
+  if (number <= 0) {
+    return "Miễn phí";
+  }
+
   return formatCurrency(number);
 };
 
@@ -99,7 +144,7 @@ const normalizeFormFromPlan = (plan) => {
     ? plan.benefits
       .map((item) => ({
         id: Number(item?.benefit?.id),
-        limit: String(item?.limitValue ?? ""),
+        limit: mapBenefitLimitForForm(item?.benefit?.code, item?.limitValue),
       }))
       .filter((item) => Number.isFinite(item.id) && item.id > 0)
     : [];
@@ -129,26 +174,34 @@ const AdminPlanManagementPage = () => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [newBenefitCode, setNewBenefitCode] = useState(DEFAULT_BENEFIT_CODE);
-  const [newBenefitType, setNewBenefitType] = useState(DEFAULT_BENEFIT_TYPE);
-  const [creatingBenefit, setCreatingBenefit] = useState(false);
-  const [createBenefitError, setCreateBenefitError] = useState("");
-  const [createBenefitSuccess, setCreateBenefitSuccess] = useState("");
+  // Inline benefit creation removed: newBenefitCode/newBenefitType state removed.
 
   const [planToDelete, setPlanToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState(null);
+
+  const benefitCodeById = useMemo(() => {
+    const map = new Map();
+    benefits.forEach((benefit) => {
+      const benefitId = Number(benefit?.id);
+      if (Number.isFinite(benefitId) && benefitId > 0) {
+        map.set(benefitId, String(benefit?.code || "").toUpperCase());
+      }
+    });
+    return map;
+  }, [benefits]);
 
   const fetchData = async () => {
     setLoading(true);
     setError("");
     try {
       const [plansResponse, benefitsResponse] = await Promise.all([
-        planApi.getPlans(),
+        planApi.getPlans(PLAN_FETCH_PARAMS),
         benefitApi.getBenefits(),
       ]);
 
-      const fetchedPlans = Array.isArray(plansResponse?.result)
-        ? plansResponse.result
+      const fetchedPlans = Array.isArray(plansResponse?.result?.content)
+        ? plansResponse.result.content
         : [];
       const fetchedBenefits = Array.isArray(benefitsResponse?.result)
         ? benefitsResponse.result
@@ -187,15 +240,10 @@ const AdminPlanManagementPage = () => {
     });
   }, [plans, searchQuery]);
 
-  const resetBenefitCreateState = () => {
-    setNewBenefitCode(DEFAULT_BENEFIT_CODE);
-    setNewBenefitType(DEFAULT_BENEFIT_TYPE);
-    setCreateBenefitError("");
-    setCreateBenefitSuccess("");
-  };
+  // resetBenefitCreateState removed
 
   const closeForm = () => {
-    if (submitting || creatingBenefit) {
+    if (submitting) {
       return;
     }
     setIsFormOpen(false);
@@ -203,7 +251,7 @@ const AdminPlanManagementPage = () => {
     setEditingPlan(null);
     setForm(EMPTY_FORM);
     setFormError("");
-    resetBenefitCreateState();
+    // inline benefit creation state cleared elsewhere (removed)
   };
 
   const openCreateForm = () => {
@@ -211,7 +259,6 @@ const AdminPlanManagementPage = () => {
     setEditingPlan(null);
     setForm(EMPTY_FORM);
     setFormError("");
-    resetBenefitCreateState();
     setIsFormOpen(true);
   };
 
@@ -225,7 +272,6 @@ const AdminPlanManagementPage = () => {
     setEditingPlan(plan);
     setForm(normalizeFormFromPlan(plan));
     setFormError("");
-    resetBenefitCreateState();
     setIsFormOpen(true);
   };
 
@@ -261,23 +307,8 @@ const AdminPlanManagementPage = () => {
     });
   };
 
-  const selectBenefitInForm = (benefitId) => {
-    const normalizedId = Number(benefitId);
-    if (!Number.isFinite(normalizedId) || normalizedId <= 0) {
-      return;
-    }
+  
 
-    setForm((prev) => {
-      const existed = prev.benefits.some((item) => Number(item.id) === normalizedId);
-      if (existed) {
-        return prev;
-      }
-      return {
-        ...prev,
-        benefits: [...prev.benefits, { id: normalizedId, limit: "1" }],
-      };
-    });
-  };
 
   const changeBenefitLimit = (benefitId, nextLimit) => {
     const normalizedId = Number(benefitId);
@@ -296,63 +327,7 @@ const AdminPlanManagementPage = () => {
     }));
   };
 
-  const handleCreateBenefitInForm = async () => {
-    if (creatingBenefit) {
-      return;
-    }
-
-    setCreateBenefitError("");
-    setCreateBenefitSuccess("");
-
-    const existedBenefit = benefits.find(
-      (item) => item?.code === newBenefitCode && item?.type === newBenefitType,
-    );
-
-    if (existedBenefit) {
-      if (!Number.isFinite(Number(existedBenefit.id)) || Number(existedBenefit.id) <= 0) {
-        setCreateBenefitError("Benefit đã tồn tại nhưng id không hợp lệ.");
-        return;
-      }
-
-      selectBenefitInForm(existedBenefit.id);
-      setCreateBenefitSuccess(
-        `Benefit ${getBenefitCodeLabel(existedBenefit.code)} (${getBenefitTypeLabel(existedBenefit.type)}) đã tồn tại và được thêm vào gói.`,
-      );
-      return;
-    }
-
-    setCreatingBenefit(true);
-    try {
-      const response = await benefitApi.createBenefit({
-        code: newBenefitCode,
-        type: newBenefitType,
-      });
-
-      const createdBenefit = response?.result;
-      const createdId = Number(createdBenefit?.id);
-
-      if (!Number.isFinite(createdId) || createdId <= 0) {
-        throw new Error("Tạo benefit thành công nhưng không nhận được id hợp lệ.");
-      }
-
-      setBenefits((prev) => {
-        const existed = prev.some((item) => Number(item?.id) === createdId);
-        if (existed) {
-          return prev;
-        }
-        return [...prev, createdBenefit];
-      });
-
-      selectBenefitInForm(createdId);
-      setCreateBenefitSuccess(
-        `Đã tạo benefit ${getBenefitCodeLabel(createdBenefit?.code)} (${getBenefitTypeLabel(createdBenefit?.type)}) và thêm vào gói.`,
-      );
-    } catch (err) {
-      setCreateBenefitError(buildErrorMessage(err, "Không thể tạo benefit mới."));
-    } finally {
-      setCreatingBenefit(false);
-    }
-  };
+  // Inline benefit creation handler removed.
 
   const validateForm = () => {
     const name = form.name.trim();
@@ -404,10 +379,18 @@ const AdminPlanManagementPage = () => {
       durationUnit: form.durationUnit,
       durationValue: Number(form.durationValue),
       planStatus: form.planStatus,
-      benefits: form.benefits.map((item) => ({
-        id: Number(item.id),
-        limit: Number(item.limit),
-      })),
+      benefits: form.benefits
+        .map((item) => {
+          const benefitId = Number(item.id);
+          const benefitCode = benefitCodeById.get(benefitId);
+          const mappedLimit = mapBenefitLimitForPayload(benefitCode, item.limit);
+
+          return {
+            id: benefitId,
+            limit: mappedLimit,
+          };
+        })
+        .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.limit > 0),
     };
 
     setSubmitting(true);
@@ -432,6 +415,51 @@ const AdminPlanManagementPage = () => {
 
   const openDeleteModal = (plan) => {
     setPlanToDelete(plan);
+  };
+
+  const handleUpdatePlanStatus = async (plan, nextStatus) => {
+    const planId = Number(plan?.id);
+    if (!Number.isFinite(planId) || planId <= 0) {
+      setError("Không thể cập nhật trạng thái gói do thiếu id từ backend.");
+      return;
+    }
+
+    const normalizedCurrentStatus = normalizePlanStatusValue(plan?.planStatus);
+    const normalizedNextStatus = normalizePlanStatusValue(nextStatus);
+
+    if (normalizedCurrentStatus === normalizedNextStatus) {
+      return;
+    }
+
+    setError("");
+    setUpdatingStatusId(planId);
+
+    try {
+      const response = await planApi.updatePlanStatus(planId, normalizedNextStatus);
+      const updatedPlan = response?.result;
+
+      setPlans((prev) => prev.map((item) => {
+        if (Number(item?.id) !== planId) {
+          return item;
+        }
+
+        if (updatedPlan && typeof updatedPlan === "object") {
+          return {
+            ...item,
+            ...updatedPlan,
+          };
+        }
+
+        return {
+          ...item,
+          planStatus: normalizedNextStatus,
+        };
+      }));
+    } catch (err) {
+      setError(buildErrorMessage(err, "Không thể cập nhật trạng thái gói."));
+    } finally {
+      setUpdatingStatusId(null);
+    }
   };
 
   const closeDeleteModal = () => {
@@ -499,7 +527,7 @@ const AdminPlanManagementPage = () => {
                 <th>Giá</th>
                 <th>Thời hạn</th>
                 <th>Trạng thái</th>
-                <th>Benefits</th>
+                <th>Lợi ích</th>
                 <th>Mô tả</th>
                 <th>Thao tác</th>
               </tr>
@@ -526,11 +554,24 @@ const AdminPlanManagementPage = () => {
                     <td>{formatPrice(plan.price)}</td>
                     <td>{formatDuration(plan.durationUnit, plan.durationValue)}</td>
                     <td>
-                      <span
-                        className={`plan-status-pill ${normalizePlanStatusValue(plan.planStatus).toLowerCase()}`}
-                      >
-                        {getPlanStatusLabel(plan.planStatus)}
-                      </span>
+                      <div className="plan-status-cell">
+                        <select
+                          className={`plan-status-select ${normalizePlanStatusValue(plan.planStatus).toLowerCase()}`}
+                          value={normalizePlanStatusValue(plan.planStatus)}
+                          onChange={(event) => handleUpdatePlanStatus(plan, event.target.value)}
+                          disabled={updatingStatusId === Number(plan.id)}
+                        >
+                          {PLAN_STATUS_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        {updatingStatusId === Number(plan.id) && (
+                          <span className="plan-status-updating">Đang cập nhật...</span>
+                        )}
+                      </div>
                     </td>
                     <td>{Array.isArray(plan.benefits) ? plan.benefits.length : 0}</td>
                     <td className="plan-description-cell">{plan.description || "-"}</td>
@@ -563,7 +604,7 @@ const AdminPlanManagementPage = () => {
                 type="button"
                 className="plan-form-close"
                 onClick={closeForm}
-                disabled={submitting || creatingBenefit}
+                disabled={submitting}
               >
                 <X size={18} />
               </button>
@@ -654,51 +695,7 @@ const AdminPlanManagementPage = () => {
               <div className="plan-benefit-box">
                 <p className="plan-benefit-title">Lợi ích trong gói</p>
 
-                <div className="plan-benefit-create-wrap">
-                  <p className="plan-benefit-create-title">Tạo benefit ngay trong form</p>
-                  <div className="plan-benefit-create-controls">
-                    <select
-                      value={newBenefitCode}
-                      onChange={(event) => setNewBenefitCode(event.target.value)}
-                      disabled={creatingBenefit || submitting}
-                    >
-                      {BENEFIT_CODE_VALUES.map((value) => (
-                        <option key={value} value={value}>
-                          {getBenefitCodeLabel(value)}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={newBenefitType}
-                      onChange={(event) => setNewBenefitType(event.target.value)}
-                      disabled={creatingBenefit || submitting}
-                    >
-                      {BENEFIT_TYPE_VALUES.map((value) => (
-                        <option key={value} value={value}>
-                          {getBenefitTypeLabel(value)}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      className="plan-benefit-create-btn"
-                      onClick={handleCreateBenefitInForm}
-                      disabled={creatingBenefit || submitting}
-                    >
-                      {creatingBenefit ? "Đang tạo..." : "Tạo benefit"}
-                    </button>
-                  </div>
-
-                  {createBenefitError && (
-                    <div className="plan-benefit-create-message error">{createBenefitError}</div>
-                  )}
-
-                  {createBenefitSuccess && (
-                    <div className="plan-benefit-create-message success">{createBenefitSuccess}</div>
-                  )}
-                </div>
+                {/* Inline benefit creation removed */}
 
                 {benefits.length === 0 ? (
                   <div className="plan-benefit-empty">Chưa có benefit để lựa chọn.</div>
@@ -709,6 +706,13 @@ const AdminPlanManagementPage = () => {
                       const selectedBenefit = form.benefits.find(
                         (item) => Number(item.id) === Number(benefit.id),
                       );
+
+                      const unitLabel =
+                        benefit?.code === "STORAGE"
+                          ? "GB"
+                          : benefit?.code === "AI_REQUEST"
+                          ? "yêu cầu"
+                          : "";
 
                       return (
                         <div key={benefit.id} className="plan-benefit-row">
@@ -723,16 +727,19 @@ const AdminPlanManagementPage = () => {
                             </span>
                           </label>
 
-                          <input
-                            type="number"
-                            min={1}
-                            step={1}
-                            disabled={!selected}
-                            value={selected ? selectedBenefit?.limit || "" : ""}
-                            onChange={(event) => changeBenefitLimit(benefit.id, event.target.value)}
-                            placeholder="Limit"
-                            className="plan-benefit-limit-input"
-                          />
+                          <div className="plan-benefit-limit-wrap">
+                            <input
+                              type="number"
+                              min={benefit?.code === "STORAGE" ? 0.1 : 1}
+                              step={benefit?.code === "STORAGE" ? 0.1 : 1}
+                              disabled={!selected}
+                              value={selected ? selectedBenefit?.limit || "" : ""}
+                              onChange={(event) => changeBenefitLimit(benefit.id, event.target.value)}
+                              placeholder="Limit"
+                              className="plan-benefit-limit-input"
+                            />
+                            <span className="plan-benefit-unit">{unitLabel}</span>
+                          </div>
                         </div>
                       );
                     })}
@@ -746,7 +753,7 @@ const AdminPlanManagementPage = () => {
                 type="button"
                 className="plan-btn-secondary"
                 onClick={closeForm}
-                disabled={submitting || creatingBenefit}
+                disabled={submitting}
               >
                 Hủy
               </button>
@@ -754,7 +761,7 @@ const AdminPlanManagementPage = () => {
                 type="button"
                 className="plan-btn-primary"
                 onClick={handleSubmitForm}
-                disabled={submitting || creatingBenefit}
+                disabled={submitting}
               >
                 {submitting ? "Đang lưu..." : formMode === "create" ? "Tạo gói" : "Cập nhật gói"}
               </button>

@@ -1,331 +1,484 @@
-import { Activity, AlertTriangle, ShieldCheck, Users, UserCheck, BookOpen } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { adminApi } from "@/apis/admin.api";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-const metricCards = [
-  {
-    title: "Tổng người dùng",
-    value: "12,480",
-    delta: "+6.2% so với tháng trước",
-    icon: Users,
-  },
-  {
-    title: "Tài khoản hoạt động",
-    value: "11,902",
-    delta: "95.3% đang hoạt động",
-    icon: UserCheck,
-  },
-  {
-    title: "Tài khoản bị khóa",
-    value: "128",
-    delta: "Cần theo dõi hành vi bất thường",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Cảnh báo hệ thống",
-    value: "07",
-    delta: "2 cảnh báo mức cao",
-    icon: AlertTriangle,
-  },
-];
+const numberFormatter = new Intl.NumberFormat("vi-VN");
 
-const recentActions = [
-  { actor: "Nguyen Van A", action: "Khóa tài khoản", target: "student01@gmail.com", time: "2 phút trước" },
-  { actor: "Tran Thi B", action: "Mở khóa tài khoản", target: "teacher.alpha@gmail.com", time: "15 phút trước" },
-  { actor: "Le Van C", action: "Cập nhật vai trò", target: "user.demo@gmail.com", time: "30 phút trước" },
-  { actor: "System", action: "Đồng bộ báo cáo", target: "Kỳ 03/2026", time: "1 giờ trước" },
-];
+const formatNumber = (value) => numberFormatter.format(Number(value || 0));
 
-const topClasses = [
-  { name: "Toán 10A", users: 58, status: "Ổn định" },
-  { name: "IELTS Foundation", users: 53, status: "Tăng nhanh" },
-  { name: "Vật lý 12", users: 49, status: "Ổn định" },
-  { name: "Ngữ văn 11", users: 45, status: "Cần kiểm tra" },
-];
+const formatTimestamp = (value) => {
+  if (!value) return "--/--/---- --:--";
+  const date = new Date(value);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+};
+
+const shortDate = (value) => {
+  if (!value) return "";
+  const [year, month, day] = String(value).split("-");
+  return `${day}/${month}`;
+};
+
+const monthLabel = (value) => {
+  if (!value) return "";
+  const [year, month] = String(value).split("-");
+  return `${month}/${year}`;
+};
 
 const AdminDashboardPage = () => {
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await adminApi.getSystemDashboard();
+        setDashboard(response?.result || null);
+      } catch (err) {
+        setError(
+          err?.response?.data?.message ||
+            "MSG90: Không thể tải dữ liệu bảng điều hành hệ thống. Vui lòng thử lại.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
+
+  const lineData = useMemo(() => {
+    const list = dashboard?.trends?.userGrowthLast30Days || [];
+    return list.map((item) => ({
+      date: shortDate(item.date),
+      hocSinh: Number(item.newStudents || 0),
+      giaoVien: Number(item.newTeachers || 0),
+    }));
+  }, [dashboard]);
+
+  const barData = useMemo(() => {
+    const list = dashboard?.trends?.classActivityLast6Months || [];
+    return list.map((item) => ({
+      month: monthLabel(item.month),
+      soLop: Number(item.newClasses || 0),
+    }));
+  }, [dashboard]);
+
+  const pieData = useMemo(() => {
+    const storage = dashboard?.details?.storageUsage;
+    if (!storage) return [];
+    return [
+      {
+        name: "Tài liệu lớp học",
+        value: Number(storage.classMaterialsMb || 0),
+      },
+      {
+        name: "Bài nộp học sinh",
+        value: Number(storage.studentSubmissionsMb || 0),
+      },
+      {
+        name: "Media hệ thống",
+        value: Number(storage.systemMediaMb || 0),
+      },
+    ];
+  }, [dashboard]);
+
+  const topClasses = dashboard?.details?.topActiveClasses || [];
+  const overview = dashboard?.overview;
+  const totalUsers = overview?.totalUsers;
+
   return (
-    <div className="admin-dashboard-page">
-      <div className="hero-panel">
+    <div className="sys-dashboard-page">
+      <div className="sys-head">
         <div>
-          <p className="hero-badge">Admin Dashboard</p>
-          <h1>Trung tâm giám sát hệ thống Learnify</h1>
-          <p className="hero-subtitle">
-            Theo dõi người dùng, trạng thái tài khoản, và tín hiệu vận hành trong thời gian gần thực.
-          </p>
+          <p className="sys-kicker">System Analytics</p>
+          <h1>Bảng điều hành hệ thống</h1>
         </div>
-        <div className="hero-pulse">
-          <Activity size={18} />
-          <span>Realtime Monitoring</span>
-        </div>
+        <div className="sys-updated">Cập nhật gần nhất: {formatTimestamp(overview?.generatedAt)} | cache tối đa 15 phút</div>
       </div>
 
-      <section className="metrics-grid">
-        {metricCards.map((item) => (
-          <article key={item.title} className="metric-card">
-            <div className="metric-head">
-              <p>{item.title}</p>
-              <item.icon size={18} />
+      {loading && <div className="sys-info">Đang tải dữ liệu dashboard...</div>}
+      {!!error && <div className="sys-error">{error}</div>}
+
+      {!loading && !error && (
+        <>
+          <section className="sys-section">
+            <div className="sys-section-title">Tổng quan hệ thống</div>
+            <div className="sys-overview-grid">
+              <article className="sys-card">
+                <h3>Tổng người dùng</h3>
+                <p className="sys-card-value">{formatNumber(totalUsers?.total)}</p>
+                <p className="sys-muted">Học sinh: {formatNumber(totalUsers?.roleBreakdown?.students)}</p>
+                <p className="sys-muted">Giáo viên: {formatNumber(totalUsers?.roleBreakdown?.teachers)}</p>
+                <p className="sys-muted">Quản trị viên: {formatNumber(totalUsers?.roleBreakdown?.admins)}</p>
+                <p className="sys-split">Đang hoạt động: {formatNumber(totalUsers?.active)} <span>|</span> Đã khóa: {formatNumber(totalUsers?.locked)}</p>
+              </article>
+
+              <article className="sys-card">
+                <h3>Lớp học đang hoạt động</h3>
+                <p className="sys-card-value">{formatNumber(overview?.activeClasses)}</p>
+                <p className="sys-muted">Không bao gồm lớp đã lưu trữ hoặc đã xóa mềm</p>
+              </article>
+
+              <article className="sys-card">
+                <h3>DAU (Daily Active Users)</h3>
+                <p className="sys-card-value">{formatNumber(overview?.dau)}</p>
+                <p className="sys-muted">Số người dùng tương tác trong ngày hiện tại</p>
+              </article>
             </div>
-            <h3>{item.value}</h3>
-            <span>{item.delta}</span>
-          </article>
-        ))}
-      </section>
+          </section>
 
-      <section className="dashboard-panels">
-        <article className="panel">
-          <header>
-            <h2>Hoạt động gần đây</h2>
-            <span>4 bản ghi mới nhất</span>
-          </header>
-          <div className="timeline">
-            {recentActions.map((item, idx) => (
-              <div className="timeline-row" key={`${item.actor}-${idx}`}>
-                <div className="timeline-dot" />
-                <div className="timeline-content">
-                  <p>
-                    <strong>{item.actor}</strong> - {item.action}
-                  </p>
-                  <span>{item.target}</span>
+          <section className="sys-section">
+            <div className="sys-section-title">Xu hướng tăng trưởng và hoạt động</div>
+            <div className="sys-trend-grid">
+              <article className="sys-panel">
+                <h4>Biểu đồ đường: Tăng trưởng người dùng 30 ngày</h4>
+                <div className="sys-chart-wrap">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={lineData}>
+                      <CartesianGrid stroke="#c9d2e3" strokeDasharray="4 4" />
+                      <XAxis dataKey="date" stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} />
+                      <YAxis stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{ background: "#ffffff", border: "1px solid #aebad1", color: "#111827", borderRadius: 10 }}
+                        labelStyle={{ color: "#111827" }}
+                      />
+                      <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
+                      <Line type="monotone" dataKey="hocSinh" name="Học sinh" stroke="#3158a2" strokeWidth={2.6} dot={false} />
+                      <Line type="monotone" dataKey="giaoVien" name="Giáo viên" stroke="#12a07a" strokeWidth={2.6} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <time>{item.time}</time>
-              </div>
-            ))}
-          </div>
-        </article>
+              </article>
 
-        <article className="panel">
-          <header>
-            <h2>Lớp học nổi bật</h2>
-            <span>Dựa trên số lượng thành viên</span>
-          </header>
-          <div className="class-table">
-            {topClasses.map((item) => (
-              <div key={item.name} className="class-row">
-                <div className="class-main">
-                  <BookOpen size={16} />
-                  <p>{item.name}</p>
+              <article className="sys-panel">
+                <h4>Biểu đồ cột: Xu hướng tạo lớp mới 6 tháng</h4>
+                <div className="sys-chart-wrap">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={barData}>
+                      <CartesianGrid stroke="#c9d2e3" strokeDasharray="4 4" />
+                      <XAxis dataKey="month" stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} />
+                      <YAxis stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{ background: "#ffffff", border: "1px solid #aebad1", color: "#111827", borderRadius: 10 }}
+                        labelStyle={{ color: "#111827" }}
+                      />
+                      <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
+                      <Bar dataKey="soLop" name="Số lớp mới" fill="#5474b8" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-                <span>{item.users} học viên</span>
-                <strong>{item.status}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
+              </article>
+            </div>
+          </section>
+
+          <section className="sys-section">
+            <div className="sys-section-title">Chi tiết và phân rã dữ liệu</div>
+            <div className="sys-detail-grid">
+              <article className="sys-panel">
+                <h4>Biểu đồ tròn: Phân bổ lưu trữ</h4>
+                <div className="sys-chart-wrap">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={96}
+                        stroke="#ffffff"
+                        strokeWidth={1}
+                        label={({ name }) => name}
+                      >
+                        <Cell fill="#4c6fb5" />
+                        <Cell fill="#14a47c" />
+                        <Cell fill="#f29d4b" />
+                      </Pie>
+                      <Tooltip
+                        formatter={(v) => `${formatNumber(v)} MB`}
+                        contentStyle={{ background: "#ffffff", border: "1px solid #aebad1", color: "#111827", borderRadius: 10 }}
+                        labelStyle={{ color: "#111827" }}
+                      />
+                      <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </article>
+
+              <article className="sys-panel">
+                <h4>Top 5 lớp học hoạt động cao nhất (30 ngày)</h4>
+                <div className="sys-table-wrap">
+                  <table className="sys-table">
+                    <thead>
+                      <tr>
+                        <th>Hạng</th>
+                        <th>Tên lớp</th>
+                        <th>Giáo viên</th>
+                        <th>Bài viết</th>
+                        <th>Bình luận</th>
+                        <th>Bài nộp</th>
+                        <th>Interaction Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topClasses.map((item, index) => (
+                        <tr key={item.classId || `${item.classCode}-${index}`}>
+                          <td>{index + 1}</td>
+                          <td>{item.className || "-"}</td>
+                          <td>{item.teacherName || "-"}</td>
+                          <td>{formatNumber(item.teacherPosts)}</td>
+                          <td>{formatNumber(item.userComments)}</td>
+                          <td>{formatNumber(item.studentSubmissions)}</td>
+                          <td>{formatNumber(item.interactionScore)}</td>
+                        </tr>
+                      ))}
+                      {topClasses.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="sys-empty-row">Không có dữ liệu tương tác trong 30 ngày gần nhất.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+          </section>
+        </>
+      )}
 
       <style>{`
-        .admin-dashboard-page {
+        .sys-dashboard-page {
+          color: #111827;
           display: grid;
-          gap: 20px;
-          color: #0f172a;
-        }
-
-        .hero-panel {
-          background: linear-gradient(135deg, #0f766e 0%, #1d4ed8 55%, #111827 100%);
-          color: #f8fafc;
-          border-radius: 18px;
-          padding: 22px;
-          display: flex;
           gap: 18px;
+          padding: 6px;
+        }
+
+        .sys-head {
+          border: 1px solid #cbd5e1;
+          background: linear-gradient(130deg, #ffffff 0%, #f4f8ff 100%);
+          border-radius: 16px;
+          padding: 14px 16px;
+          display: flex;
+          align-items: center;
           justify-content: space-between;
-          align-items: flex-start;
-          box-shadow: 0 18px 30px rgba(15, 23, 42, 0.18);
+          gap: 14px;
+          flex-wrap: wrap;
         }
 
-        .hero-badge {
-          display: inline-block;
-          font-size: 12px;
-          letter-spacing: 0.5px;
-          padding: 5px 10px;
-          border-radius: 999px;
-          border: 1px solid rgba(240, 253, 250, 0.6);
-          margin: 0 0 10px;
+        .sys-kicker {
+          margin: 0 0 4px;
+          font-size: 11px;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #64748b;
+          font-weight: 700;
         }
 
-        .hero-panel h1 {
+        .sys-head h1 {
           margin: 0;
-          font-size: clamp(22px, 3vw, 32px);
+          font-size: clamp(24px, 2.7vw, 34px);
+          font-weight: 700;
           line-height: 1.15;
-          max-width: 640px;
         }
 
-        .hero-subtitle {
-          margin-top: 10px;
-          color: #dbeafe;
-          max-width: 620px;
+        .sys-updated {
+          border: 1px solid #b9c6df;
+          background: #e8efff;
+          border-radius: 10px;
+          padding: 8px 10px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #1f2f57;
+        }
+
+        .sys-info,
+        .sys-error {
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 12px;
           font-size: 14px;
         }
 
-        .hero-pulse {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 12px;
-          font-weight: 700;
-          background: rgba(248, 250, 252, 0.12);
-          border: 1px solid rgba(226, 232, 240, 0.45);
-          padding: 8px 12px;
-          border-radius: 999px;
-          white-space: nowrap;
+        .sys-error {
+          border-color: #ef4444;
+          color: #b91c1c;
         }
 
-        .metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 14px;
-        }
-
-        .metric-card {
-          border: 1px solid #dbe4ef;
+        .sys-section {
+          border: 1px solid #d7deeb;
+          background: #f8fbff;
           border-radius: 14px;
-          padding: 16px;
-          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          overflow: hidden;
         }
 
-        .metric-head {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          color: #475569;
-          font-size: 13px;
+        .sys-section-title {
+          border-bottom: 1px solid #d7deeb;
+          background: #eef3fb;
+          padding: 10px 12px;
+          font-size: 15px;
+          font-weight: 700;
+          color: #23314f;
         }
 
-        .metric-card h3 {
-          margin: 10px 0 6px;
-          font-size: 30px;
+        .sys-overview-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          padding: 12px;
+        }
+
+        .sys-card,
+        .sys-panel {
+          border: 1px solid #d4ddeb;
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 12px;
+        }
+
+        .sys-card h3,
+        .sys-panel h4 {
+          margin: 0 0 10px;
+          font-size: 14px;
+          font-weight: 700;
+          color: #22304b;
+        }
+
+        .sys-card-value {
+          margin: 0 0 10px;
+          font-size: clamp(30px, 3vw, 40px);
+          font-weight: 700;
           line-height: 1;
           color: #0f172a;
         }
 
-        .metric-card span {
-          color: #64748b;
-          font-size: 12px;
+        .sys-muted {
+          margin: 4px 0;
+          font-size: 13px;
+          color: #334155;
         }
 
-        .dashboard-panels {
+        .sys-split {
+          margin: 7px 0 0;
+          font-size: 13px;
+          color: #0f172a;
+          font-weight: 700;
+        }
+
+        .sys-split span {
+          color: #94a3b8;
+          padding: 0 6px;
+        }
+
+        .sys-trend-grid,
+        .sys-detail-grid {
           display: grid;
-          grid-template-columns: 1.3fr 1fr;
-          gap: 14px;
-        }
-
-        .panel {
-          border: 1px solid #dbe4ef;
-          border-radius: 14px;
-          background: #fff;
-          padding: 16px;
-        }
-
-        .panel header {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          margin-bottom: 12px;
-          border-bottom: 1px dashed #dbe4ef;
-          padding-bottom: 10px;
-        }
-
-        .panel h2 {
-          margin: 0;
-          font-size: 17px;
-        }
-
-        .panel header span {
-          font-size: 12px;
-          color: #64748b;
-        }
-
-        .timeline {
-          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 12px;
+          padding: 12px;
         }
 
-        .timeline-row {
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          gap: 10px;
-          align-items: center;
-          border: 1px solid #eef2f7;
-          border-radius: 12px;
-          padding: 10px;
-        }
-
-        .timeline-dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background: #0ea5e9;
-          box-shadow: 0 0 0 5px rgba(14, 165, 233, 0.15);
-        }
-
-        .timeline-content p {
-          margin: 0;
-          font-size: 13px;
-        }
-
-        .timeline-content span {
-          font-size: 12px;
-          color: #64748b;
-        }
-
-        .timeline-row time {
-          font-size: 11px;
-          color: #64748b;
-        }
-
-        .class-table {
-          display: grid;
-          gap: 8px;
-        }
-
-        .class-row {
-          display: grid;
-          grid-template-columns: 1fr auto auto;
-          gap: 10px;
-          align-items: center;
-          border: 1px solid #edf2f7;
+        .sys-chart-wrap {
+          border: 1px solid #d9e2f1;
           border-radius: 10px;
+          background:
+            radial-gradient(circle at 15% 10%, rgba(191, 219, 254, 0.24), transparent 42%),
+            radial-gradient(circle at 90% 90%, rgba(167, 243, 208, 0.2), transparent 38%),
+            #ffffff;
           padding: 10px;
-          font-size: 13px;
+          min-height: 300px;
         }
 
-        .class-main {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
+        .sys-table-wrap {
+          border: 1px solid #d9e2f1;
+          border-radius: 10px;
+          background: #ffffff;
+          padding: 8px;
+          overflow: auto;
         }
 
-        .class-main p {
-          margin: 0;
-          font-weight: 600;
+        .sys-table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 760px;
         }
 
-        .class-row span {
-          color: #475569;
+        .sys-table th,
+        .sys-table td {
+          border: 1px solid #d8dfec;
+          padding: 8px;
           font-size: 12px;
+          text-align: left;
+          color: #111827;
+          background: #ffffff;
         }
 
-        .class-row strong {
-          font-size: 12px;
-          color: #0f766e;
+        .sys-table th {
+          background: #ecf2fc;
+          font-weight: 700;
+          color: #1f2f57;
         }
 
-        @media (max-width: 1080px) {
-          .metrics-grid {
+        .sys-table tbody tr:nth-child(even) td {
+          background: #f8fbff;
+        }
+
+        .sys-table tbody tr:hover td {
+          background: #eef4ff;
+        }
+
+        .sys-empty-row {
+          text-align: center;
+          font-style: italic;
+          background: #f6f9ff;
+        }
+
+        @media (max-width: 1200px) {
+          .sys-overview-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
-          .dashboard-panels {
+          .sys-trend-grid,
+          .sys-detail-grid {
             grid-template-columns: 1fr;
           }
         }
 
-        @media (max-width: 640px) {
-          .hero-panel {
-            flex-direction: column;
+        @media (max-width: 760px) {
+          .sys-overview-grid {
+            grid-template-columns: 1fr;
           }
 
-          .metrics-grid {
-            grid-template-columns: 1fr;
+          .sys-head {
+            border-radius: 12px;
+            padding: 12px;
+          }
+
+          .sys-updated {
+            width: 100%;
           }
         }
       `}</style>

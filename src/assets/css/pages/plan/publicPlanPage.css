@@ -185,6 +185,10 @@
   background: #1d4ed8;
 }
 
+.plan-payment-btn {
+  margin-top: 0;
+}
+
 .plan-state {
   max-width: 1120px;
   margin: 0 auto;

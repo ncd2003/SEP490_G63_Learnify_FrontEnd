@@ -101,7 +101,7 @@ const DeleteClassroomDialog = ({ classroom, onClose, onSuccess }) => {
             disabled={isDeleteDisabled}
             className="btn-danger"
           >
-            {deleting ? "Đang xóa..." : "Xóa lớp học"}
+            {deleting ? "Đang xóa..." : "Xác nhận xóa"}
           </button>
         </div>
       </div>

@@ -4,8 +4,9 @@
 
 .classroom-detail-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   background: #f9fafb;
+  overflow: hidden;
 }
 
 .classroom-detail-layout.is-collapsed .classroom-main-content {
@@ -25,11 +26,13 @@
 /* ─── SIDEBAR ─── */
 .classroom-sidebar {
   width: 280px;
+  height: 100vh;
   background: white;
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .classroom-sidebar.collapsed {
@@ -44,10 +47,60 @@
   gap: 12px;
 }
 
+.classroom-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .classroom-sidebar.collapsed .classroom-sidebar-header {
   padding: 14px;
   align-items: center;
   justify-content: center;
+}
+
+.classroom-sidebar.collapsed .classroom-header-actions {
+  margin-left: 0;
+}
+
+.classroom-notification-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.classroom-notification-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.classroom-notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 700;
+  text-align: center;
+  border: 2px solid #fff;
 }
 
 .back-to-classrooms-btn {
@@ -106,9 +159,24 @@
   padding: 16px 20px;
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
+  flex-shrink: 0;
+}
+
+.classroom-plan-usage-card {
+  margin: 0 16px 12px;
+  margin-top: auto;
+  padding: 10px 12px;
+  border: 1px solid #d9e2f3;
+  border-radius: 10px;
+  background: #f8fbff;
+  flex-shrink: 0;
 }
 
 .classroom-sidebar.collapsed .classroom-info-card {
+  display: none;
+}
+
+.classroom-sidebar.collapsed .classroom-plan-usage-card {
   display: none;
 }
 
@@ -155,9 +223,75 @@
   line-height: 1.5;
 }
 
+.classroom-plan-usage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.classroom-plan-usage-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.classroom-plan-usage-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-transform: uppercase;
+}
+
+.classroom-benefit-usage-item {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e4ebf7;
+}
+
+.classroom-benefit-usage-item:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.classroom-benefit-usage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.classroom-storage-progress {
+  margin-top: 6px;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #dbeafe;
+  overflow: hidden;
+}
+
+.classroom-storage-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #2563eb;
+  transition: width 0.3s ease;
+}
+
+.classroom-benefit-usage-subtext {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+}
+
 /* ─── NAVIGATION ─── */
 .classroom-nav {
   flex: 1;
+  min-height: 0;
   padding: 16px 0;
   overflow-y: auto;
 }
@@ -205,7 +339,189 @@
 /* ─── MAIN CONTENT ─── */
 .classroom-main-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.classroom-workspace-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-bottom: 1px solid #dbe5f2;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.classroom-workspace-left {
+  min-width: 0;
+}
+
+.classroom-workspace-label {
+  font-size: 12px;
+  color: #5b6b85;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.classroom-workspace-title-row {
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.classroom-workspace-title {
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.classroom-workspace-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #e9f0ff;
+  border: 1px solid #c9d8fb;
+  color: #1f4bbd;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.classroom-workspace-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #4b5e7a;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.classroom-workspace-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.classroom-workspace-notification {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #cfdcf2;
+  border-radius: 12px;
+  background: #f3f7ff;
+  color: #35538c;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.classroom-workspace-notification:hover {
+  background: #e8f0ff;
+  border-color: #b7c9eb;
+}
+
+.classroom-workspace-user-menu {
+  position: relative;
+}
+
+.classroom-workspace-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #cfdbef;
+  background: linear-gradient(180deg, #ffffff 0%, #f2f7ff 100%);
+  border-radius: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+.classroom-workspace-user-trigger:hover {
+  border-color: #b8cdef;
+  box-shadow: 0 8px 18px rgba(30, 64, 175, 0.1);
+}
+
+.classroom-workspace-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.classroom-workspace-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.classroom-workspace-user-info {
+  text-align: left;
+}
+
+.classroom-workspace-user-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.classroom-workspace-user-role {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.classroom-workspace-user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #d4dfef;
+  border-radius: 10px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+  padding: 6px;
+  z-index: 30;
+}
+
+.classroom-workspace-user-dropdown button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.classroom-workspace-user-dropdown button:hover {
+  background: #f1f5f9;
+}
+
+.classroom-main-body {
   padding: 24px;
 }
 
@@ -214,8 +530,12 @@
   .classroom-sidebar {
     width: 240px;
   }
-  
-  .classroom-main-content {
+
+  .classroom-workspace-title {
+    font-size: 24px;
+  }
+
+  .classroom-main-body {
     padding: 16px;
   }
 }
@@ -223,12 +543,50 @@
 @media (max-width: 768px) {
   .classroom-detail-layout {
     flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
   
   .classroom-sidebar {
     width: 100%;
+    height: auto;
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
+    overflow: visible;
+  }
+
+  .classroom-plan-usage-card {
+    margin: 8px;
+  }
+
+  .classroom-workspace-header {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .classroom-workspace-title {
+    font-size: 20px;
+  }
+
+  .classroom-workspace-subtitle {
+    font-size: 12px;
+  }
+
+  .classroom-workspace-user-info {
+    display: none;
+  }
+
+  .classroom-workspace-header {
+    padding: 12px 14px;
+  }
+
+  .classroom-workspace-title {
+    font-size: 24px;
+  }
+
+  .classroom-workspace-user-info {
+    display: none;
   }
   
   .classroom-nav {

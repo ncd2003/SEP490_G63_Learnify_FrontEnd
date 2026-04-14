@@ -145,6 +145,10 @@
   gap: 12px;
 }
 
+.qb-create-custom-input {
+  margin-top: 8px;
+}
+
 @media (max-width: 768px) {
   .qb-create-modal {
     max-width: 94vw;

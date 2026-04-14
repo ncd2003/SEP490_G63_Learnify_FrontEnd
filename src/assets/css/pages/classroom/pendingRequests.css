@@ -234,6 +234,217 @@
   background: #f9fafb;
 }
 
+.member-view-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.member-view-btn:hover {
+  background: #eef2f7;
+}
+
+.member-profile-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.member-profile-head {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.member-profile-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.member-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-profile-meta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.member-profile-meta strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.member-profile-meta span {
+  font-size: 12px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.member-profile-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.member-profile-grid small {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 3px;
+}
+
+.member-profile-grid p {
+  margin: 0;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.member-profile-address {
+  grid-column: 1 / -1;
+}
+
+.member-report-btn {
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid #0f172a;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.member-report-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.member-detail-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.member-detail-modal {
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 14px;
+}
+
+.member-detail-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.member-detail-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.member-detail-close {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-inline-modal {
+  margin-top: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.report-inline-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.report-inline-modal-head h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.report-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.report-field select,
+.report-field textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  padding: 9px 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.report-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .pending-requests-table th {
   padding: 13px 16px;
   text-align: left;
@@ -488,6 +699,15 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
   background: #ffffff;
+}
+
+/* When aside is hidden (non-teacher), make main area full width */
+.members-layout.no-aside {
+  grid-template-columns: 1fr;
+}
+
+.members-layout.no-aside .members-main {
+  border-right: none;
 }
 
 .members-main {

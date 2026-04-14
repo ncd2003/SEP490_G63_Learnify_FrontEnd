@@ -1,5 +1,18 @@
 // ─── GUEST / AUTH ─────────────────────────────────────────────────────────────
-const path = (root, sublink) => `${root}${sublink}`;
+const path = (root, sublink = "") => {
+  const normalizedRoot = String(root ?? "").replace(/\/+$/, "");
+  const normalizedSublink = String(sublink ?? "").replace(/^\/+/, "");
+
+  if (!normalizedRoot) {
+    return `/${normalizedSublink}`;
+  }
+
+  if (!normalizedSublink) {
+    return normalizedRoot;
+  }
+
+  return `${normalizedRoot}/${normalizedSublink}`;
+};
 
 const ROOTS_TEACHER = "/";
 
@@ -10,6 +23,8 @@ export const PATH_AUTH = {
   login: "/login",
   adminLogin: "/admin/login",
   register: "/register",
+  terms: "/terms-of-service",
+  privacy: "/privacy-policy",
   verifyOtp: "/verify-otp",
   oauth2Redirect: "/oauth2/redirect",
   selectRole: "/select-role",
@@ -18,10 +33,16 @@ export const PATH_AUTH = {
   resetPassword: "/reset-password",
 };
 
+export const PATH_PAYMENT = {
+  success: "/success",
+  cancel: "/cancel",
+};
+
 // ─── COMMON (All authenticated users) ─────────────────────────────────────────
 export const PATH_COMMON = {
   profile: "/profile",
   changePassword: "/change-password",
+  notifications: "/notifications",
 };
 
 // ─── TEACHER ──────────────────────────────────────────────────────────────────
@@ -37,10 +58,34 @@ export const PATH_TEACHER = {
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
     recordings: (id) => `/classrooms/${id}/recordings`,
+    assignments: (id) => `/classrooms/${id}/assignments`,
+    assignmentCreateManual: (id) =>
+      `/classrooms/${id}/assignments/create/manual`,
+    assignmentCreateManualQuestions: (id) =>
+      `/classrooms/${id}/assignments/create/manual/questions`,
     folders: (id) => `/classrooms/${id}/folders`,
     attendance: (id) => `/classrooms/${id}/attendance`,
-    attendanceSession: (id, sessionId) => `/classrooms/${id}/attendance/${sessionId}`,
+    attendanceSession: (id, sessionId) =>
+      `/classrooms/${id}/attendance/${sessionId}`,
   },
+  assignments: path(ROOTS_TEACHER, "/assignments"),
+  assignmentCreateMethod: path(ROOTS_TEACHER, "/assignments/create-method"),
+  assignmentCreateAiSetup: path(ROOTS_TEACHER, "/assignments/create/ai/setup"),
+  assignmentCreateAi: path(ROOTS_TEACHER, "/assignments/create/ai"),
+  assignmentCreateManual: path(ROOTS_TEACHER, "/assignments/create/manual"),
+  assignmentCreateManualQuestions: path(
+    ROOTS_TEACHER,
+    "/assignments/create/manual/questions",
+  ),
+  assignmentDetail: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}`),
+  assignmentAssignClasses: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/assign-classes`),
+  assignmentCreateImport: path(ROOTS_TEACHER, "/assignments/create/import"),
+  assignmentQuestionBankPicker: path(
+    ROOTS_TEACHER,
+    "/assignments/question-bank-picker",
+  ),
   students: path(ROOTS_TEACHER, "/students"),
   documents: path(ROOTS_TEACHER, "/documents"),
   questionBank: path(ROOTS_TEACHER, "/question-bank"),
@@ -73,6 +118,8 @@ export const PATH_STUDENT = {
 export const PATH_ADMIN = {
   root: "/admin",
   dashboard: "/admin/dashboard",
+  revenueDashboard: "/admin/revenue-dashboard",
+  transactionHistory: "/admin/transaction-history",
   users: {
     root: "/admin/users",
     detail: (id) => `/admin/users/${id}`,
@@ -90,5 +137,6 @@ export const PATH_ADMIN = {
     detail: (id) => `/admin/classrooms/${id}`,
   },
   reports: "/admin/reports",
+  systemNotifications: "/admin/system-notifications",
   settings: "/admin/settings",
 };

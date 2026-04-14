@@ -46,6 +46,7 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
   const { user } = useAuth();
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const submitLockRef = useRef(false);
   const [content, setContent] = useState(initialPost?.content ?? "");
   const [pinned, setPinned] = useState(initialPost?.pinned ?? false);
 
@@ -116,33 +117,43 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
-    const payload = {
-      classroomId: Number(classroomId),
-      content: content.trim(),
-      pinned,
-      deleteAttachmentIds: isEditing && deleteAttachmentIds.length > 0 ? deleteAttachmentIds : undefined,
-    };
-
-    const validated = PostSchema.safeParse(payload);
-
-    if (!validated.success) {
-      setError(validated.error.errors[0]?.message ?? "Dữ liệu không hợp lệ.");
+    if (submitLockRef.current || submitting) {
       return;
     }
 
-    const result = await onSubmit(payload, files);
-    if (result?.success) {
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setContent("");
-      setPinned(false);
-      setFiles([]);
-      setExistingAttachments([]);
-      setDeleteAttachmentIds([]);
-      onCancel?.();
-    } else {
-      setError(result?.message ?? "Không thể đăng bài. Vui lòng thử lại.");
+    submitLockRef.current = true;
+    setError("");
+
+    try {
+      const payload = {
+        classroomId: Number(classroomId),
+        content: content.trim(),
+        pinned,
+        deleteAttachmentIds: isEditing && deleteAttachmentIds.length > 0 ? deleteAttachmentIds : undefined,
+      };
+
+      const validated = PostSchema.safeParse(payload);
+
+      if (!validated.success) {
+        setError(validated.error.errors[0]?.message ?? "Dữ liệu không hợp lệ.");
+        return;
+      }
+
+      const result = await onSubmit(payload, files);
+      if (result?.success) {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setContent("");
+        setPinned(false);
+        setFiles([]);
+        setExistingAttachments([]);
+        setDeleteAttachmentIds([]);
+        onCancel?.();
+      } else {
+        setError(result?.message ?? "Không thể đăng bài. Vui lòng thử lại.");
+      }
+    } finally {
+      submitLockRef.current = false;
     }
   };
 

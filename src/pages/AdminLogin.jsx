@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ShieldCheck, Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import AppLogo from "@/components/AppLogo";
 import { isAdminRole } from "@/lib/auth-role";
-import { PATH_ADMIN } from "@/routes/paths";
+import { PATH_ADMIN, PATH_AUTH } from "@/routes/paths";
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ const AdminLoginPage = () => {
     try {
       const userData = await adminLogin({ email, password });
       if (!isAdminRole(userData?.role)) {
-        setError("Tài khoản không có quyền quản trị viên.");
+        setError("Bạn không có quyền truy cập vào khu vực Quản trị.");
         return;
       }
 
@@ -40,11 +41,14 @@ const AdminLoginPage = () => {
     <div className="admin-login-page">
       <div className="admin-grid-overlay" />
       <div className="admin-login-card">
-        <h1>Đăng nhập quản trị</h1>
-        <p>Trang đăng nhập dành riêng cho quản trị viên hệ thống Learnify.</p>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+          <AppLogo size={64} showFallbackBackground={false} rounded={false} />
+        </div>
+        <h1>Đăng nhập Quản trị</h1>
+        <p>Vui lòng nhập thông tin để truy cập System Dashboard</p>
 
         <form onSubmit={handleSubmit} className="admin-login-form">
-          <label htmlFor="admin-email">Email quản trị</label>
+          <label htmlFor="admin-email">Email</label>
           <div className="field-wrap">
             <Mail size={18} />
             <input
@@ -66,7 +70,7 @@ const AdminLoginPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Nhập mật khẩu"
+              placeholder="Nhập mật khẩu quản trị"
             />
             <button
               type="button"
@@ -78,10 +82,19 @@ const AdminLoginPage = () => {
             </button>
           </div>
 
+          <div className="meta-row">
+            <span className="rule-note">
+              Bắt buộc tài khoản có vai trò Admin và trạng thái Hoạt động
+            </span>
+            <Link className="forgot-link" to={PATH_AUTH.forgotPassword}>
+              Quên mật khẩu?
+            </Link>
+          </div>
+
           {error && <div className="error-box">{error}</div>}
 
           <button className="submit-btn" type="submit" disabled={isLoading}>
-            {isLoading ? "Đang xác thực..." : "Đăng nhập Admin"}
+            {isLoading ? "Đang xác thực..." : "Đăng nhập"}
           </button>
         </form>
       </div>
@@ -227,6 +240,35 @@ const AdminLoginPage = () => {
           font-size: 13px;
         }
 
+        .meta-row {
+          margin-top: 2px;
+          margin-bottom: 2px;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+
+        .rule-note {
+          margin: 0;
+          color: #cbd5e1;
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
+        .forgot-link {
+          color: #f8fafc;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+          white-space: nowrap;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .forgot-link:hover {
+          color: #99f6e4;
+        }
+
         .hint-text {
           margin-top: 14px;
           color: #94a3b8;
@@ -238,6 +280,11 @@ const AdminLoginPage = () => {
           .admin-login-card {
             padding: 22px;
             border-radius: 14px;
+          }
+
+          .meta-row {
+            flex-direction: column;
+            gap: 8px;
           }
         }
       `}</style>

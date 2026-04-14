@@ -65,7 +65,7 @@ const isFilledQuestion = (question) =>
 const normalizeOptions = (options) =>
   options.map((option) => ({
     content: String(option.content || "").trim(),
-    isCorrect: Boolean(option.isCorrect),
+    correct: Boolean(option.isCorrect),
   }));
 
 const buildPayload = (question) => {
@@ -75,7 +75,7 @@ const buildPayload = (question) => {
     difficulty: question.difficulty,
     defaultPoints: Number(question.defaultPoints),
     sampleAnswer: null,
-    options: null,
+    options: [],
   };
 
   if (question.questionType === "ESSAY") {
@@ -277,38 +277,22 @@ const CreateQuestionManualPage = () => {
 
     setIsSubmitting(true);
     try {
-      const results = await Promise.allSettled(
-        filledQuestions.map((question) =>
-          questionBankApi.createQuestion(safeBankId, buildPayload(question)),
-        ),
+      const payload = filledQuestions.map(buildPayload);
+      const response = await questionBankApi.createQuestionsBatch(
+        safeBankId,
+        payload,
       );
-
-      const successCount = results.filter(
-        (result) => result.status === "fulfilled",
-      ).length;
-      const failCount = results.length - successCount;
-
-      if (successCount > 0 && failCount === 0) {
-        toast.success(`Tạo thành công ${successCount} câu hỏi.`);
-        resetQuestions();
-        return;
-      }
-
-      if (successCount > 0 && failCount > 0) {
-        toast.warning(
-          `Đã tạo ${successCount} câu hỏi, ${failCount} câu bị lỗi.`,
-        );
-        return;
-      }
-
-      const firstRejected = results.find(
-        (result) => result.status === "rejected",
+      const resultCount = Array.isArray(response?.result)
+        ? response.result.length
+        : payload.length;
+      toast.success(
+        response?.message || `Lưu thành công ${resultCount} câu hỏi.`,
       );
+      resetQuestions();
+    } catch (error) {
       const fallbackMessage = "Tạo danh sách câu hỏi thủ công thất bại.";
       const message =
-        firstRejected?.reason?.response?.data?.message ??
-        firstRejected?.reason?.message ??
-        fallbackMessage;
+        error?.response?.data?.message ?? error?.message ?? fallbackMessage;
       toast.error(message);
     } finally {
       setIsSubmitting(false);

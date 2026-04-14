@@ -72,6 +72,12 @@ const EmptyTable = ({ text }) => (
   </div>
 );
 
+const WARNING_TEMPLATES = [
+  "Bạn đang đăng nội dung không phù hợp. Vui lòng chỉnh sửa để tránh bị xử lý.",
+  "Tài khoản có dấu hiệu spam bình luận. Vui lòng dừng ngay để tránh bị khóa.",
+  "Bạn đang vi phạm quy tắc ứng xử cộng đồng. Vui lòng tuân thủ nghiêm túc.",
+];
+
 const AdminUserDetailPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -80,12 +86,19 @@ const AdminUserDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [warningModalOpen, setWarningModalOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState("");
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState("");
+  const [warningContent, setWarningContent] = useState("");
+  const [warningContentError, setWarningContentError] = useState("");
+  const [showWarningTemplates, setShowWarningTemplates] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [warningSubmitting, setWarningSubmitting] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
   const [updateError, setUpdateError] = useState("");
+  const [warningMessage, setWarningMessage] = useState("");
+  const [warningError, setWarningError] = useState("");
 
   useEffect(() => {
     const fetchUserDetail = async () => {
@@ -121,6 +134,7 @@ const AdminUserDetailPage = () => {
   const canUnlock = currentStatus === "BANNED";
   const canToggleStatus = canLock || canUnlock;
   const isStatusActionDisabled = updating || isAdmin;
+  const canSendWarning = currentStatus === "ACTIVE" && !isAdmin;
   const showSubscription = !isStudent && !isAdmin;
 
   const handleOpenLockModal = () => {
@@ -149,6 +163,29 @@ const AdminUserDetailPage = () => {
     setPendingStatus("");
     setReason("");
     setReasonError("");
+  };
+
+  const handleOpenWarningModal = () => {
+    if (!canSendWarning || warningSubmitting) return;
+    setWarningModalOpen(true);
+    setWarningContent("");
+    setShowWarningTemplates(true);
+    setWarningContentError("");
+    setWarningMessage("");
+    setWarningError("");
+  };
+
+  const handleCloseWarningModal = () => {
+    if (warningSubmitting) return;
+    setWarningModalOpen(false);
+    setWarningContentError("");
+    setShowWarningTemplates(true);
+  };
+
+  const handleSelectWarningTemplate = (template) => {
+    setWarningContent(template);
+    setShowWarningTemplates(false);
+    setWarningContentError("");
   };
 
   const handleConfirmStatusChange = async () => {
@@ -205,6 +242,38 @@ const AdminUserDetailPage = () => {
     }
   };
 
+  const handleSendWarning = async () => {
+    setWarningContentError("");
+    setWarningMessage("");
+    setWarningError("");
+
+    if (!warningContent.trim()) {
+      setWarningContentError("MSG138: Vui lòng nhập nội dung chi tiết cho cảnh báo này.");
+      return;
+    }
+
+    try {
+      setWarningSubmitting(true);
+      const response = await adminApi.sendAccountWarning(id, {
+        content: warningContent.trim(),
+      });
+
+      setWarningMessage(response?.message || "MSG137: Cảnh báo đã được gửi đến người dùng thành công.");
+      setWarningModalOpen(false);
+      setWarningContent("");
+      setWarningContentError("");
+    } catch (err) {
+      const backendMessage = err?.response?.data?.message;
+      if (backendMessage && /nội dung|cảnh báo/i.test(backendMessage)) {
+        setWarningContentError(`MSG138: ${backendMessage}`);
+      } else {
+        setWarningError(backendMessage || "Không thể gửi cảnh báo. Vui lòng thử lại.");
+      }
+    } finally {
+      setWarningSubmitting(false);
+    }
+  };
+
   return (
     <div className="admin-user-detail-page">
       <div className="top-row">
@@ -248,6 +317,16 @@ const AdminUserDetailPage = () => {
             <p className="status-helper-text">Chọn một thao tác phù hợp với trạng thái hiện tại của tài khoản.</p>
 
             <div className="form-actions">
+              <button
+                type="button"
+                className={`status-action-btn warning ${!canSendWarning ? "protected" : ""}`.trim()}
+                onClick={handleOpenWarningModal}
+                disabled={!canSendWarning || warningSubmitting}
+                title={!canSendWarning ? "Chỉ gửi cảnh báo cho người dùng đang hoạt động" : ""}
+              >
+                {warningSubmitting ? "Đang gửi..." : "Gửi cảnh báo"}
+              </button>
+
               {canLock && (
                 <button
                   type="button"
@@ -279,6 +358,8 @@ const AdminUserDetailPage = () => {
 
             {updateMessage && <p className="update-success">{updateMessage}</p>}
             {updateError && <p className="update-error">{updateError}</p>}
+            {warningMessage && <p className="update-success">{warningMessage}</p>}
+            {warningError && <p className="update-error">{warningError}</p>}
           </section>
 
           <CenteredConfirmModal
@@ -319,6 +400,62 @@ const AdminUserDetailPage = () => {
                 {reasonError && <p className="modal-error-text">{reasonError}</p>}
               </div>
             )}
+          </CenteredConfirmModal>
+
+          <CenteredConfirmModal
+            isOpen={warningModalOpen}
+            title="Gửi cảnh báo"
+            description="Cảnh báo sẽ được gửi trực tiếp đến trung tâm thông báo của người dùng."
+            confirmText="Gửi"
+            cancelText="Hủy"
+            confirmVariant="danger"
+            onConfirm={handleSendWarning}
+            onClose={handleCloseWarningModal}
+            loading={warningSubmitting}
+          >
+            <div className="modal-reason-field">
+              <label htmlFor="warning-content">Nội dung cảnh báo *</label>
+
+              {showWarningTemplates ? (
+                <div className="warning-template-list">
+                  {WARNING_TEMPLATES.map((template, index) => (
+                    <button
+                      key={`warning-template-${index}`}
+                      type="button"
+                      className="warning-template-btn"
+                      onClick={() => handleSelectWarningTemplate(template)}
+                      disabled={warningSubmitting}
+                    >
+                      {template}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="warning-template-reset-btn"
+                  onClick={() => setShowWarningTemplates(true)}
+                  disabled={warningSubmitting}
+                >
+                  Chọn mẫu khác
+                </button>
+              )}
+
+              <textarea
+                id="warning-content"
+                rows={4}
+                value={warningContent}
+                onChange={(event) => {
+                  setWarningContent(event.target.value);
+                  if (warningContentError) {
+                    setWarningContentError("");
+                  }
+                }}
+                placeholder="Nhập nội dung cảnh báo chi tiết..."
+                disabled={warningSubmitting}
+              />
+              {warningContentError && <p className="modal-error-text">{warningContentError}</p>}
+            </div>
           </CenteredConfirmModal>
 
           <section className={`grid-two ${showSubscription ? "" : "single"}`.trim()}>
@@ -618,6 +755,11 @@ const AdminUserDetailPage = () => {
           background: #0f766e;
         }
 
+        .status-action-btn.warning {
+          border-color: #d97706;
+          background: #d97706;
+        }
+
         .status-action-btn.protected {
           filter: grayscale(1);
           opacity: 0.5;
@@ -670,6 +812,30 @@ const AdminUserDetailPage = () => {
           margin: 0;
           color: #b91c1c;
           font-size: 13px;
+        }
+
+        .warning-template-list {
+          display: grid;
+          gap: 8px;
+        }
+
+        .warning-template-btn,
+        .warning-template-reset-btn {
+          border: 1px solid #cbd5e1;
+          background: #f8fafc;
+          color: #334155;
+          border-radius: 8px;
+          padding: 9px 10px;
+          text-align: left;
+          font-size: 13px;
+          line-height: 1.4;
+          cursor: pointer;
+        }
+
+        .warning-template-btn:hover,
+        .warning-template-reset-btn:hover {
+          border-color: #94a3b8;
+          background: #f1f5f9;
         }
 
         .update-success,

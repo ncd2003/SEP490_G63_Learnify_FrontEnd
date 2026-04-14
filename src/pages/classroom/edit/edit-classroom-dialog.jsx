@@ -6,6 +6,7 @@ import { UpdateClassroomSchema } from "@/schema/classroom.schema";
 import "@/assets/css/pages/classroom/modals.css";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/jpg"];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const SUBJECT_OPTIONS = [
   "Toán",
@@ -91,7 +92,12 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Chỉ chấp nhận các định dạng ảnh: JPG, JPEG, PNG, GIF");
+      toast.error("Tệp không hợp lệ. Vui lòng tải ảnh JPG, JPEG, PNG hoặc GIF dưới 5MB.");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Kích thước tệp vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn.");
       return;
     }
 
@@ -105,7 +111,12 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Chỉ chấp nhận các định dạng ảnh: JPG, JPEG, PNG, GIF");
+      toast.error("Tệp không hợp lệ. Vui lòng tải ảnh JPG, JPEG, PNG hoặc GIF dưới 5MB.");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Kích thước tệp vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn.");
       return;
     }
 
@@ -175,129 +186,134 @@ const EditClassroomDialog = ({ classroom, onClose, onSuccess }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="modal-form">
-          {serverError && <p className="modal-error-alert">{serverError}</p>}
+          <div className="modal-body">
+            {serverError && <p className="modal-error-alert">{serverError}</p>}
 
-          {/* Tên lớp */}
-          <div className="form-group">
-            <label className="form-label">
-              Tên lớp <span className="form-label-required">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={fields.name}
-              onChange={handleFieldChange}
-              placeholder="Nhập tên lớp học"
-              className={`form-input ${errors.name ? "has-error" : ""}`}
-            />
-            {errors.name && <p className="form-error-text">{errors.name}</p>}
-          </div>
+            {/* Tên lớp */}
+            <div className="form-group">
+              <label className="form-label">
+                Tên lớp <span className="form-label-required">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={fields.name}
+                onChange={handleFieldChange}
+                placeholder="Nhập tên lớp học"
+                className={`form-input ${errors.name ? "has-error" : ""}`}
+              />
+              {errors.name && <p className="form-error-text">{errors.name}</p>}
+            </div>
 
-          {/* Môn học */}
-          <div className="form-group">
-            <label className="form-label">
-              Môn học <span className="form-label-required">*</span>
-            </label>
-            <select
-              name="subject"
-              value={subjectOption}
-              onChange={handleSubjectOptionChange}
-              className={`form-input ${errors.subject ? "has-error" : ""}`}
-            >
-              <option value="" disabled>
-                Chọn môn học
-              </option>
-              {SUBJECT_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option === "OTHER" ? "Khác" : option}
+            {/* Môn học */}
+            <div className="form-group">
+              <label className="form-label">
+                Môn học <span className="form-label-required">*</span>
+              </label>
+              <select
+                name="subject"
+                value={subjectOption}
+                onChange={handleSubjectOptionChange}
+                className={`form-input ${errors.subject ? "has-error" : ""}`}
+              >
+                <option value="" disabled>
+                  Chọn môn học
                 </option>
-              ))}
-            </select>
+                {SUBJECT_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "OTHER" ? "Khác" : option}
+                  </option>
+                ))}
+              </select>
 
-            {subjectOption === "OTHER" && (
-              <div style={{ marginTop: 8 }}>
-                <input
-                  type="text"
-                  name="subjectOther"
-                  value={subjectOther}
-                  onChange={handleSubjectOtherChange}
-                  placeholder="Nhập tên môn học khác"
-                  className={`form-input ${errors.subject ? "has-error" : ""}`}
-                />
-              </div>
-            )}
-
-            {errors.subject && (
-              <p className="form-error-text">{errors.subject}</p>
-            )}
-          </div>
-
-          {/* Mô tả */}
-          <div className="form-group">
-            <label className="form-label">
-              Mô tả<span className="form-label-optional">(tuỳ chọn)</span>
-            </label>
-            <textarea
-              name="description"
-              value={fields.description}
-              onChange={handleFieldChange}
-              placeholder="Mô tả ngắn về lớp học (tối đa 200 ký tự)..."
-              rows={3}
-              maxLength={200}
-              className={`form-textarea ${errors.description ? "has-error" : ""}`}
-            />
-            {errors.description && (
-              <p className="form-error-text">{errors.description}</p>
-            )}
-          </div>
-
-          {/* Ảnh đại diện */}
-          <div className="form-group">
-            <label className="form-label">
-              Ảnh đại diện
-              <span className="form-label-optional">(tuỳ chọn)</span>
-            </label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-              className="image-upload-area"
-            >
-              {imagePreview ? (
-                <>
-                  <img
-                    src={imagePreview}
-                    alt="Xem trước"
-                    className="image-preview"
+              {subjectOption === "OTHER" && (
+                <div style={{ marginTop: 8 }}>
+                  <input
+                    type="text"
+                    name="subjectOther"
+                    value={subjectOther}
+                    onChange={handleSubjectOtherChange}
+                    placeholder="Nhập tên môn học khác"
+                    className={`form-input ${errors.subject ? "has-error" : ""}`}
                   />
-                  <div className="image-overlay">
-                    <Upload size={20} className="image-overlay-icon" />
-                    <span className="image-overlay-text">Đổi ảnh</span>
-                  </div>
-                </>
-              ) : (
-                <div className="image-placeholder">
-                  <ImagePlus className="image-placeholder-icon" />
-                  <span className="image-placeholder-text">
-                    Kéo thả hoặc nhấn để chọn ảnh
-                  </span>
                 </div>
               )}
+
+              {errors.subject && (
+                <p className="form-error-text">{errors.subject}</p>
+              )}
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg, image/png, image/gif, image/webp"
-              className="hidden-file-input"
-              onChange={handleFileChange}
-            />
-            {imageFile ? (
-              <p className="form-hint-text">Đã chọn: {imageFile.name}</p>
-            ) : (
-              <p className="form-hint-text">
-                Giữ nguyên ảnh hiện tại nếu không chọn ảnh mới.
-              </p>
-            )}
+
+            {/* Mô tả */}
+            <div className="form-group">
+              <label className="form-label">
+                Mô tả<span className="form-label-optional">(tuỳ chọn)</span>
+              </label>
+              <textarea
+                name="description"
+                value={fields.description}
+                onChange={handleFieldChange}
+                placeholder="Mô tả ngắn về lớp học (tối đa 200 ký tự)..."
+                rows={3}
+                maxLength={200}
+                className={`form-textarea ${errors.description ? "has-error" : ""}`}
+              />
+              {errors.description && (
+                <p className="form-error-text">{errors.description}</p>
+              )}
+            </div>
+
+            {/* Ảnh đại diện */}
+            <div className="form-group">
+              <label className="form-label">
+                Ảnh đại diện
+                <span className="form-label-optional">(tuỳ chọn)</span>
+              </label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                className="image-upload-area"
+              >
+                {imagePreview ? (
+                  <>
+                    <img
+                      src={imagePreview}
+                      alt="Xem trước"
+                      className="image-preview"
+                    />
+                    <div className="image-overlay">
+                      <Upload size={20} className="image-overlay-icon" />
+                      <span className="image-overlay-text">Đổi ảnh</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="image-placeholder">
+                    <ImagePlus className="image-placeholder-icon" />
+                    <span className="image-placeholder-text">
+                      Kéo thả hoặc nhấn để chọn ảnh
+                    </span>
+                    <span className="image-placeholder-hint">
+                      Hỗ trợ: JPG, JPEG, PNG, GIF · Tối đa 5MB
+                    </span>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.gif"
+                className="hidden-file-input"
+                onChange={handleFileChange}
+              />
+              {imageFile ? (
+                <p className="form-hint-text">Đã chọn: {imageFile.name}</p>
+              ) : (
+                <p className="form-hint-text">
+                  Giữ nguyên ảnh hiện tại nếu không chọn ảnh mới.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Actions */}
