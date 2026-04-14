@@ -15,6 +15,15 @@ const scheduleApi = {
     apiRequest.get(`/classrooms/${classId}/sessions`),
 
   /**
+   * Get consolidated schedule for current user across all classrooms
+   * GET /api/sessions/my-schedule
+   * @param {{ fromDate?: string, toDate?: string }} [params]
+   * @returns {Promise<{ code: number, message: string, result: ClassSessionResponseDTO[] }>}
+   */
+  getMySchedule: (params = {}) =>
+    apiRequest.get('/sessions/my-schedule', { params }),
+
+  /**
    * Get a session by ID
    * GET /api/classrooms/{classId}/sessions/{sessionId}
    * @param {number} classId

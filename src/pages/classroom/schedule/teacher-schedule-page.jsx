@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, MapPin, Video } from "lucide-react";
-import { classroomApi } from "@/apis/classroom.api";
-import { enrollmentApi } from "@/apis/enrollment.api";
 import scheduleApi from "@/apis/schedule.api";
 import EventDetailModal from "@/components/EventDetailModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -107,23 +105,8 @@ const TeacherSchedulePage = () => {
       setLoading(true);
       setError(null);
       try {
-        const classesResponse = isStudent
-          ? await enrollmentApi.getMyClassrooms()
-          : await classroomApi.getClassroomsByTeacher();
-        const classrooms = classesResponse.result ?? [];
-
-        if (!classrooms.length) {
-          setSessions([]);
-          return;
-        }
-
-        const sessionResponses = await Promise.allSettled(
-          classrooms.map((c) => scheduleApi.getSessionsByClass(c.id)),
-        );
-
-        const merged = sessionResponses
-          .filter((r) => r.status === "fulfilled")
-          .flatMap((r) => r.value?.result ?? [])
+        const response = await scheduleApi.getMySchedule();
+        const merged = (response.result ?? [])
           .map((s) => ({
             ...s,
             classroomId: s.classroomId,

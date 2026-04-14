@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { ExternalLink, Loader2, Users, Video } from "lucide-react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Loader2, Users, Video } from "lucide-react";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import useSchedule from "@/hooks/useSchedule";
 import scheduleApi from "@/apis/schedule.api";
+import { PATH_STUDENT, PATH_TEACHER } from "@/routes/paths";
 import envConfig from "@/schema/config.schema";
 import { SESSION_TYPE } from "@/schema/scheduleSchema";
 import "@/assets/css/pages/classroom/classroomLecture.css";
@@ -138,6 +139,7 @@ const loadJitsiApiScript = (src) => {
 
 const ClassroomLecturePage = () => {
   const { id: classroomId } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { sessions, loading, error } = useSchedule(classroomId);
@@ -202,6 +204,13 @@ const ClassroomLecturePage = () => {
     [onlineSessions, selectedSessionId],
   );
 
+  const schedulePath = useMemo(() => {
+    if (isTeacherRole(user?.role)) {
+      return PATH_TEACHER.classroom.schedule(classroomId);
+    }
+    return PATH_STUDENT.schedule;
+  }, [classroomId, user?.role]);
+
   const selectedSessionEndTimeMs = useMemo(() => {
     if (!selectedSession) return null;
     return toSessionDateTime(selectedSession.sessionDate, selectedSession.endTime)?.getTime() || null;
@@ -261,7 +270,6 @@ const ClassroomLecturePage = () => {
             appId,
             roomName: finalRoomName,
             jwt: response?.result?.token || tokenFromLink || generatedMeta.jwt || initialMeta.jwt || null,
-            openUrl: generatedLink,
           });
         }
       } catch (err) {
@@ -403,18 +411,26 @@ const ClassroomLecturePage = () => {
         const handleConferenceLeft = () => {
           clearAutoStopTimer();
           autoRecordingStartedRef.current = false;
+          navigate(schedulePath, { replace: true });
+        };
+        const handleReadyToClose = () => {
+          clearAutoStopTimer();
+          autoRecordingStartedRef.current = false;
+          navigate(schedulePath, { replace: true });
         };
 
         jitsiApi.addListener("videoConferenceJoined", handleConferenceJoined);
         jitsiApi.addListener("participantJoined", handleParticipantJoined);
         jitsiApi.addListener("participantLeft", handleParticipantLeft);
         jitsiApi.addListener("videoConferenceLeft", handleConferenceLeft);
+        jitsiApi.addListener("readyToClose", handleReadyToClose);
 
         cleanupListeners = () => {
           jitsiApi.removeListener("videoConferenceJoined", handleConferenceJoined);
           jitsiApi.removeListener("participantJoined", handleParticipantJoined);
           jitsiApi.removeListener("participantLeft", handleParticipantLeft);
           jitsiApi.removeListener("videoConferenceLeft", handleConferenceLeft);
+          jitsiApi.removeListener("readyToClose", handleReadyToClose);
         };
       } catch (err) {
         setEmbedError(err.message || "Không thể nhúng Jitsi vào hệ thống.");
@@ -436,19 +452,13 @@ const ClassroomLecturePage = () => {
         jitsiApiRef.current = null;
       }
     };
-  }, [joinConfig, selectedSessionEndTimeMs, user?.email, user?.fullName, user?.role, user?.username]);
+  }, [joinConfig, navigate, schedulePath, selectedSessionEndTimeMs, user?.email, user?.fullName, user?.role, user?.username]);
 
   return (
     <ClassroomDetailLayout>
       <div className="classroom-lecture-page">
         <div className="lecture-header">
           <h1>Phòng học trực tuyến</h1>
-          {joinConfig?.openUrl && (
-            <a className="open-external-btn" href={joinConfig.openUrl} target="_blank" rel="noreferrer">
-              Mở tab Jitsi
-              <ExternalLink size={14} />
-            </a>
-          )}
         </div>
 
         {loading && (
