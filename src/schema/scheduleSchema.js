@@ -110,6 +110,13 @@ export const sessionValidationRules = {
 export const validateSessionForm = (data) => {
   const errors = {};
 
+  const toDateTime = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null;
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const [hour, minute] = timeStr.split(":").map(Number);
+    return new Date(year, (month || 1) - 1, day || 1, hour || 0, minute || 0, 0, 0);
+  };
+
   // Title validation
   const titleLen = data.title?.trim().length ?? 0;
   if (!titleLen) {
@@ -142,6 +149,21 @@ export const validateSessionForm = (data) => {
   // BR-40: End time must be after start time
   if (data.startTime && data.endTime && data.endTime <= data.startTime) {
     errors.endTime = "Thời gian kết thúc phải sau thời gian bắt đầu";
+  }
+
+  const startDateTime = toDateTime(data.sessionDate, data.startTime);
+  const endDateTime = toDateTime(data.sessionDate, data.endTime);
+
+  if (startDateTime && startDateTime.getTime() < Date.now()) {
+    errors.startTime = "Không được chọn giờ bắt đầu trong quá khứ";
+  }
+
+  if (startDateTime && endDateTime && endDateTime.getTime() > startDateTime.getTime()) {
+    const durationMs = endDateTime.getTime() - startDateTime.getTime();
+    const minimumDurationMs = 15 * 60 * 1000;
+    if (durationMs < minimumDurationMs) {
+      errors.endTime = "Thời lượng buổi học tối thiểu là 15 phút";
+    }
   }
 
   // Type validation

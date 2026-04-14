@@ -80,6 +80,16 @@
   background: #1f6fb8;
 }
 
+.event-detail-join-btn:disabled {
+  background: #d1d5db;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.event-detail-join-btn:disabled:hover {
+  background: #d1d5db;
+}
+
 .event-detail-pill {
   display: inline-flex;
   align-items: center;
@@ -222,6 +232,17 @@
   border: none;
   cursor: pointer;
   padding: 0;
+}
+
+.event-detail-link-btn:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.event-detail-link-btn:disabled:hover {
+  color: #9ca3af;
+  text-decoration: none;
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */

@@ -120,8 +120,17 @@ const ImportAssignmentFilePage = Loadable(
 const QuestionBankPickerPage = Loadable(
   lazy(() => import("@/pages/assignment/bank/question-bank-picker-page")),
 );
+const TeacherSchedulePage = Loadable(
+  lazy(() => import("@/pages/classroom/schedule/teacher-schedule-page")),
+);
 const SchedulePage = Loadable(
   lazy(() => import("@/pages/classroom/schedule/schedulePage")),
+);
+const ClassroomLecturePage = Loadable(
+  lazy(() => import("@/pages/classroom/lecture/lecture-page")),
+);
+const ClassroomRecordingPage = Loadable(
+  lazy(() => import("@/pages/classroom/recording/recording-page")),
 );
 const AttendanceListPage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
@@ -315,6 +324,10 @@ const AppRoutes = () =>
           element: <ClassroomListOrStudentPage />,
         },
         {
+          path: PATH_TEACHER.schedule,
+          element: <TeacherSchedulePage />,
+        },
+        {
           path: PATH_TEACHER.assignments,
           element: <AssignmentHubPage />,
         },
@@ -497,6 +510,14 @@ const AppRoutes = () =>
           <AttendanceListPage />
         </AuthGuard>
       ),
+    },
+    {
+      path: "classrooms/:id/lecture",
+      element: <AuthGuard><ClassroomLecturePage /></AuthGuard>,
+    },
+    {
+      path: "classrooms/:id/recordings",
+      element: <AuthGuard><ClassroomRecordingPage /></AuthGuard>,
     },
     {
       path: "classrooms/:id/attendance/:sessionId",

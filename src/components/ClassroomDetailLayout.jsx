@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   ChevronLeft,
   Calendar,
+  Video,
   ChevronsLeft,
   ChevronsRight,
   ChevronDown,
@@ -47,6 +48,7 @@ const MENU_ITEMS = [
     icon: ClipboardCheck,
     path: "/attendance",
   },
+  { key: "recordings", label: "Bài giảng", icon: Video, path: "/recordings" },
 ];
 
 const ClassroomDetailLayout = ({
@@ -168,6 +170,7 @@ const ClassroomDetailLayout = ({
 
     const path = location.pathname;
     if (path.includes("/attendance")) return "attendance";
+    if (path.includes("/recordings")) return "recordings";
     if (path.includes("/schedule")) return "schedule";
     if (path.includes("/pending-requests")) return "members";
     if (path.includes("/members")) return "members";

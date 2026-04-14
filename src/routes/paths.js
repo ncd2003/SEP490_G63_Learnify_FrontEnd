@@ -48,13 +48,16 @@ export const PATH_COMMON = {
 // ─── TEACHER ──────────────────────────────────────────────────────────────────
 export const PATH_TEACHER = {
   root: "/",
+  schedule: path(ROOTS_TEACHER, "/classrooms/schedule"),
   classroom: {
     root: "/classrooms",
     detail: (id) => `/classrooms/${id}`,
     create: "/classrooms/new",
     edit: (id) => `/classrooms/${id}/edit`,
+    lecture: (id) => `/classrooms/${id}/lecture`,
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
+    recordings: (id) => `/classrooms/${id}/recordings`,
     assignments: (id) => `/classrooms/${id}/assignments`,
     assignmentCreateManual: (id) =>
       `/classrooms/${id}/assignments/create/manual`,
@@ -106,6 +109,7 @@ export const PATH_STUDENT = {
   root: "/",
   assignmentResult: (submissionId) =>
     `/student/submissions/${submissionId}/result`,
+  schedule: "/classrooms/schedule",
   classroom: {
     root: "/classrooms",
     detail: (id) => `/classrooms/${id}`,
