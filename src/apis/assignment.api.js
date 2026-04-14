@@ -13,6 +13,12 @@ const DEFAULT_ASSIGNMENT_LIST_PARAMS = {
   size: 10,
 };
 
+const DRAFT_SESSION_TYPE = {
+  AI_GENERATION: "AI_GENERATION",
+  EXCEL_IMPORT: "EXCEL_IMPORT",
+  MANUAL_CREATION: "MANUAL_CREATION",
+};
+
 const normalizeId = (value, label = "id") => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -37,6 +43,28 @@ const normalizeDraftScope = (scope = {}) => {
     assignmentId,
     bankId,
   };
+};
+
+const normalizeDraftSessionType = (
+  value = DRAFT_SESSION_TYPE.MANUAL_CREATION,
+) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === DRAFT_SESSION_TYPE.AI_GENERATION) {
+    return DRAFT_SESSION_TYPE.AI_GENERATION;
+  }
+
+  if (normalized === DRAFT_SESSION_TYPE.EXCEL_IMPORT) {
+    return DRAFT_SESSION_TYPE.EXCEL_IMPORT;
+  }
+
+  if (normalized === DRAFT_SESSION_TYPE.MANUAL_CREATION) {
+    return DRAFT_SESSION_TYPE.MANUAL_CREATION;
+  }
+
+  return DRAFT_SESSION_TYPE.MANUAL_CREATION;
 };
 
 const normalizeSaveAnswerItems = (items = []) =>
@@ -502,8 +530,14 @@ const getPendingSessionsSummary = (targetType = null) => {
   return apiRequest.get(`${DRAFT_SESSION_BASE}/pending/summary`, { params });
 };
 
-const initManualDraftSession = (scope = {}) => {
-  const params = normalizeDraftScope(scope);
+const initManualDraftSession = (
+  scope = {},
+  sessionType = DRAFT_SESSION_TYPE.MANUAL_CREATION,
+) => {
+  const params = {
+    ...normalizeDraftScope(scope),
+    sessionType: normalizeDraftSessionType(sessionType),
+  };
   return apiRequest.post(`${DRAFT_SESSION_BASE}/manual/init`, null, {
     params,
   });

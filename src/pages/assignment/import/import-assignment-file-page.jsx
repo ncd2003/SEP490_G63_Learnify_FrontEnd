@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { questionBankApi } from "@/apis/question-bank.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const mkQ = (n) => {
@@ -494,35 +495,348 @@ const TL = {
   ESSAY: "Tự luận",
 };
 
+const toPositiveId = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
+const normalizeEditorType = (type) => {
+  const upper = String(type || "")
+    .trim()
+    .toUpperCase();
+  if (upper === "FILL_IN_THE_BLANK") return "FILL_IN_BLANK";
+  if (upper === "MULTIPLE_CHOICE") return "MULTIPLE_CHOICE";
+  if (upper === "TRUE_FALSE") return "TRUE_FALSE";
+  if (upper === "ESSAY") return "ESSAY";
+  return "MULTIPLE_CHOICE";
+};
+
+const normalizeApiType = (type) => {
+  const normalized = normalizeEditorType(type);
+  if (normalized === "FILL_IN_BLANK") {
+    return "FILL_IN_THE_BLANK";
+  }
+  return normalized;
+};
+
+const normalizeDifficulty = (value) => {
+  const upper = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (upper === "EASY" || upper === "MEDIUM" || upper === "HARD") {
+    return upper;
+  }
+  return "MEDIUM";
+};
+
+const mapPreviewItemToEditorQuestion = (item, index) => {
+  const questionData = item?.questionData || {};
+  const type = normalizeEditorType(questionData?.questionType);
+  const rawOptions = Array.isArray(questionData?.options)
+    ? questionData.options
+    : [];
+
+  if (type === "TRUE_FALSE") {
+    const trueOption = rawOptions.find(
+      (option) =>
+        String(option?.content || "")
+          .trim()
+          .toLowerCase() === "đúng",
+    );
+
+    return {
+      id: Number(item?.id || item?.rowNumber || index + 1),
+      rowNumber: Number(item?.rowNumber || index + 1),
+      status: String(item?.status || "VALID").toUpperCase(),
+      errors: Array.isArray(item?.errors) ? item.errors : [],
+      type,
+      prompt: String(questionData?.content || ""),
+      cor: Boolean(trueOption?.isCorrect ?? trueOption?.correct),
+      points: Number(questionData?.defaultPoints ?? 1) || 1,
+      difficulty: normalizeDifficulty(questionData?.difficulty),
+    };
+  }
+
+  if (type === "FILL_IN_BLANK") {
+    return {
+      id: Number(item?.id || item?.rowNumber || index + 1),
+      rowNumber: Number(item?.rowNumber || index + 1),
+      status: String(item?.status || "VALID").toUpperCase(),
+      errors: Array.isArray(item?.errors) ? item.errors : [],
+      type,
+      prompt: String(questionData?.content || ""),
+      ans: String(rawOptions?.[0]?.content || ""),
+      points: Number(questionData?.defaultPoints ?? 1) || 1,
+      difficulty: normalizeDifficulty(questionData?.difficulty),
+    };
+  }
+
+  if (type === "ESSAY") {
+    return {
+      id: Number(item?.id || item?.rowNumber || index + 1),
+      rowNumber: Number(item?.rowNumber || index + 1),
+      status: String(item?.status || "VALID").toUpperCase(),
+      errors: Array.isArray(item?.errors) ? item.errors : [],
+      type,
+      prompt: String(questionData?.content || ""),
+      ans: String(questionData?.sampleAnswer || ""),
+      points: Number(questionData?.defaultPoints ?? 1) || 1,
+      difficulty: normalizeDifficulty(questionData?.difficulty),
+    };
+  }
+
+  const opts = rawOptions
+    .map((option) => String(option?.content || "").trim())
+    .filter(Boolean);
+  const correctIndex = rawOptions.findIndex((option) =>
+    Boolean(option?.isCorrect ?? option?.correct),
+  );
+
+  return {
+    id: Number(item?.id || item?.rowNumber || index + 1),
+    rowNumber: Number(item?.rowNumber || index + 1),
+    status: String(item?.status || "VALID").toUpperCase(),
+    errors: Array.isArray(item?.errors) ? item.errors : [],
+    type,
+    prompt: String(questionData?.content || ""),
+    opts: opts.length > 0 ? opts : ["", "", "", ""],
+    cor: correctIndex >= 0 ? correctIndex : 0,
+    points: Number(questionData?.defaultPoints ?? 1) || 1,
+    difficulty: normalizeDifficulty(questionData?.difficulty),
+  };
+};
+
+const validateEditorQuestion = (question) => {
+  if (!String(question?.prompt || "").trim()) {
+    return false;
+  }
+
+  const type = normalizeEditorType(question?.type);
+
+  if (type === "MULTIPLE_CHOICE") {
+    const options = Array.isArray(question?.opts)
+      ? question.opts.map((option) => String(option || "").trim())
+      : [];
+    const hasEnoughOptions = options.filter(Boolean).length >= 2;
+    const hasValidCorrect =
+      Number.isInteger(question?.cor) &&
+      question.cor >= 0 &&
+      question.cor < options.length &&
+      Boolean(options[question.cor]);
+
+    return hasEnoughOptions && hasValidCorrect;
+  }
+
+  if (type === "TRUE_FALSE") {
+    return typeof question?.cor === "boolean";
+  }
+
+  if (type === "FILL_IN_BLANK") {
+    return Boolean(String(question?.ans || "").trim());
+  }
+
+  return true;
+};
+
+const mapEditorQuestionToConfirmPayload = (question) => {
+  const type = normalizeEditorType(question?.type);
+
+  if (type === "MULTIPLE_CHOICE") {
+    const options = Array.isArray(question?.opts)
+      ? question.opts
+          .map((option, index) => ({
+            content: String(option || "").trim(),
+            isCorrect: index === question?.cor,
+          }))
+          .filter((option) => option.content)
+      : [];
+
+    return {
+      content: String(question?.prompt || "").trim(),
+      questionType: normalizeApiType(type),
+      difficulty: normalizeDifficulty(question?.difficulty),
+      defaultPoints: Number(question?.points ?? 1) || 1,
+      sampleAnswer: null,
+      options,
+    };
+  }
+
+  if (type === "TRUE_FALSE") {
+    return {
+      content: String(question?.prompt || "").trim(),
+      questionType: normalizeApiType(type),
+      difficulty: normalizeDifficulty(question?.difficulty),
+      defaultPoints: Number(question?.points ?? 1) || 1,
+      sampleAnswer: null,
+      options: [
+        { content: "Đúng", isCorrect: question?.cor === true },
+        { content: "Sai", isCorrect: question?.cor === false },
+      ],
+    };
+  }
+
+  if (type === "FILL_IN_BLANK") {
+    return {
+      content: String(question?.prompt || "").trim(),
+      questionType: normalizeApiType(type),
+      difficulty: normalizeDifficulty(question?.difficulty),
+      defaultPoints: Number(question?.points ?? 1) || 1,
+      sampleAnswer: null,
+      options: [
+        {
+          content: String(question?.ans || "").trim(),
+          isCorrect: true,
+        },
+      ],
+    };
+  }
+
+  return {
+    content: String(question?.prompt || "").trim(),
+    questionType: normalizeApiType(type),
+    difficulty: normalizeDifficulty(question?.difficulty),
+    defaultPoints: Number(question?.points ?? 1) || 1,
+    sampleAnswer: String(question?.ans || "").trim() || null,
+    options: null,
+  };
+};
+
 const ImportAssignmentFilePage = () => {
   const navigate = useNavigate();
-  const [file, setFile] = useState("");
+  const { bankId: bankIdFromPath } = useParams();
+  const [searchParams] = useSearchParams();
+
+  const resolvedBankId = toPositiveId(
+    searchParams.get("bankId") || bankIdFromPath,
+  );
+  const isBankMode = Boolean(resolvedBankId);
+
+  const [file, setFile] = useState(null);
   const [phase, setPhase] = useState("upload");
   const [qs, setQs] = useState([]);
   const [pg, setPg] = useState(1);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState(null);
   const [toast, setToast] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   const fRef = useRef(null);
-  const errs = 2;
+
+  const fileName = file?.name || "";
+  const fileSizeLabel =
+    file && Number.isFinite(file.size) && file.size > 0
+      ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
+      : "";
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
   };
 
-  const doImport = () => {
+  const doImport = async () => {
+    if (!file) {
+      return;
+    }
+
     setPhase("loading");
-    setTimeout(() => {
-      setQs(mkQ(13));
+
+    if (!isBankMode) {
+      setTimeout(() => {
+        setQs(mkQ(13));
+        setPhase("results");
+        setPg(1);
+      }, 2000);
+      return;
+    }
+
+    try {
+      const response = await questionBankApi.previewImportQuestions(
+        resolvedBankId,
+        file,
+      );
+      const previewItems = Array.isArray(response?.result)
+        ? response.result
+        : [];
+
+      setQs(
+        previewItems.map((item, index) =>
+          mapPreviewItemToEditorQuestion(item, index),
+        ),
+      );
       setPhase("results");
       setPg(1);
-    }, 2000);
+      showToast(
+        response?.message ||
+          `Đã đọc ${previewItems.length} dòng từ file import.`,
+      );
+    } catch (error) {
+      const apiMessage =
+        error?.response?.data?.message || "Không thể preview file import.";
+      showToast(apiMessage);
+      setQs([]);
+      setPhase("upload");
+    }
+  };
+
+  const handleSaveToBank = async () => {
+    if (!isBankMode) {
+      showToast("Đã lưu vào ngân hàng!");
+      return;
+    }
+
+    const payload = qs
+      .filter((question) => validateEditorQuestion(question))
+      .map((question) => mapEditorQuestionToConfirmPayload(question));
+
+    if (!payload.length) {
+      showToast("Không có câu hỏi hợp lệ để lưu vào ngân hàng đề.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const response = await questionBankApi.confirmImportQuestions(
+        resolvedBankId,
+        payload,
+      );
+      showToast(response?.message || "Đã lưu câu hỏi vào ngân hàng đề.");
+      navigate(PATH_TEACHER.questionBankDetail(resolvedBankId));
+    } catch (error) {
+      const apiMessage =
+        error?.response?.data?.message ||
+        "Không thể lưu câu hỏi vào ngân hàng đề.";
+      showToast(apiMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (isBankMode) {
+      navigate(PATH_TEACHER.questionBankMethod(resolvedBankId));
+      return;
+    }
+
+    navigate(PATH_TEACHER.assignmentCreateMethod);
+  };
+
+  const resetImportState = () => {
+    setPhase("upload");
+    setPg(1);
+    setFile(null);
+    setQs([]);
+    setEditId(null);
+    setEditData(null);
   };
 
   const startEdit = (q) => {
     setEditId(q.id);
-    setEditData({ ...q, opts: q.opts ? [...q.opts] : undefined });
+    setEditData({
+      ...q,
+      opts: Array.isArray(q.opts) ? [...q.opts] : undefined,
+    });
   };
   const cancelEdit = () => {
     setEditId(null);
@@ -538,9 +852,17 @@ const ImportAssignmentFilePage = () => {
     if (editId === id) cancelEdit();
   };
 
+  const validCount = useMemo(
+    () => qs.filter((question) => validateEditorQuestion(question)).length,
+    [qs],
+  );
+  const errs = Math.max(0, qs.length - validCount);
+
   const totalPg = Math.ceil(qs.length / PP);
   const vis = qs.slice((pg - 1) * PP, (pg - 1) * PP + PP);
-  const cntT = (t) => qs.filter((q) => q.type === t).length;
+  const cntT = (t) =>
+    qs.filter((q) => normalizeEditorType(q.type) === normalizeEditorType(t))
+      .length;
   const maxT = Math.max(
     cntT("MULTIPLE_CHOICE"),
     cntT("TRUE_FALSE"),
@@ -556,11 +878,7 @@ const ImportAssignmentFilePage = () => {
       <div className="pnl pnl-l">
         <div className="topbar">
           <div className="top-l">
-            <button
-              type="button"
-              className="bk"
-              onClick={() => navigate(PATH_TEACHER.assignmentCreateMethod)}
-            >
+            <button type="button" className="bk" onClick={handleBack}>
               <I.ArrowL /> Quay lại
             </button>
             <div className="top-t">
@@ -573,21 +891,17 @@ const ImportAssignmentFilePage = () => {
                 <button
                   type="button"
                   className="btn btn-g"
-                  onClick={() => {
-                    setPhase("upload");
-                    setPg(1);
-                    setFile("");
-                    setQs([]);
-                  }}
+                  onClick={resetImportState}
                 >
                   <I.Refresh /> Import lại
                 </button>
                 <button
                   type="button"
                   className="btn btn-p"
-                  onClick={() => showToast("Đã lưu vào ngân hàng!")}
+                  disabled={isSaving}
+                  onClick={handleSaveToBank}
                 >
-                  <I.Save /> Lưu ngân hàng
+                  <I.Save /> {isSaving ? "Đang lưu..." : "Lưu ngân hàng"}
                 </button>
               </>
             )}
@@ -632,10 +946,14 @@ const ImportAssignmentFilePage = () => {
             <input
               ref={fRef}
               type="file"
-              accept=".xlsx,.xls,.doc,.docx,.csv"
+              accept={
+                isBankMode
+                  ? ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  : ".xlsx,.xls,.doc,.docx,.csv"
+              }
               style={{ display: "none" }}
               onChange={(e) => {
-                if (e.target.files?.[0]) setFile(e.target.files[0].name);
+                if (e.target.files?.[0]) setFile(e.target.files[0]);
               }}
             />
 
@@ -646,14 +964,14 @@ const ImportAssignmentFilePage = () => {
               {file ? (
                 <div className="uz-fi">
                   <I.File />
-                  <span className="uz-fn">{file}</span>
-                  <span className="uz-fs">2.4 MB</span>
+                  <span className="uz-fn">{fileName}</span>
+                  <span className="uz-fs">{fileSizeLabel}</span>
                   <button
                     type="button"
                     className="uz-rm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setFile("");
+                      setFile(null);
                     }}
                   >
                     <I.X />
@@ -671,8 +989,8 @@ const ImportAssignmentFilePage = () => {
                   <div className="uz-fmts">
                     <span className="uz-fmt">XLSX</span>
                     <span className="uz-fmt">XLS</span>
-                    <span className="uz-fmt">DOCX</span>
-                    <span className="uz-fmt">CSV</span>
+                    {!isBankMode && <span className="uz-fmt">DOCX</span>}
+                    {!isBankMode && <span className="uz-fmt">CSV</span>}
                   </div>
                 </>
               )}
@@ -681,7 +999,7 @@ const ImportAssignmentFilePage = () => {
             <button
               type="button"
               className="ibtn"
-              disabled={!file}
+              disabled={!file || phase === "loading" || isSaving}
               onClick={doImport}
             >
               <div className="shim" />
@@ -719,7 +1037,7 @@ const ImportAssignmentFilePage = () => {
                 Đang phân tích file...
               </div>
               <p style={{ fontSize: 12, color: "var(--t3)", marginBottom: 22 }}>
-                Đang đọc từ "{file}"
+                Đang đọc từ "{fileName}"
               </p>
               {[1, 2, 3].map((i) => (
                 <div

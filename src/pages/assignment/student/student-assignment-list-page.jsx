@@ -93,7 +93,12 @@ const toUiAssignment = (item) => {
     category: normalizeCategory(item?.category || "HOMEWORK"),
     format: normalizeFormat(item?.format),
     totalScore: Number(item?.totalPoints ?? item?.totalScore ?? 10),
-    questions: Number(item?.numberOfQuestions ?? item?.questionCount ?? 0),
+    questions: Number(
+      item?.totalQuestions ??
+        item?.numberOfQuestions ??
+        item?.questionCount ??
+        0,
+    ),
     duration: item?.effectiveDuration ?? item?.setting?.durationMinutes ?? null,
     start:
       item?.effectiveStartTime ??
@@ -957,6 +962,24 @@ const parseStudentAssignments = (response) => {
   return [];
 };
 
+const parseClassroomAssignments = (response) => {
+  const result = response?.result;
+
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (Array.isArray(result?.content)) {
+    return result.content;
+  }
+
+  if (Array.isArray(result?.items)) {
+    return result.items;
+  }
+
+  return [];
+};
+
 const StudentAssignmentListPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -991,17 +1014,65 @@ const StudentAssignmentListPage = () => {
 
     Promise.all([
       classroomApi.getClassroomById(classId).catch(() => null),
+      classroomApi
+        .getAssignmentsForClassroom(classId)
+        .catch(() => ({ result: [] })),
       assignmentApi
         .getStudentAssignments({ classroomId: classId })
         .catch(() => ({ result: [] })),
     ])
-      .then(([classRes, assignRes]) => {
+      .then(([classRes, classroomAssignRes, studentAssignRes]) => {
         if (!alive) return;
 
         const classData = classRes?.result || null;
         setClassInfo(classData);
 
-        const list = parseStudentAssignments(assignRes)
+        const classroomAssignments =
+          parseClassroomAssignments(classroomAssignRes);
+        const classroomAssignmentMap = new Map(
+          classroomAssignments
+            .map((item) => {
+              const assignmentId = Number(item?.assignmentId ?? item?.id);
+              if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
+                return null;
+              }
+              return [assignmentId, item];
+            })
+            .filter(Boolean),
+        );
+
+        const studentAssignments = parseStudentAssignments(studentAssignRes);
+
+        const mergedRawList =
+          studentAssignments.length > 0
+            ? studentAssignments.map((item) => {
+                const assignmentId = Number(
+                  item?.assignmentId ?? item?.id ?? item?.classroomAssignmentId,
+                );
+                const classroomItem = classroomAssignmentMap.get(assignmentId);
+
+                if (!classroomItem) {
+                  return item;
+                }
+
+                return {
+                  ...classroomItem,
+                  ...item,
+                  totalQuestions:
+                    item?.totalQuestions ?? classroomItem?.totalQuestions,
+                  assignmentId:
+                    item?.assignmentId ??
+                    classroomItem?.assignmentId ??
+                    assignmentId,
+                  assignmentTitle:
+                    item?.assignmentTitle ?? classroomItem?.assignmentTitle,
+                  effectiveDuration:
+                    item?.effectiveDuration ?? classroomItem?.effectiveDuration,
+                };
+              })
+            : classroomAssignments;
+
+        const list = mergedRawList
           .map(toUiAssignment)
           .map((item) => ({
             ...item,

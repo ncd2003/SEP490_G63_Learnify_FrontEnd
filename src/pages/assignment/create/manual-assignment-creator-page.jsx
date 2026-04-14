@@ -137,6 +137,30 @@ const ASSIGNMENT_STATUS = {
   ARCHIVED: "ARCHIVED",
 };
 
+const SESSION_TYPE = {
+  AI_GENERATION: "AI_GENERATION",
+  EXCEL_IMPORT: "EXCEL_IMPORT",
+  MANUAL_CREATION: "MANUAL_CREATION",
+};
+
+const normalizeSessionType = (rawType) => {
+  const normalized = String(rawType || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === SESSION_TYPE.AI_GENERATION) {
+    return SESSION_TYPE.AI_GENERATION;
+  }
+  if (normalized === SESSION_TYPE.EXCEL_IMPORT) {
+    return SESSION_TYPE.EXCEL_IMPORT;
+  }
+  if (normalized === SESSION_TYPE.MANUAL_CREATION) {
+    return SESSION_TYPE.MANUAL_CREATION;
+  }
+
+  return null;
+};
+
 const normalizeAssignmentStatus = (rawStatus) => {
   const value = String(rawStatus || "")
     .trim()
@@ -821,23 +845,35 @@ const ManualAssignmentCreatorPage = () => {
     [assignmentId, bankId],
   );
 
+  const isBankMode = Boolean(scope.bankId) && !scope.assignmentId;
+
   const setupPagePath = useMemo(() => {
+    if (isBankMode) {
+      return PATH_TEACHER.questionBankMethod(scope.bankId);
+    }
+
     const query = searchParams.toString();
     return query
       ? `${PATH_TEACHER.assignmentCreateManual}?${query}`
       : PATH_TEACHER.assignmentCreateManual;
-  }, [searchParams]);
+  }, [isBankMode, scope.bankId, searchParams]);
 
   const isAssignmentUpdateMode = sourceModeFromStatusQuery === "assignment";
-  const primaryActionLabel = isAssignmentUpdateMode
-    ? "Cập nhật bài tập"
-    : "Xuất bản";
-  const sideActionBusyLabel = isAssignmentUpdateMode
-    ? "Đang kiểm tra & cập nhật..."
-    : "Đang kiểm tra & xuất bản...";
-  const topbarActionBusyLabel = isAssignmentUpdateMode
-    ? "Đang cập nhật..."
-    : "Đang xử lý...";
+  const primaryActionLabel = isBankMode
+    ? "Lưu ngân hàng"
+    : isAssignmentUpdateMode
+      ? "Cập nhật bài tập"
+      : "Xuất bản";
+  const sideActionBusyLabel = isBankMode
+    ? "Đang kiểm tra & lưu ngân hàng..."
+    : isAssignmentUpdateMode
+      ? "Đang kiểm tra & cập nhật..."
+      : "Đang kiểm tra & xuất bản...";
+  const topbarActionBusyLabel = isBankMode
+    ? "Đang lưu..."
+    : isAssignmentUpdateMode
+      ? "Đang cập nhật..."
+      : "Đang xử lý...";
 
   useEffect(() => {
     setQs((prev) => sanitizeQuestionsByFormat(prev, formatMode));
@@ -943,6 +979,21 @@ const ManualAssignmentCreatorPage = () => {
       ];
     }
 
+    if (isBankMode) {
+      return [
+        {
+          key: "bank-mixed",
+          sectionId: null,
+          sectionType: SECTION_TYPE.MIXED,
+          title: "Danh sách câu hỏi",
+          subtitle: "Không chia phần",
+          sectionLabel: "Câu hỏi",
+          emptyMessage: "Chưa có câu hỏi.",
+          items: indexed,
+        },
+      ];
+    }
+
     const firstSectionIndexByType = mixedSections.reduce(
       (acc, section, idx) => {
         if (acc[section.sectionType] === undefined) {
@@ -1002,10 +1053,17 @@ const ManualAssignmentCreatorPage = () => {
         }),
       };
     });
-  }, [formatMode, mixedSections, qs, singleModeSectionId]);
+  }, [formatMode, isBankMode, mixedSections, qs, singleModeSectionId]);
 
   const createMixedSection = async () => {
     if (formatMode !== FORMAT_MODE.MIXED) return;
+
+    if (isBankMode) {
+      showToast(
+        "Chế độ ngân hàng đề không dùng chia phần. Bạn có thể thêm câu hỏi trực tiếp.",
+      );
+      return;
+    }
 
     if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
       showToast("Thiếu assignmentId để tạo phần.", "error");
@@ -1064,29 +1122,33 @@ const ManualAssignmentCreatorPage = () => {
     let nextSectionId = null;
 
     if (formatMode === FORMAT_MODE.MIXED) {
-      const targetSection = mixedSections.find(
-        (section) => String(section.id) === String(targetSectionId),
-      );
-
-      if (!targetSection) {
-        showToast("Không tìm thấy phần để thêm câu hỏi.", "error");
-        return;
-      }
-
-      const sectionAllowedTypes = getAllowedQuestionTypesBySectionType(
-        targetSection.sectionType,
-      );
-      if (!sectionAllowedTypes.includes(type)) {
-        showToast(
-          targetSection.sectionType === SECTION_TYPE.ESSAY
-            ? "Phần này chỉ thêm được câu hỏi tự luận."
-            : "Phần này chỉ thêm được câu hỏi trắc nghiệm / đúng sai / điền khuyết.",
-          "error",
+      if (isBankMode) {
+        nextSectionId = null;
+      } else {
+        const targetSection = mixedSections.find(
+          (section) => String(section.id) === String(targetSectionId),
         );
-        return;
-      }
 
-      nextSectionId = targetSection?.id || null;
+        if (!targetSection) {
+          showToast("Không tìm thấy phần để thêm câu hỏi.", "error");
+          return;
+        }
+
+        const sectionAllowedTypes = getAllowedQuestionTypesBySectionType(
+          targetSection.sectionType,
+        );
+        if (!sectionAllowedTypes.includes(type)) {
+          showToast(
+            targetSection.sectionType === SECTION_TYPE.ESSAY
+              ? "Phần này chỉ thêm được câu hỏi tự luận."
+              : "Phần này chỉ thêm được câu hỏi trắc nghiệm / đúng sai / điền khuyết.",
+            "error",
+          );
+          return;
+        }
+
+        nextSectionId = targetSection?.id || null;
+      }
     } else {
       nextSectionId = singleModeSectionId;
     }
@@ -1107,6 +1169,13 @@ const ManualAssignmentCreatorPage = () => {
           formatMode === FORMAT_MODE.ESSAY
             ? SECTION_TYPE.ESSAY
             : SECTION_TYPE.OBJECTIVE,
+      };
+    }
+
+    if (isBankMode) {
+      return {
+        sectionId: null,
+        sectionType: SECTION_TYPE.MIXED,
       };
     }
 
@@ -1565,7 +1634,7 @@ const ManualAssignmentCreatorPage = () => {
   const handlePublish = async () => {
     if (publishing) return;
 
-    if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
+    if (!isBankMode && (!Number.isFinite(assignmentId) || assignmentId <= 0)) {
       showToast(
         isAssignmentUpdateMode
           ? "Thiếu assignmentId để cập nhật bài tập."
@@ -1647,29 +1716,44 @@ const ManualAssignmentCreatorPage = () => {
           throw new Error("NO_SELECTED_QUESTION_IDS");
         }
 
-        await assignmentApi.confirmAndPublishAssignment(assignmentId, {
-          sessionId,
-          bankId: scope.bankId ?? null,
-          selectedQuestionIds,
-        });
+        if (isBankMode) {
+          await assignmentApi.confirmDraftSession(
+            sessionId,
+            selectedQuestionIds,
+            scope,
+          );
+        } else {
+          await assignmentApi.confirmAndPublishAssignment(assignmentId, {
+            sessionId,
+            bankId: scope.bankId ?? null,
+            selectedQuestionIds,
+          });
+        }
 
         setSessionId(null);
         itemIdMapRef.current = {};
 
-        showToast("Bài tập đã được xuất bản!");
-        navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
+        if (isBankMode) {
+          showToast("Đã lưu câu hỏi vào ngân hàng đề!");
+          navigate(PATH_TEACHER.questionBankDetail(scope.bankId));
+        } else {
+          showToast("Bài tập đã được xuất bản!");
+          navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
+        }
       }
     } catch (error) {
       const apiMessage = error?.response?.data?.message;
-      const fallbackMessage = isAssignmentUpdateMode
-        ? error?.message === "MISSING_DRAFT_SESSION_FOR_UPDATE"
-          ? "Không thể khởi tạo phiên nháp để cập nhật câu hỏi. Vui lòng thử lại."
-          : error?.message === "SAVE_DRAFT_FOR_UPDATE_FAILED"
-            ? "Không thể lưu tạm câu hỏi đã chỉnh sửa trước khi cập nhật."
-            : error?.message === "INVALID_UPDATE_QUESTION_REFERENCE"
-              ? "Có câu hỏi chưa hợp lệ để cập nhật. Vui lòng kiểm tra lại nội dung câu hỏi mới."
-              : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
-        : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
+      const fallbackMessage = isBankMode
+        ? "Bạn không thể lưu ngân hàng vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau"
+        : isAssignmentUpdateMode
+          ? error?.message === "MISSING_DRAFT_SESSION_FOR_UPDATE"
+            ? "Không thể khởi tạo phiên nháp để cập nhật câu hỏi. Vui lòng thử lại."
+            : error?.message === "SAVE_DRAFT_FOR_UPDATE_FAILED"
+              ? "Không thể lưu tạm câu hỏi đã chỉnh sửa trước khi cập nhật."
+              : error?.message === "INVALID_UPDATE_QUESTION_REFERENCE"
+                ? "Có câu hỏi chưa hợp lệ để cập nhật. Vui lòng kiểm tra lại nội dung câu hỏi mới."
+                : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
+          : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
 
       showToast(apiMessage || fallbackMessage, "error");
     } finally {
@@ -1702,7 +1786,10 @@ const ManualAssignmentCreatorPage = () => {
 
     if (!initPromiseRef.current) {
       initPromiseRef.current = (async () => {
-        const initResp = await assignmentApi.initManualDraftSession(scope);
+        const initResp = await assignmentApi.initManualDraftSession(
+          scope,
+          SESSION_TYPE.MANUAL_CREATION,
+        );
         const result = initResp?.result;
         const sid = result?.sessionId || result;
         const hasPending =
@@ -1714,19 +1801,47 @@ const ManualAssignmentCreatorPage = () => {
               ? normalizedSid
               : null,
           hasPending,
+          sessionType: normalizeSessionType(result?.sessionType),
         };
       })();
     }
 
     initPromiseRef.current
-      .then(({ sid, hasPending }) => {
+      .then(({ sid, hasPending, sessionType }) => {
         if (!cancelled && sid) {
+          if (
+            !sourceModeFromStatusQuery &&
+            hasPending &&
+            sessionType &&
+            sessionType !== SESSION_TYPE.MANUAL_CREATION
+          ) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.set("sessionId", String(sid));
+
+            if (sessionType === SESSION_TYPE.AI_GENERATION) {
+              navigate(
+                `${PATH_TEACHER.assignmentCreateAi}?${nextParams.toString()}`,
+              );
+              return;
+            }
+
+            if (sessionType === SESSION_TYPE.EXCEL_IMPORT) {
+              navigate(
+                `${PATH_TEACHER.assignmentCreateImport}?${nextParams.toString()}`,
+              );
+              return;
+            }
+          }
+
+          const isManualCreationSession =
+            !sessionType || sessionType === SESSION_TYPE.MANUAL_CREATION;
+
           const shouldUseWorkspace =
             sourceModeFromStatusQuery === "workspace"
               ? true
               : sourceModeFromStatusQuery === "assignment"
                 ? false
-                : hasPending;
+                : isManualCreationSession;
 
           setSessionId(sid);
           setShouldLoadDraft(shouldUseWorkspace);
@@ -1748,7 +1863,7 @@ const ManualAssignmentCreatorPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [scope, sourceModeFromStatusQuery]);
+  }, [navigate, scope, searchParams, sourceModeFromStatusQuery]);
 
   useEffect(() => {
     const preferWorkspace = sourceModeFromStatusQuery === "workspace";
@@ -2529,7 +2644,7 @@ const ManualAssignmentCreatorPage = () => {
         </div>
 
         <div className="scroll">
-          {formatMode === FORMAT_MODE.MIXED && (
+          {formatMode === FORMAT_MODE.MIXED && !isBankMode && (
             <div className="section-wrap">
               <div className="section-hdr">
                 <div className="section-title">

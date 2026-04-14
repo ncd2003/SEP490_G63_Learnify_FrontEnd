@@ -191,6 +191,18 @@ const ClassroomDetailLayout = ({
     return "Người dùng";
   })();
 
+  const classroomTeacherName =
+    String(
+      classroom?.teacherName ||
+        classroom?.teacher?.fullName ||
+        classroom?.ownerName ||
+        classroom?.createdByName ||
+        "",
+    ).trim() ||
+    user?.fullName ||
+    user?.username ||
+    "Chưa cập nhật";
+
   const safeNumber = (value) => {
     const parsedValue = Number(value);
     return Number.isFinite(parsedValue) ? parsedValue : 0;
@@ -305,7 +317,7 @@ const ClassroomDetailLayout = ({
             <div className="classroom-info-row">
               <span className="classroom-info-label">Giảng viên:</span>
               <span className="classroom-info-value">
-                {user?.fullName || user?.username}
+                {classroomTeacherName}
               </span>
             </div>
             {/* <div className="classroom-info-row">

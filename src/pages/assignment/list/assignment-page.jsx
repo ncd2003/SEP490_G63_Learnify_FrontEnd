@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
+import { classroomApi } from "@/apis/classroom.api";
 import { PATH_TEACHER } from "@/routes/paths";
 import { usePendingSessions } from "@/hooks/use-pending-sessions";
 import "@/assets/css/pages/classroom/assignments/assignment-page.css";
@@ -571,7 +572,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font
 
 const AssignmentPage = () => {
   const navigate = useNavigate();
+  const { id: classroomIdParam } = useParams();
   const { pendingSessions } = usePendingSessions("ASSIGNMENT");
+  const classroomId = Number(classroomIdParam);
+  const hasClassroomContext = Number.isFinite(classroomId) && classroomId > 0;
 
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
@@ -590,11 +594,64 @@ const AssignmentPage = () => {
     setTimeout(() => setToast(null), 2500);
   };
 
+  const normalizeCardStatus = (status) => {
+    const normalized = String(status || "")
+      .trim()
+      .toUpperCase();
+
+    if (normalized === "DRAFT") return "DRAFT";
+    if (normalized === "ARCHIVED") return "ARCHIVED";
+    if (normalized === "PUBLISHED") return "PUBLISHED";
+    if (
+      normalized.includes("CLOSED") ||
+      normalized.includes("EXPIRED") ||
+      normalized.includes("DONE")
+    ) {
+      return "ARCHIVED";
+    }
+
+    return "PUBLISHED";
+  };
+
+  const mapClassroomAssignmentToCard = (item = {}) => {
+    const assignmentId = Number(item?.assignmentId);
+    const classroomAssignmentId = Number(item?.id);
+
+    return {
+      id:
+        Number.isFinite(classroomAssignmentId) && classroomAssignmentId > 0
+          ? classroomAssignmentId
+          : Number.isFinite(assignmentId) && assignmentId > 0
+            ? assignmentId
+            : `classroom-assignment-${Date.now()}`,
+      assignmentId,
+      title: String(item?.assignmentTitle || "Bài tập chưa đặt tên"),
+      status: normalizeCardStatus(item?.status),
+      category: "HOMEWORK",
+      subject: "",
+      format: null,
+      totalQuestions: Number(item?.totalQuestions ?? 0),
+      durationMinutes: Number(item?.effectiveDuration ?? 0) || null,
+      createdAt: item?.assignedAt || item?.effectiveStartTime || new Date(),
+      classroomId: Number(item?.classroomId) || null,
+    };
+  };
+
   // Fetch assignments
   useEffect(() => {
     const fetchAssignments = async () => {
       try {
         setIsLoading(true);
+
+        if (hasClassroomContext) {
+          const response =
+            await classroomApi.getAssignmentsForClassroom(classroomId);
+          const list = Array.isArray(response?.result) ? response.result : [];
+
+          setAssignments(list.map(mapClassroomAssignmentToCard));
+          return;
+        }
+
         const response = await assignmentApi.getAssignments({
           page: 1,
           size: 100,
@@ -609,7 +666,7 @@ const AssignmentPage = () => {
     };
 
     fetchAssignments();
-  }, []);
+  }, [classroomId, hasClassroomContext]);
 
   // Filter assignments
   const filtered = assignments.filter((a) => {
@@ -646,11 +703,11 @@ const AssignmentPage = () => {
     navigate(`${PATH_TEACHER.assignmentCreateManual}?assignmentId=${id}`);
   };
 
-  const handleDuplicateAssignment = (assignment) => {
+  const handleDuplicateAssignment = () => {
     showToast("Tính năng nhân bản sẽ được hoàn thành sớm", "info");
   };
 
-  const handleDeleteAssignment = (assignment) => {
+  const handleDeleteAssignment = () => {
     showToast("Tính năng xóa sẽ được hoàn thành sớm", "info");
   };
 
@@ -919,14 +976,14 @@ const AssignmentPage = () => {
                   <button
                     className="act-btn"
                     title="Xem"
-                    onClick={() => handleViewAssignment(a.id)}
+                    onClick={() => handleViewAssignment(a.assignmentId || a.id)}
                   >
                     <Ic.Eye />
                   </button>
                   <button
                     className="act-btn"
                     title="Chỉnh sửa"
-                    onClick={() => handleViewAssignment(a.id)}
+                    onClick={() => handleViewAssignment(a.assignmentId || a.id)}
                   >
                     <Ic.Edit />
                   </button>
