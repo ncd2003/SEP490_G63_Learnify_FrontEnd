@@ -12,6 +12,8 @@ const PUBLIC_ENDPOINTS = [
 ];
 
 const isPublic = (url = "") => PUBLIC_ENDPOINTS.some((ep) => url.includes(ep));
+const isQuestionBankEndpointUrl = (url = "") =>
+  url.includes("/question-banks") || url.includes("/banks");
 
 const isLockedOrInactiveError = (message = "") => {
   const normalized = String(message).toLowerCase();
@@ -101,8 +103,9 @@ const createHttp = () => {
       const isChangePassword = response.config?.url?.includes(
         "/users/change-password",
       );
-      const isQuestionBankEndpoint =
-        response.config?.url?.includes("/question-banks");
+      const isQuestionBankEndpoint = isQuestionBankEndpointUrl(
+        response.config?.url,
+      );
       const isAssignmentEndpoint =
         response.config?.url?.includes("/assignments") ||
         response.config?.url?.includes("/draft-sessions");
@@ -136,8 +139,9 @@ const createHttp = () => {
           reqConfig?.url?.includes("/auth/reset-password") ||
           reqConfig?.url?.includes("/users/me") ||
           reqConfig?.url?.includes("/users/change-password");
-        const isQuestionBankEndpoint =
-          reqConfig?.url?.includes("/question-banks");
+        const isQuestionBankEndpoint = isQuestionBankEndpointUrl(
+          reqConfig?.url,
+        );
         const isAssignmentEndpoint =
           reqConfig?.url?.includes("/assignments") ||
           reqConfig?.url?.includes("/draft-sessions");

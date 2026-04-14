@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
+import { usePendingSessions } from "@/hooks/use-pending-sessions";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const CLASSES = [
@@ -517,15 +518,181 @@ const toDisplayDate = (value) => {
   }
 };
 
+const toPositiveId = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const normalizeApiCategory = (value) => {
+  const category = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (category === "TEST") return "TEST";
+  return "HOMEWORK";
+};
+
+const normalizeApiFormat = (value) => {
+  const format = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (format === "MC") return "MULTIPLE_CHOICE";
+  if (format === "MULTIPLE_CHOICE") return "MULTIPLE_CHOICE";
+  if (format === "ESSAY") return "ESSAY";
+  return "MIXED";
+};
+
+const DRAFT_MODE = {
+  AI: "ai",
+  MANUAL: "manual",
+};
+
+const normalizeDraftMode = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  if (!normalized) return null;
+
+  if (
+    normalized === "AI" ||
+    normalized.includes("AI") ||
+    normalized.includes("AUTO") ||
+    normalized.includes("GENERATIVE")
+  ) {
+    return DRAFT_MODE.AI;
+  }
+
+  if (
+    normalized === "MANUAL" ||
+    normalized.includes("MANUAL") ||
+    normalized.includes("EDITOR") ||
+    normalized.includes("HUMAN")
+  ) {
+    return DRAFT_MODE.MANUAL;
+  }
+
+  return null;
+};
+
+const resolveDraftModeFromData = (...sources) => {
+  const knownModeKeys = [
+    "draftMode",
+    "mode",
+    "creationMethod",
+    "createMethod",
+    "editorMode",
+    "source",
+    "sourceType",
+    "sessionType",
+    "draftType",
+    "generationType",
+    "questionGenerationType",
+  ];
+
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+
+    if (
+      source.isAi === true ||
+      source.aiGenerated === true ||
+      source.generatedByAi === true ||
+      source.createdByAi === true
+    ) {
+      return DRAFT_MODE.AI;
+    }
+
+    for (const key of knownModeKeys) {
+      const mode = normalizeDraftMode(source[key]);
+      if (mode) return mode;
+    }
+  }
+
+  return null;
+};
+
+const resolveSectionIdByFormat = (sections = [], apiFormat = "MIXED") => {
+  const list = Array.isArray(sections) ? sections : [];
+  if (!list.length) return null;
+
+  const targetType = apiFormat === "ESSAY" ? "ESSAY" : "OBJECTIVE";
+
+  const matched = list.find((section) => {
+    const sectionType = String(section?.sectionType || "")
+      .trim()
+      .toUpperCase();
+
+    if (targetType === "OBJECTIVE") {
+      return sectionType === "OBJECTIVE" || sectionType === "MULTIPLE_CHOICE";
+    }
+
+    return sectionType === targetType;
+  });
+
+  return (
+    toPositiveId(matched?.id || matched?.sectionId) ||
+    toPositiveId(list[0]?.id || list[0]?.sectionId)
+  );
+};
+
+const findPendingSessionByAssignmentId = (source, assignmentId) => {
+  const safeAssignmentId = toPositiveId(assignmentId);
+  if (!safeAssignmentId) return null;
+
+  if (source instanceof Map) {
+    return (
+      source.get(safeAssignmentId) ||
+      source.get(String(safeAssignmentId)) ||
+      null
+    );
+  }
+
+  if (!Array.isArray(source)) {
+    return null;
+  }
+
+  return (
+    source.find(
+      (session) => toPositiveId(session?.targetId) === safeAssignmentId,
+    ) || null
+  );
+};
+
+const extractAssignmentItems = (response) => {
+  const result = response?.result;
+
+  if (!result) {
+    return [];
+  }
+
+  if (Array.isArray(result?.content)) {
+    return result.content;
+  }
+
+  if (Array.isArray(result?.items)) {
+    return result.items;
+  }
+
+  if (Array.isArray(result?.data)) {
+    return result.data;
+  }
+
+  return [];
+};
+
 const toUiAssignment = (item) => ({
   id: item.id,
   title: item.title || `Bài tập #${item.id}`,
   subject: item.subject || item.subjectName || "Chưa phân môn",
   category: normalizeCategory(item.category),
   format: normalizeFormat(item.format),
+  apiCategory: normalizeApiCategory(item.category),
+  apiFormat: normalizeApiFormat(item.format),
   status: normalizeStatus(item.status),
+  draftModeHint: resolveDraftModeFromData(item),
   totalScore: Number(item.totalScore ?? 0),
-  questionCount: Number(item.numberOfQuestions ?? item.questionCount ?? 0),
+  questionCount: Number(
+    item.totalQuestions ?? item.numberOfQuestions ?? item.questionCount ?? 0,
+  ),
   duration:
     item?.setting?.durationMinutes ??
     item.durationMinutes ??
@@ -544,6 +711,7 @@ const toUiAssignment = (item) => ({
 
 export default function AssignmentHubPage() {
   const navigate = useNavigate();
+  const { pendingSessions } = usePendingSessions("ASSIGNMENT");
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
@@ -557,6 +725,7 @@ export default function AssignmentHubPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [refreshTick, setRefreshTick] = useState(0);
+  const [openingAssignmentId, setOpeningAssignmentId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -572,9 +741,7 @@ export default function AssignmentHubPage() {
         });
         if (!mounted) return;
 
-        const list = Array.isArray(response?.result?.content)
-          ? response.result.content
-          : [];
+        const list = extractAssignmentItems(response);
 
         setAssignments(list.map(toUiAssignment));
       } catch (err) {
@@ -610,8 +777,160 @@ export default function AssignmentHubPage() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  const goToDetail = (assignmentId) => {
-    navigate(PATH_TEACHER.assignmentDetail(assignmentId));
+  const buildAssignmentEditorQuery = ({
+    assignmentId,
+    apiFormat,
+    apiCategory,
+    sectionId,
+    sessionId,
+    includeDraftStatus,
+  }) => {
+    const params = new URLSearchParams();
+    params.set("assignmentId", String(assignmentId));
+    params.set("format", String(apiFormat || "MIXED").toLowerCase());
+    params.set("category", String(apiCategory || "HOMEWORK").toLowerCase());
+
+    if (sectionId) {
+      params.set("sectionId", String(sectionId));
+    }
+
+    if (sessionId) {
+      params.set("sessionId", String(sessionId));
+    }
+
+    if (includeDraftStatus) {
+      params.set("status", "draft");
+    }
+
+    return params.toString();
+  };
+
+  const handleOpenAssignment = async (assignment) => {
+    const safeAssignmentId = toPositiveId(assignment?.id);
+    if (!safeAssignmentId || openingAssignmentId === safeAssignmentId) return;
+
+    if (assignment?.status !== "draft") {
+      navigate(PATH_TEACHER.assignmentDetail(safeAssignmentId));
+      return;
+    }
+
+    setOpeningAssignmentId(safeAssignmentId);
+
+    try {
+      let summaryPendingSession = findPendingSessionByAssignmentId(
+        pendingSessions,
+        safeAssignmentId,
+      );
+      let draftMode = resolveDraftModeFromData(
+        summaryPendingSession,
+        assignment,
+      );
+      let pendingSessionId = toPositiveId(summaryPendingSession?.sessionId);
+
+      if (!summaryPendingSession || !pendingSessionId || !draftMode) {
+        try {
+          const summaryResp =
+            await assignmentApi.getPendingSessionsSummary("ASSIGNMENT");
+          const summaryList = Array.isArray(summaryResp?.result)
+            ? summaryResp.result
+            : [];
+
+          const matchedSummarySession = findPendingSessionByAssignmentId(
+            summaryList,
+            safeAssignmentId,
+          );
+
+          if (matchedSummarySession) {
+            summaryPendingSession = matchedSummarySession;
+            pendingSessionId =
+              pendingSessionId ||
+              toPositiveId(matchedSummarySession?.sessionId);
+            draftMode =
+              draftMode || resolveDraftModeFromData(matchedSummarySession);
+          }
+        } catch {
+          // Summary endpoint failure is non-blocking, continue with fallbacks.
+        }
+      }
+
+      if (!pendingSessionId || !draftMode) {
+        try {
+          const pendingSessionResp = await assignmentApi.getPendingSession({
+            assignmentId: safeAssignmentId,
+          });
+
+          const pendingResult = pendingSessionResp?.result || null;
+          pendingSessionId =
+            pendingSessionId ||
+            toPositiveId(pendingResult?.sessionId || pendingResult);
+          draftMode = draftMode || resolveDraftModeFromData(pendingResult);
+        } catch {
+          // Continue with detail lookup when pending endpoint is unavailable.
+        }
+      }
+
+      const detailResp = await assignmentApi.getAssignment(safeAssignmentId);
+      const detailData = detailResp?.result || {};
+
+      const apiFormat = normalizeApiFormat(
+        detailData?.format || assignment?.apiFormat,
+      );
+      const apiCategory = normalizeApiCategory(
+        detailData?.category || assignment?.apiCategory,
+      );
+      const resolvedSectionId = resolveSectionIdByFormat(
+        detailData?.sections,
+        apiFormat,
+      );
+
+      draftMode = draftMode || resolveDraftModeFromData(detailData);
+
+      if (!draftMode && pendingSessionId) {
+        try {
+          const draftResp = await assignmentApi.getDraftSession(
+            pendingSessionId,
+            {
+              assignmentId: safeAssignmentId,
+            },
+          );
+          draftMode = resolveDraftModeFromData(draftResp?.result);
+        } catch {
+          // Ignore draft session mode detection failure and fallback below.
+        }
+      }
+
+      if (draftMode === DRAFT_MODE.AI) {
+        const query = buildAssignmentEditorQuery({
+          assignmentId: safeAssignmentId,
+          apiFormat,
+          apiCategory,
+          sectionId: resolvedSectionId,
+          sessionId: pendingSessionId,
+          includeDraftStatus: false,
+        });
+        navigate(`${PATH_TEACHER.assignmentCreateAi}?${query}`);
+        return;
+      }
+
+      const query = buildAssignmentEditorQuery({
+        assignmentId: safeAssignmentId,
+        apiFormat,
+        apiCategory,
+        sectionId: resolvedSectionId,
+        sessionId: pendingSessionId,
+        includeDraftStatus: true,
+      });
+      navigate(`${PATH_TEACHER.assignmentCreateManualQuestions}?${query}`);
+    } catch (err) {
+      showToast(
+        err?.response?.data?.message ||
+          "Không thể mở phiên bản nháp. Đang chuyển sang trang chi tiết.",
+        "error",
+      );
+      navigate(PATH_TEACHER.assignmentDetail(safeAssignmentId));
+    } finally {
+      setOpeningAssignmentId(null);
+    }
   };
 
   const filtered = assignments.filter((item) => {
@@ -865,7 +1184,7 @@ export default function AssignmentHubPage() {
               key={assignment.id}
               className="a-card"
               style={{ animationDelay: `${index * 0.04}s` }}
-              onClick={() => goToDetail(assignment.id)}
+              onClick={() => handleOpenAssignment(assignment)}
             >
               <div className="a-card-top">
                 <div className="a-card-badge-row">
@@ -963,7 +1282,7 @@ export default function AssignmentHubPage() {
                     title="Xem"
                     onClick={(event) => {
                       event.stopPropagation();
-                      goToDetail(assignment.id);
+                      handleOpenAssignment(assignment);
                     }}
                   >
                     <Ic.Eye />
@@ -983,9 +1302,7 @@ export default function AssignmentHubPage() {
                     title="Chỉnh sửa"
                     onClick={(event) => {
                       event.stopPropagation();
-                      navigate(
-                        `${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`,
-                      );
+                      handleOpenAssignment(assignment);
                     }}
                   >
                     <Ic.Edit />

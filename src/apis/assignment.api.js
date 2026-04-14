@@ -3,10 +3,20 @@ import { API_SUFFIX } from "@/apis/util.api";
 
 const ASSIGNMENT_BASE = API_SUFFIX.ASSIGNMENT;
 const DRAFT_SESSION_BASE = API_SUFFIX.DRAFT_SESSION;
+const STUDENT_START_ASSIGNMENT_CACHE_TTL_MS = 1500;
+
+const startStudentAssignmentInFlight = new Map();
+const startStudentAssignmentRecentResult = new Map();
 
 const DEFAULT_ASSIGNMENT_LIST_PARAMS = {
   page: 1,
   size: 10,
+};
+
+const DRAFT_SESSION_TYPE = {
+  AI_GENERATION: "AI_GENERATION",
+  EXCEL_IMPORT: "EXCEL_IMPORT",
+  MANUAL_CREATION: "MANUAL_CREATION",
 };
 
 const normalizeId = (value, label = "id") => {
@@ -34,6 +44,52 @@ const normalizeDraftScope = (scope = {}) => {
     bankId,
   };
 };
+
+const normalizeDraftSessionType = (
+  value = DRAFT_SESSION_TYPE.MANUAL_CREATION,
+) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === DRAFT_SESSION_TYPE.AI_GENERATION) {
+    return DRAFT_SESSION_TYPE.AI_GENERATION;
+  }
+
+  if (normalized === DRAFT_SESSION_TYPE.EXCEL_IMPORT) {
+    return DRAFT_SESSION_TYPE.EXCEL_IMPORT;
+  }
+
+  if (normalized === DRAFT_SESSION_TYPE.MANUAL_CREATION) {
+    return DRAFT_SESSION_TYPE.MANUAL_CREATION;
+  }
+
+  return DRAFT_SESSION_TYPE.MANUAL_CREATION;
+};
+
+const normalizeSaveAnswerItems = (items = []) =>
+  Array.isArray(items)
+    ? items
+        .map((item) => {
+          const assignmentQuestionId = Number(item?.assignmentQuestionId);
+
+          if (
+            !Number.isFinite(assignmentQuestionId) ||
+            assignmentQuestionId <= 0
+          ) {
+            return null;
+          }
+
+          return {
+            assignmentQuestionId: Math.round(assignmentQuestionId),
+            answerContent:
+              item?.answerContent === undefined || item?.answerContent === null
+                ? ""
+                : String(item.answerContent),
+          };
+        })
+        .filter(Boolean)
+    : [];
 
 /**
  * @param {{
@@ -92,6 +148,97 @@ const getAssignments = (params = {}) => {
   }
 
   return apiRequest.get(ASSIGNMENT_BASE, { params: normalized });
+};
+
+const getStudentAssignments = (params = {}) =>
+  apiRequest.get("/student/assignments", { params });
+
+const startStudentAssignment = (assignmentId, classroomId, password = null) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  const safeClassroomId = normalizeId(classroomId, "classroomId");
+  const normalizedPassword =
+    password === undefined || password === null || password === ""
+      ? null
+      : String(password);
+  const dedupeKey = `${safeAssignmentId}:${safeClassroomId}:${normalizedPassword || ""}`;
+
+  const cached = startStudentAssignmentRecentResult.get(dedupeKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return Promise.resolve(cached.data);
+  }
+
+  const inFlight = startStudentAssignmentInFlight.get(dedupeKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const requestPromise = apiRequest
+    .post(`/student/assignments/${safeAssignmentId}/start`, {
+      classroomId: safeClassroomId,
+      password: normalizedPassword,
+    })
+    .then((response) => {
+      startStudentAssignmentRecentResult.set(dedupeKey, {
+        data: response,
+        expiresAt: Date.now() + STUDENT_START_ASSIGNMENT_CACHE_TTL_MS,
+      });
+
+      return response;
+    })
+    .finally(() => {
+      startStudentAssignmentInFlight.delete(dedupeKey);
+    });
+
+  startStudentAssignmentInFlight.set(dedupeKey, requestPromise);
+
+  return requestPromise;
+};
+
+const saveStudentAssignmentDraft = (submissionId, payload = {}) => {
+  const safeSubmissionId = normalizeId(submissionId, "submissionId");
+  const answers = normalizeSaveAnswerItems(payload?.answers);
+
+  return apiRequest.put(
+    `/student/assignments/submissions/${safeSubmissionId}/draft`,
+    {
+      answers,
+    },
+  );
+};
+
+const recordStudentAssignmentViolation = (submissionId, payload = {}) => {
+  const safeSubmissionId = normalizeId(submissionId, "submissionId");
+
+  return apiRequest.post(
+    `/student/assignments/submissions/${safeSubmissionId}/violation`,
+    {
+      eventType: String(payload?.eventType || "").trim(),
+      metadata:
+        payload?.metadata === undefined || payload?.metadata === null
+          ? ""
+          : String(payload.metadata),
+      answers: normalizeSaveAnswerItems(payload?.answers),
+    },
+  );
+};
+
+const submitStudentAssignment = (submissionId, payload = {}) => {
+  const safeSubmissionId = normalizeId(submissionId, "submissionId");
+
+  return apiRequest.post(
+    `/student/assignments/submissions/${safeSubmissionId}/submit`,
+    {
+      finalAnswers: normalizeSaveAnswerItems(payload?.finalAnswers),
+    },
+  );
+};
+
+const getSubmissionResult = (submissionId) => {
+  const safeSubmissionId = normalizeId(submissionId, "submissionId");
+
+  return apiRequest.get(
+    `/student/assignments/submissions/${safeSubmissionId}/result`,
+  );
 };
 
 const getAssignment = (assignmentId) => {
@@ -383,8 +530,14 @@ const getPendingSessionsSummary = (targetType = null) => {
   return apiRequest.get(`${DRAFT_SESSION_BASE}/pending/summary`, { params });
 };
 
-const initManualDraftSession = (scope = {}) => {
-  const params = normalizeDraftScope(scope);
+const initManualDraftSession = (
+  scope = {},
+  sessionType = DRAFT_SESSION_TYPE.MANUAL_CREATION,
+) => {
+  const params = {
+    ...normalizeDraftScope(scope),
+    sessionType: normalizeDraftSessionType(sessionType),
+  };
   return apiRequest.post(`${DRAFT_SESSION_BASE}/manual/init`, null, {
     params,
   });
@@ -666,6 +819,12 @@ const confirmDraftSession = (
 export const assignmentApi = {
   createAssignment,
   getAssignments,
+  getStudentAssignments,
+  startStudentAssignment,
+  saveStudentAssignmentDraft,
+  recordStudentAssignmentViolation,
+  submitStudentAssignment,
+  getSubmissionResult,
   getAssignment,
   getAvailableClassroomsForAssignment,
   getAssignmentById,
