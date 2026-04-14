@@ -36,8 +36,14 @@ const getClassroomsByUser = (params = {}) =>
  * @param {number} id
  * @returns {Promise<import("axios").AxiosResponse<ClassroomResponse>>}
  */
-const getClassroomById = (id) =>
-  apiRequest.get(`${BASE}/${id}`);
+const getClassroomById = (id) => apiRequest.get(`${BASE}/${id}`);
+
+/**
+ * @param {number|string} classroomId
+ * @returns {Promise<import("axios").AxiosResponse>}
+ */
+const getAssignmentsForClassroom = (classroomId) =>
+  apiRequest.get(`${BASE}/${classroomId}/assignments`);
 
 /**
  * @param {import("@/schema/classroom.schema").TCreateClassroom} data
@@ -65,7 +71,7 @@ const updateClassroom = (id, data, file = null) => {
   const formData = new FormData();
   formData.append(
     "data",
-    new Blob([JSON.stringify(parsed)], { type: "application/json" })
+    new Blob([JSON.stringify(parsed)], { type: "application/json" }),
   );
   if (file) formData.append("file", file);
   return apiRequest.put(`${BASE}/${id}`, formData);
@@ -75,8 +81,7 @@ const updateClassroom = (id, data, file = null) => {
  * @param {number} id
  * @returns {Promise<import("axios").AxiosResponse>}
  */
-const deleteClassroom = (id) =>
-  apiRequest.delete(`${BASE}/${id}`);
+const deleteClassroom = (id) => apiRequest.delete(`${BASE}/${id}`);
 
 /**
  * @param {string} code
@@ -89,6 +94,7 @@ const searchByCode = (code) =>
 export const classroomApi = {
   getClassroomsByUser,
   getClassroomById,
+  getAssignmentsForClassroom,
   createClassroom,
   updateClassroom,
   deleteClassroom,

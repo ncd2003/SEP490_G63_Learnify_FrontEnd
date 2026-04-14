@@ -47,6 +47,36 @@ const Icons = {
       <line x1="16" y1="17" x2="8" y2="17" />
     </svg>
   ),
+  Eye: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  EyeOff: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M17.94 17.94A10.94 10.94 0 0112 20C5 20 1 12 1 12a21.77 21.77 0 015.06-6.94" />
+      <path d="M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.62 21.62 0 01-2.12 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M9.53 9.53a3 3 0 004.24 4.24" />
+    </svg>
+  ),
 };
 
 const CSS = `
@@ -91,6 +121,10 @@ const CSS = `
 .full{grid-column:1 / -1}
 .help{font-size:11px;color:var(--t3);margin-top:4px}
 .error{margin-top:12px;padding:10px 12px;border-radius:10px;background:#FDEDEB;color:#B91C1C;font-size:13px;font-weight:600}
+.password-wrap{position:relative}
+.password-input{padding-right:42px}
+.password-peek-btn{position:absolute;top:50%;right:8px;transform:translateY(-50%);width:30px;height:30px;border:none;background:transparent;color:var(--t3);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}
+.password-peek-btn:hover{background:var(--pl);color:var(--p)}
 .actions{display:flex;justify-content:flex-end;gap:10px}
 .btn{height:42px;padding:0 18px;border-radius:10px;font-size:13px;font-weight:700;font-family:var(--f);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:8px}
 .btn.secondary{background:#FFF;border:1.5px solid var(--b);color:var(--t2)}
@@ -279,6 +313,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
   const [submitting, setSubmitting] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [isPasswordPeekVisible, setIsPasswordPeekVisible] = useState(false);
 
   const pageTitle = isAiMode ? "Tạo bài tập với AI" : "Tạo bài tập thủ công";
   const crumbTitle = isAiMode ? "Tạo với AI" : "Tạo thủ công";
@@ -876,17 +911,35 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
               <div className="setting-grid">
                 <div className="form-group">
                   <label className="label">Mật khẩu (password)</label>
-                  <input
-                    className="input"
-                    value={setting.password}
-                    onChange={(event) =>
-                      setSetting((prev) => ({
-                        ...prev,
-                        password: event.target.value,
-                      }))
-                    }
-                    placeholder="Để trống nếu không dùng"
-                  />
+                  <div className="password-wrap">
+                    <input
+                      className="input password-input"
+                      type={isPasswordPeekVisible ? "text" : "password"}
+                      value={setting.password}
+                      onChange={(event) =>
+                        setSetting((prev) => ({
+                          ...prev,
+                          password: event.target.value,
+                        }))
+                      }
+                      placeholder="Để trống nếu không dùng"
+                    />
+                    <button
+                      type="button"
+                      className="password-peek-btn"
+                      aria-label="Nhấn giữ để xem mật khẩu"
+                      title="Nhấn giữ để xem mật khẩu"
+                      onMouseDown={() => setIsPasswordPeekVisible(true)}
+                      onMouseUp={() => setIsPasswordPeekVisible(false)}
+                      onMouseLeave={() => setIsPasswordPeekVisible(false)}
+                      onTouchStart={() => setIsPasswordPeekVisible(true)}
+                      onTouchEnd={() => setIsPasswordPeekVisible(false)}
+                      onTouchCancel={() => setIsPasswordPeekVisible(false)}
+                      onBlur={() => setIsPasswordPeekVisible(false)}
+                    >
+                      {isPasswordPeekVisible ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="form-group">

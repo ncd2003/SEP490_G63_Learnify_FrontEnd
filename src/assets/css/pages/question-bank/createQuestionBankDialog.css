@@ -35,6 +35,12 @@
   gap: 12px;
   background: linear-gradient(180deg, #fbfdff 0%, #f8fbff 100%);
   overflow-y: auto;
+  padding-top: 12px;
+}
+
+.qb-create-form > :not(.modal-actions) {
+  margin-left: 16px;
+  margin-right: 16px;
 }
 
 .qb-create-form .form-group {
@@ -153,6 +159,11 @@
   .qb-create-modal {
     max-width: 94vw;
     max-height: 92vh;
+  }
+
+  .qb-create-form > :not(.modal-actions) {
+    margin-left: 12px;
+    margin-right: 12px;
   }
 
   .qb-create-grid-2 {
