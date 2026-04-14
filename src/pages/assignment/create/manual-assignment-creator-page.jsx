@@ -50,6 +50,8 @@ const makeOption = () => ({ id: Date.now() + Math.random(), text: "" });
 
 const makeQuestion = (type = "MULTIPLE_CHOICE") => ({
   id: Date.now() + Math.random(),
+  assignmentQuestionId: null,
+  questionId: null,
   type,
   sectionId: null,
   prompt: "",
@@ -60,10 +62,28 @@ const makeQuestion = (type = "MULTIPLE_CHOICE") => ({
       ? [makeOption(), makeOption(), makeOption(), makeOption()]
       : [],
   correct:
-    type === "TRUE_FALSE" ? null : type === "MULTIPLE_CHOICE" ? -1 : undefined,
+    type === "TRUE_FALSE" ? null : type === "MULTIPLE_CHOICE" ? [] : undefined,
   answer: "",
   collapsed: false,
 });
+
+const getMcCorrectIndexes = (correct) => {
+  if (Array.isArray(correct)) {
+    return correct
+      .map((idx) => Number(idx))
+      .filter(
+        (idx, pos, arr) =>
+          Number.isInteger(idx) && idx >= 0 && arr.indexOf(idx) === pos,
+      );
+  }
+
+  const parsed = Number(correct);
+  if (Number.isInteger(parsed) && parsed >= 0) {
+    return [parsed];
+  }
+
+  return [];
+};
 
 const normalizeType = (rawType) => {
   const type = String(rawType || "").toUpperCase();
@@ -83,16 +103,18 @@ const FORMAT_MODE = {
 };
 
 const SECTION_TYPE = {
-  MULTIPLE_CHOICE: "MULTIPLE_CHOICE",
+  OBJECTIVE: "OBJECTIVE",
   ESSAY: "ESSAY",
+  MIXED: "MIXED",
 };
 
 const normalizeSectionType = (rawType) => {
   const type = String(rawType || "").toUpperCase();
-  if (type === "MULTIPLE_CHOICE" || type === "MC") {
-    return SECTION_TYPE.MULTIPLE_CHOICE;
+  if (type === "OBJECTIVE" || type === "MULTIPLE_CHOICE" || type === "MC") {
+    return SECTION_TYPE.OBJECTIVE;
   }
   if (type === "ESSAY") return SECTION_TYPE.ESSAY;
+  if (type === "MIXED") return SECTION_TYPE.MIXED;
   return null;
 };
 
@@ -107,6 +129,25 @@ const normalizeFormatMode = (rawFormat) => {
   return FORMAT_MODE.MIXED;
 };
 
+const ASSIGNMENT_STATUS = {
+  DRAFT: "DRAFT",
+  PUBLISHED: "PUBLISHED",
+  ARCHIVED: "ARCHIVED",
+};
+
+const normalizeAssignmentStatus = (rawStatus) => {
+  const value = String(rawStatus || "")
+    .trim()
+    .toUpperCase();
+
+  if (value === ASSIGNMENT_STATUS.DRAFT) return ASSIGNMENT_STATUS.DRAFT;
+  if (value === ASSIGNMENT_STATUS.PUBLISHED) {
+    return ASSIGNMENT_STATUS.PUBLISHED;
+  }
+  if (value === ASSIGNMENT_STATUS.ARCHIVED) return ASSIGNMENT_STATUS.ARCHIVED;
+  return null;
+};
+
 const toPositiveId = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -119,7 +160,7 @@ const resolveSingleModeSectionId = (sections, formatMode) => {
   const targetSectionType =
     formatMode === FORMAT_MODE.ESSAY
       ? SECTION_TYPE.ESSAY
-      : SECTION_TYPE.MULTIPLE_CHOICE;
+      : SECTION_TYPE.OBJECTIVE;
 
   const matched = list.find(
     (section) =>
@@ -142,7 +183,11 @@ const getAllowedQuestionTypes = (formatMode) => {
 
 const getAllowedQuestionTypesBySectionType = (sectionType) => {
   if (sectionType === SECTION_TYPE.ESSAY) return ["ESSAY"];
-  return ["MULTIPLE_CHOICE", "TRUE_FALSE", "FILL_IN_BLANK"];
+  if (sectionType === SECTION_TYPE.OBJECTIVE) {
+    return ["MULTIPLE_CHOICE", "TRUE_FALSE", "FILL_IN_BLANK"];
+  }
+
+  return ["MULTIPLE_CHOICE", "TRUE_FALSE", "FILL_IN_BLANK", "ESSAY"];
 };
 
 const buildInitialQuestions = (formatMode) => {
@@ -179,7 +224,7 @@ const mapBackendQuestion = (item, sectionId = null) => {
       }))
     : [];
 
-  let correct = -1;
+  let correct;
   if (type === "TRUE_FALSE") {
     const trueOpt = opts.find(
       (o) => String(o.text).trim().toLowerCase() === "đúng",
@@ -191,11 +236,16 @@ const mapBackendQuestion = (item, sectionId = null) => {
     else if (falseOpt?.correct) correct = false;
     else correct = null;
   } else if (type === "MULTIPLE_CHOICE") {
-    correct = opts.findIndex((o) => o.correct);
+    correct = opts.reduce((acc, option, index) => {
+      if (option?.correct) acc.push(index);
+      return acc;
+    }, []);
   }
 
   return {
     id: Date.now() + Math.random(),
+    assignmentQuestionId: null,
+    questionId: toPositiveId(item?.questionId) || null,
     backendItemId: item?.itemId || item?.id || null,
     sectionId: item?.sectionId || sectionId || null,
     type,
@@ -214,6 +264,90 @@ const mapBackendQuestion = (item, sectionId = null) => {
     collapsed: false,
   };
 };
+
+const mapAssignmentQuestionToEditorQuestion = (questionItem, sectionId = null) => {
+  const source =
+    questionItem &&
+    typeof questionItem === "object" &&
+    questionItem.question &&
+    typeof questionItem.question === "object"
+      ? questionItem.question
+      : questionItem;
+
+  const relationPoints = Number(questionItem?.points);
+  const sourcePoints = Number(source?.defaultPoints ?? source?.points ?? 1);
+
+  const normalizedPoints =
+    Number.isFinite(relationPoints) && relationPoints > 0
+      ? relationPoints
+      : Number.isFinite(sourcePoints) && sourcePoints > 0
+        ? sourcePoints
+        : 1;
+
+  const mapped = mapBackendQuestion(
+    {
+      ...source,
+      id: null,
+      itemId: null,
+      sectionId,
+      points: normalizedPoints,
+      defaultPoints: normalizedPoints,
+    },
+    sectionId,
+  );
+
+  return {
+    ...mapped,
+    assignmentQuestionId: toPositiveId(questionItem?.id) || null,
+    questionId: toPositiveId(source?.id) || null,
+    backendItemId: null,
+  };
+};
+
+const mapAssignmentSectionsToEditorQuestions = (sections = []) =>
+  (Array.isArray(sections) ? sections : []).flatMap((section) => {
+    const questions = Array.isArray(section?.questions) ? section.questions : [];
+
+    const sortedQuestions = [...questions].sort((left, right) => {
+      const leftOrder = Number(left?.orderIndex);
+      const rightOrder = Number(right?.orderIndex);
+
+      const normalizedLeft = Number.isFinite(leftOrder)
+        ? leftOrder
+        : Number.MAX_SAFE_INTEGER;
+      const normalizedRight = Number.isFinite(rightOrder)
+        ? rightOrder
+        : Number.MAX_SAFE_INTEGER;
+
+      return normalizedLeft - normalizedRight;
+    });
+
+    const sectionId = section?.id || section?.sectionId || null;
+
+    return sortedQuestions.map((questionItem) =>
+      mapAssignmentQuestionToEditorQuestion(questionItem, sectionId),
+    );
+  });
+
+const normalizeAssignmentSettingForUpdate = (setting = {}) => ({
+  password: setting?.password ?? null,
+  durationMinutes:
+    Number.isFinite(Number(setting?.durationMinutes)) &&
+    Number(setting.durationMinutes) > 0
+      ? Number(setting.durationMinutes)
+      : 45,
+  startTime: setting?.startTime ?? null,
+  deadline: setting?.deadline ?? null,
+  allowLateSubmission: Boolean(setting?.allowLateSubmission),
+  resultVisibility: setting?.resultVisibility ?? null,
+  resultReleaseTime: setting?.resultReleaseTime ?? null,
+  shuffleQuestions: Boolean(setting?.shuffleQuestions),
+  limitTabs:
+    setting?.limitTabs === null || setting?.limitTabs === undefined
+      ? null
+      : Number(setting.limitTabs),
+  requireFullScreen: Boolean(setting?.requireFullScreen),
+});
 
 const Ic = {
   Plus: () => (
@@ -494,7 +628,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoot
 .qc{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);margin-bottom:14px;transition:all .25s var(--e);overflow:hidden}
 .qc:hover{box-shadow:var(--sm)}
 .qc.active{border-color:var(--p);box-shadow:0 0 0 3px var(--pg),var(--sm)}
-.qc-hdr{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--bl);background:var(--plr);cursor:pointer;transition:background .15s var(--e)}
+.qc.dragging{opacity:.68}
+.qc.drag-over{border-color:var(--pd);box-shadow:0 0 0 3px rgba(29,78,216,.14),var(--sm)}
+.qc-hdr{display:flex;align-items:flex-start;gap:10px;padding:14px 18px;border-bottom:1px solid var(--bl);background:var(--plr);cursor:pointer;transition:background .15s var(--e);min-width:0}
 .qc-hdr:hover{background:var(--hov)}
 .qc-grip{cursor:grab;opacity:.4;transition:opacity .15s var(--e)}
 .qc:hover .qc-grip{opacity:1}
@@ -504,14 +640,14 @@ body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoot
 .qc-type-badge.tf{background:var(--gnl);color:var(--gn)}
 .qc-type-badge.fb{background:#FFF7E8;color:var(--or)}
 .qc-type-badge.es{background:#F4EEFF;color:var(--pu)}
-.qc-hdr-title{flex:1;font-size:13px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qc-hdr-title{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--t);white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.45}
 .qc-hdr-title.empty{color:var(--t3);font-style:italic;font-weight:500}
 .qc-hdr-pts{font-size:11px;font-weight:700;color:var(--p);background:var(--pl);padding:2px 8px;border-radius:10px;white-space:nowrap}
-.qc-hdr-actions{display:flex;gap:2px}
+.qc-hdr-actions{display:flex;gap:2px;flex-shrink:0}
 .qc-hdr-btn{width:26px;height:26px;border-radius:6px;border:none;background:none;color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s var(--e)}
 .qc-hdr-btn:hover{background:var(--hov);color:var(--p)}
 .qc-hdr-btn.dng:hover{background:var(--rdl);color:var(--rd)}
-.qc-collapse{display:flex;align-items:center;color:var(--t3)}
+.qc-collapse{display:flex;align-items:center;color:var(--t3);flex-shrink:0}
 .qc-body{padding:18px 20px}
 .fg{margin-bottom:14px}
 .fl{display:block;font-size:10px;font-weight:700;color:var(--t3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
@@ -586,6 +722,22 @@ const ManualAssignmentCreatorPage = () => {
     () => toPositiveId(searchParams.get("sectionId")),
     [searchParams],
   );
+  const assignmentStatusFromQuery = useMemo(
+    () => normalizeAssignmentStatus(searchParams.get("status")),
+    [searchParams],
+  );
+  const sourceModeFromStatusQuery = useMemo(() => {
+    if (assignmentStatusFromQuery === ASSIGNMENT_STATUS.DRAFT) {
+      return "workspace";
+    }
+    if (
+      assignmentStatusFromQuery === ASSIGNMENT_STATUS.PUBLISHED ||
+      assignmentStatusFromQuery === ASSIGNMENT_STATUS.ARCHIVED
+    ) {
+      return "assignment";
+    }
+    return null;
+  }, [assignmentStatusFromQuery]);
 
   const [qs, setQs] = useState(() => buildInitialQuestions(formatMode));
   const [activeId, setActiveId] = useState(() => null);
@@ -594,13 +746,19 @@ const ManualAssignmentCreatorPage = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState("idle");
   const [sessionId, setSessionId] = useState(null);
   const [shouldLoadDraft, setShouldLoadDraft] = useState(false);
+  const [removedAssignmentQuestionIds, setRemovedAssignmentQuestionIds] =
+    useState([]);
+  const [assignmentMeta, setAssignmentMeta] = useState({
+    title: "",
+    description: "",
+    setting: null,
+  });
   const [mixedSections, setMixedSections] = useState([]);
   const [singleModeSectionId, setSingleModeSectionId] =
     useState(sectionIdFromQuery);
+  const [singleModeSectionMeta, setSingleModeSectionMeta] = useState(null);
   const [newSectionTitle, setNewSectionTitle] = useState("");
-  const [newSectionType, setNewSectionType] = useState(
-    SECTION_TYPE.MULTIPLE_CHOICE,
-  );
+  const [newSectionType, setNewSectionType] = useState(SECTION_TYPE.OBJECTIVE);
   const [creatingSection, setCreatingSection] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
@@ -608,9 +766,16 @@ const ManualAssignmentCreatorPage = () => {
   const saveTimer = useRef(null);
   const itemIdMapRef = useRef({});
   const prevQuestionSnapshotsRef = useRef({});
+  const prevOrderSignatureRef = useRef("");
+  const questionElementRefs = useRef({});
+  const draggedQuestionIdRef = useRef(null);
+  const draggedSectionKeyRef = useRef(null);
   const initPromiseRef = useRef(null);
   const initScopeKeyRef = useRef("");
   const isDraftHydratedRef = useRef(false);
+
+  const [draggingQuestionId, setDraggingQuestionId] = useState(null);
+  const [dragOverQuestionId, setDragOverQuestionId] = useState(null);
 
   const activeSafe = activeId || qs[0]?.id || null;
 
@@ -618,6 +783,16 @@ const ManualAssignmentCreatorPage = () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ msg, type });
     toastTimer.current = setTimeout(() => setToast(null), 2200);
+  };
+
+  const hydrateAssignmentMeta = (assignmentData) => {
+    if (!assignmentData || typeof assignmentData !== "object") return;
+
+    setAssignmentMeta({
+      title: String(assignmentData?.title || "").trim(),
+      description: String(assignmentData?.description || ""),
+      setting: assignmentData?.setting || null,
+    });
   };
 
   const scope = useMemo(
@@ -638,6 +813,17 @@ const ManualAssignmentCreatorPage = () => {
       : PATH_TEACHER.assignmentCreateManual;
   }, [searchParams]);
 
+  const isAssignmentUpdateMode = sourceModeFromStatusQuery === "assignment";
+  const primaryActionLabel = isAssignmentUpdateMode
+    ? "Cập nhật bài tập"
+    : "Xuất bản";
+  const sideActionBusyLabel = isAssignmentUpdateMode
+    ? "Đang kiểm tra & cập nhật..."
+    : "Đang kiểm tra & xuất bản...";
+  const topbarActionBusyLabel = isAssignmentUpdateMode
+    ? "Đang cập nhật..."
+    : "Đang xử lý...";
+
   useEffect(() => {
     setQs((prev) => sanitizeQuestionsByFormat(prev, formatMode));
     if (formatMode !== FORMAT_MODE.MIXED) {
@@ -655,6 +841,7 @@ const ManualAssignmentCreatorPage = () => {
 
   useEffect(() => {
     if (formatMode === FORMAT_MODE.MIXED) return;
+    if (sourceModeFromStatusQuery === "workspace") return;
     if (singleModeSectionId) return;
     if (!Number.isFinite(assignmentId) || assignmentId <= 0) return;
 
@@ -663,6 +850,7 @@ const ManualAssignmentCreatorPage = () => {
     const loadDefaultSection = async () => {
       try {
         const resp = await assignmentApi.getAssignment(assignmentId);
+        const assignmentData = resp?.result || {};
         const sections = Array.isArray(resp?.result?.sections)
           ? resp.result.sections
           : [];
@@ -671,8 +859,24 @@ const ManualAssignmentCreatorPage = () => {
           formatMode,
         );
 
+        hydrateAssignmentMeta(assignmentData);
+
         if (alive && resolvedSectionId) {
           setSingleModeSectionId(resolvedSectionId);
+
+          const matchedSection = sections.find(
+            (section) =>
+              toPositiveId(section?.id || section?.sectionId) ===
+              toPositiveId(resolvedSectionId),
+          );
+
+          if (matchedSection) {
+            setSingleModeSectionMeta({
+              id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+              title: String(matchedSection?.title || "").trim(),
+              sectionType: normalizeSectionType(matchedSection?.sectionType),
+            });
+          }
         }
       } catch (error) {
         console.error("Load assignment sections failed", error);
@@ -684,7 +888,7 @@ const ManualAssignmentCreatorPage = () => {
     return () => {
       alive = false;
     };
-  }, [assignmentId, formatMode, singleModeSectionId]);
+  }, [assignmentId, formatMode, singleModeSectionId, sourceModeFromStatusQuery]);
 
   const groupedQuestions = useMemo(() => {
     const indexed = qs.map((q, idx) => ({ q, idx }));
@@ -694,7 +898,7 @@ const ManualAssignmentCreatorPage = () => {
         {
           key: "mc",
           sectionId: singleModeSectionId,
-          sectionType: SECTION_TYPE.MULTIPLE_CHOICE,
+          sectionType: SECTION_TYPE.OBJECTIVE,
           title: "Phần: Trắc nghiệm",
           subtitle: "MC / TF / Điền khuyết",
           sectionLabel: "Trắc nghiệm",
@@ -731,17 +935,28 @@ const ManualAssignmentCreatorPage = () => {
 
     return mixedSections.map((section, index) => {
       const isEssaySection = section.sectionType === SECTION_TYPE.ESSAY;
+      const isMixedSection = section.sectionType === SECTION_TYPE.MIXED;
 
       return {
         key: String(section.id || `mixed-${index}`),
         sectionId: section.id || null,
         sectionType: section.sectionType,
         title: section.title || `Phần ${index + 1}`,
-        subtitle: isEssaySection ? "Essay" : "MC / TF / Điền khuyết",
-        sectionLabel: isEssaySection ? "Tự luận" : "Trắc nghiệm",
+        subtitle: isEssaySection
+          ? "Tự luận"
+          : isMixedSection
+            ? "Hỗn hợp"
+            : "Trắc nghiệm",
+        sectionLabel: isEssaySection
+          ? "Tự luận"
+          : isMixedSection
+            ? "Hỗn hợp"
+            : "Trắc nghiệm",
         emptyMessage: isEssaySection
           ? "Chưa có câu hỏi tự luận."
-          : "Chưa có câu hỏi trắc nghiệm.",
+          : isMixedSection
+            ? "Chưa có câu hỏi trong phần hỗn hợp."
+            : "Chưa có câu hỏi trắc nghiệm.",
         items: indexed.filter(({ q }) => {
           if (q.sectionId != null && section.id != null) {
             return String(q.sectionId) === String(section.id);
@@ -752,10 +967,15 @@ const ManualAssignmentCreatorPage = () => {
             return firstSectionIndexByType[SECTION_TYPE.ESSAY] === index;
           }
 
-          if (!isEssaySection && q.type !== "ESSAY") {
-            return (
-              firstSectionIndexByType[SECTION_TYPE.MULTIPLE_CHOICE] === index
-            );
+          if (
+            section.sectionType === SECTION_TYPE.OBJECTIVE &&
+            q.type !== "ESSAY"
+          ) {
+            return firstSectionIndexByType[SECTION_TYPE.OBJECTIVE] === index;
+          }
+
+          if (isMixedSection) {
+            return firstSectionIndexByType[SECTION_TYPE.MIXED] === index;
           }
 
           return false;
@@ -859,13 +1079,106 @@ const ManualAssignmentCreatorPage = () => {
     setActiveId(q.id);
   };
 
+  const getSectionMetaForQuestion = (q) => {
+    if (formatMode !== FORMAT_MODE.MIXED) {
+      return {
+        sectionId: q?.sectionId ?? singleModeSectionId ?? null,
+        sectionType:
+          formatMode === FORMAT_MODE.ESSAY
+            ? SECTION_TYPE.ESSAY
+            : SECTION_TYPE.OBJECTIVE,
+      };
+    }
+
+    const explicitSectionId = q?.sectionId ?? null;
+    if (explicitSectionId != null) {
+      const matchedSection = mixedSections.find(
+        (section) => String(section?.id) === String(explicitSectionId),
+      );
+
+      if (matchedSection) {
+        return {
+          sectionId: explicitSectionId,
+          sectionType: matchedSection.sectionType,
+        };
+      }
+
+      return {
+        sectionId: explicitSectionId,
+        sectionType: SECTION_TYPE.MIXED,
+      };
+    }
+
+    const fallbackType =
+      q?.type === "ESSAY" ? SECTION_TYPE.ESSAY : SECTION_TYPE.OBJECTIVE;
+    const matchedByType = mixedSections.find(
+      (section) => section.sectionType === fallbackType,
+    );
+    const matchedMixed = mixedSections.find(
+      (section) => section.sectionType === SECTION_TYPE.MIXED,
+    );
+    const matched = matchedByType || matchedMixed;
+
+    return {
+      sectionId: matched?.id ?? null,
+      sectionType: matched?.sectionType ?? fallbackType,
+    };
+  };
+
+  const getSectionKeyForQuestion = (q) => {
+    const sectionMeta = getSectionMetaForQuestion(q);
+    return `${sectionMeta.sectionType}:${sectionMeta.sectionId ?? "null"}`;
+  };
+
   const moveQ = (id, dir) => {
-    const idx = qs.findIndex((q) => q.id === id);
-    if ((dir === -1 && idx === 0) || (dir === 1 && idx === qs.length - 1))
-      return;
-    const nw = [...qs];
-    [nw[idx], nw[idx + dir]] = [nw[idx + dir], nw[idx]];
-    setQs(nw);
+    const source = qs.find((q) => q.id === id);
+    if (!source) return;
+
+    const sourceSectionKey = getSectionKeyForQuestion(source);
+
+    setQs((prev) => {
+      const sectionIndexes = [];
+      const sectionIds = [];
+
+      prev.forEach((q, index) => {
+        const questionSectionKey = getSectionKeyForQuestion(q);
+
+        if (questionSectionKey === sourceSectionKey) {
+          sectionIndexes.push(index);
+          sectionIds.push(q.id);
+        }
+      });
+
+      const sectionPos = sectionIds.findIndex((qid) => qid === id);
+      if (sectionPos < 0) return prev;
+
+      const nextSectionPos = sectionPos + dir;
+      if (nextSectionPos < 0 || nextSectionPos >= sectionIds.length) {
+        return prev;
+      }
+
+      const reorderedSectionIds = [...sectionIds];
+      [reorderedSectionIds[sectionPos], reorderedSectionIds[nextSectionPos]] = [
+        reorderedSectionIds[nextSectionPos],
+        reorderedSectionIds[sectionPos],
+      ];
+
+      const sectionQuestionMap = new Map(
+        sectionIndexes.map((globalIdx) => [
+          prev[globalIdx].id,
+          prev[globalIdx],
+        ]),
+      );
+      const next = [...prev];
+
+      sectionIndexes.forEach((globalIdx, relativeIdx) => {
+        next[globalIdx] = sectionQuestionMap.get(
+          reorderedSectionIds[relativeIdx],
+        );
+      });
+
+      return next;
+    });
   };
 
   const dupQ = (id) => {
@@ -902,8 +1215,9 @@ const ManualAssignmentCreatorPage = () => {
     const hasRemoteItemId =
       Number.isFinite(resolvedItemId) && resolvedItemId > 0;
     const hasSession = Number.isFinite(sessionId) && sessionId > 0;
+    const removedRelationId = toPositiveId(targetQuestion.assignmentQuestionId);
 
-    if (hasRemoteItemId && hasSession) {
+    if (!isAssignmentUpdateMode && hasRemoteItemId && hasSession) {
       try {
         await assignmentApi.deleteDraftItem(sessionId, resolvedItemId);
       } catch (error) {
@@ -914,6 +1228,14 @@ const ManualAssignmentCreatorPage = () => {
         showToast("Không thể xóa câu hỏi nháp trên máy chủ.", "error");
         return;
       }
+    }
+
+    if (isAssignmentUpdateMode && removedRelationId) {
+      setRemovedAssignmentQuestionIds((prev) =>
+        prev.includes(removedRelationId)
+          ? prev
+          : [...prev, removedRelationId],
+      );
     }
 
     setQs((prev) => prev.filter((q) => q.id !== target));
@@ -939,7 +1261,14 @@ const ManualAssignmentCreatorPage = () => {
     updateQ(qId, { options: nw });
   };
 
-  const setCor = (qId, oIdx) => updateQ(qId, { correct: oIdx });
+  const focusQuestionCard = (qId) => {
+    setActiveId(qId);
+
+    const node = questionElementRefs.current[String(qId)];
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   const addOpt = (qId) => {
     const q = qs.find((x) => x.id === qId);
@@ -951,8 +1280,9 @@ const ManualAssignmentCreatorPage = () => {
     const q = qs.find((x) => x.id === qId);
     if (!q || q.options.length <= 2) return;
     const nw = q.options.filter((_, i) => i !== oIdx);
-    const cor =
-      q.correct === oIdx ? -1 : q.correct > oIdx ? q.correct - 1 : q.correct;
+    const cor = getMcCorrectIndexes(q.correct)
+      .filter((idx) => idx !== oIdx)
+      .map((idx) => (idx > oIdx ? idx - 1 : idx));
     updateQ(qId, { options: nw, correct: cor });
   };
 
@@ -975,36 +1305,38 @@ const ManualAssignmentCreatorPage = () => {
     }, {});
 
   const resolveSectionIdForQuestion = (q) => {
-    const explicitSectionId = q?.sectionId ?? null;
-    if (formatMode !== FORMAT_MODE.MIXED) {
-      return explicitSectionId ?? singleModeSectionId;
-    }
-
-    const requiredSectionType =
-      q?.type === "ESSAY" ? SECTION_TYPE.ESSAY : SECTION_TYPE.MULTIPLE_CHOICE;
-
-    if (explicitSectionId != null) {
-      const matchedById = mixedSections.find(
-        (section) => String(section?.id) === String(explicitSectionId),
-      );
-      if (matchedById?.sectionType === requiredSectionType) {
-        return explicitSectionId;
-      }
-    }
-
-    const matchedByType = mixedSections.find(
-      (section) => section.sectionType === requiredSectionType,
-    );
-    return matchedByType?.id ?? null;
+    const sectionMeta = getSectionMetaForQuestion(q);
+    return sectionMeta.sectionId;
   };
 
-  const buildDraftPayload = (q) => {
+  const buildOrderIndexMap = (questions) => {
+    const counters = {};
+    const orderMap = {};
+
+    questions.forEach((question) => {
+      const sectionKey = getSectionKeyForQuestion(question);
+      const nextOrder = counters[sectionKey] ?? 0;
+
+      orderMap[String(question.id)] = nextOrder;
+      counters[sectionKey] = nextOrder + 1;
+    });
+
+    return orderMap;
+  };
+
+  const buildOrderSignature = (questions) =>
+    questions
+      .map((question) => `${getSectionKeyForQuestion(question)}:${question.id}`)
+      .join("|");
+
+  const buildDraftPayload = (q, orderIndexMap = null) => {
     let options = null;
     if (q.type === "MULTIPLE_CHOICE") {
+      const mcCorrectIndexes = getMcCorrectIndexes(q.correct);
       const normalized = q.options
         .map((opt, idx) => ({
           content: String(opt.text || "").trim(),
-          correct: q.correct === idx,
+          correct: mcCorrectIndexes.includes(idx),
         }))
         .filter((opt) => opt.content.length > 0);
 
@@ -1025,6 +1357,10 @@ const ManualAssignmentCreatorPage = () => {
       sampleAnswer: String(q.answer || "").trim() || null,
       options,
       sectionId: resolveSectionIdForQuestion(q),
+      orderIndex:
+        orderIndexMap && Number.isInteger(orderIndexMap[String(q.id)])
+          ? orderIndexMap[String(q.id)]
+          : null,
     };
   };
 
@@ -1041,8 +1377,9 @@ const ManualAssignmentCreatorPage = () => {
 
     setAutoSaveStatus("saving");
     try {
+      const orderIndexMap = buildOrderIndexMap(qs);
       for (const q of questions) {
-        const payload = buildDraftPayload(q);
+        const payload = buildDraftPayload(q, orderIndexMap);
         const res = await assignmentApi.autoSaveDraftItem(
           sessionId,
           payload,
@@ -1071,7 +1408,8 @@ const ManualAssignmentCreatorPage = () => {
       return false;
     }
 
-    const payloadItems = qs.map(buildDraftPayload);
+    const orderIndexMap = buildOrderIndexMap(qs);
+    const payloadItems = qs.map((q) => buildDraftPayload(q, orderIndexMap));
     setAutoSaveStatus("saving");
 
     try {
@@ -1081,6 +1419,7 @@ const ManualAssignmentCreatorPage = () => {
         scope,
       );
       prevQuestionSnapshotsRef.current = buildSnapshotMap(qs);
+      prevOrderSignatureRef.current = buildOrderSignature(qs);
       setAutoSaveStatus("saved");
       showToast("Đã lưu");
       return true;
@@ -1099,15 +1438,113 @@ const ManualAssignmentCreatorPage = () => {
     return [...new Set(ids)];
   };
 
+  const buildUpdateSectionsPayload = () => {
+    const invalidQuestions = [];
+    const removedSet = new Set(
+      removedAssignmentQuestionIds
+        .map((id) => toPositiveId(id))
+        .filter(Boolean),
+    );
+
+    const sectionsPayload = groupedQuestions.map((group) => {
+      const sectionType =
+        normalizeSectionType(group.sectionType) || SECTION_TYPE.OBJECTIVE;
+      const sectionId = toPositiveId(group.sectionId) || null;
+
+      const resolvedSectionTitle =
+        formatMode === FORMAT_MODE.MIXED
+          ? String(group.title || "").trim() || "Phần mới"
+          : String(singleModeSectionMeta?.title || "").trim() ||
+            (formatMode === FORMAT_MODE.ESSAY
+              ? "Phần tự luận"
+              : "Phần trắc nghiệm");
+
+      const questionsPayload = group.items
+        .map(({ q }) => {
+          const relationId = toPositiveId(q.assignmentQuestionId) || null;
+
+          if (relationId && removedSet.has(relationId)) {
+            return null;
+          }
+
+          const questionId = toPositiveId(q.questionId) || null;
+          const draftItemId =
+            toPositiveId(itemIdMapRef.current[q.id] || q.backendItemId) || null;
+
+          const points = Number(q.points);
+          const payload = {
+            id: relationId,
+            points:
+              Number.isFinite(points) && points > 0 ? points : 1,
+          };
+
+          if (questionId) {
+            payload.questionId = questionId;
+          }
+
+          if (draftItemId) {
+            payload.draftItemId = draftItemId;
+          }
+
+          if (!questionId && !draftItemId) {
+            invalidQuestions.push(q.id);
+            return null;
+          }
+
+          if (relationId === 19) {
+            console.log("🔥 Payload gửi đi của câu 19:", payload);
+            console.log("🔥 Object q (chứa dữ liệu gốc):", q);
+          }
+
+          return payload;
+        })
+        .filter(Boolean);
+
+      return {
+        id: sectionId,
+        title: resolvedSectionTitle,
+        sectionType,
+        questions: questionsPayload,
+      };
+    });
+
+    return {
+      sectionsPayload,
+      invalidQuestions,
+    };
+  };
+
+  const collectQuestionsNeedDraftForAssignmentUpdate = () =>
+    qs.filter((q) => {
+      const hasQuestionId = Boolean(toPositiveId(q.questionId));
+      const hasDraftItemId = Boolean(
+        toPositiveId(itemIdMapRef.current[q.id] || q.backendItemId),
+      );
+
+      if (!hasQuestionId && !hasDraftItemId) {
+        return true;
+      }
+
+      const previousSnapshot = prevQuestionSnapshotsRef.current[String(q.id)];
+      const currentSnapshot = getQuestionSnapshot(q);
+
+      return previousSnapshot !== currentSnapshot;
+    });
+
   const handlePublish = async () => {
     if (publishing) return;
 
     if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
-      showToast("Thiếu assignmentId để xuất bản.", "error");
+      showToast(
+        isAssignmentUpdateMode
+          ? "Thiếu assignmentId để cập nhật bài tập."
+          : "Thiếu assignmentId để xuất bản.",
+        "error",
+      );
       return;
     }
 
-    if (!Number.isFinite(sessionId) || sessionId <= 0) {
+    if (!isAssignmentUpdateMode && (!Number.isFinite(sessionId) || sessionId <= 0)) {
       showToast("Chưa khởi tạo được phiên nháp. Vui lòng thử lại.", "error");
       return;
     }
@@ -1115,30 +1552,90 @@ const ManualAssignmentCreatorPage = () => {
     setPublishing(true);
 
     try {
-      const saved = await saveAllToDraft({ silent: true });
-      if (!saved) throw new Error("SAVE_DRAFT_FAILED");
+      if (isAssignmentUpdateMode) {
+        if (saveTimer.current) {
+          clearTimeout(saveTimer.current);
+        }
 
-      const selectedQuestionIds = collectSelectedQuestionIds();
-      if (!selectedQuestionIds.length) {
-        throw new Error("NO_SELECTED_QUESTION_IDS");
+        const questionsNeedDraft = collectQuestionsNeedDraftForAssignmentUpdate();
+        if (questionsNeedDraft.length > 0) {
+          if (!Number.isFinite(sessionId) || sessionId <= 0) {
+            throw new Error("MISSING_DRAFT_SESSION_FOR_UPDATE");
+          }
+
+          const savedDraftForUpdate = await saveQuestionsToDraft(
+            questionsNeedDraft,
+            { silent: true },
+          );
+
+          if (!savedDraftForUpdate) {
+            throw new Error("SAVE_DRAFT_FOR_UPDATE_FAILED");
+          }
+        }
+
+        let currentMeta = assignmentMeta;
+        if (!String(currentMeta?.title || "").trim()) {
+          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          currentMeta = {
+            title: String(assignmentResp?.result?.title || "").trim(),
+            description: String(assignmentResp?.result?.description || ""),
+            setting: assignmentResp?.result?.setting || null,
+          };
+          hydrateAssignmentMeta(assignmentResp?.result || null);
+        }
+
+        const { sectionsPayload, invalidQuestions } = buildUpdateSectionsPayload();
+        if (invalidQuestions.length > 0) {
+          throw new Error("INVALID_UPDATE_QUESTION_REFERENCE");
+        }
+
+        await assignmentApi.updateAssignment(assignmentId, {
+          title:
+            String(currentMeta?.title || "").trim() ||
+            `Bài tập ${assignmentId}`,
+          description: String(currentMeta?.description || ""),
+          setting: normalizeAssignmentSettingForUpdate(currentMeta?.setting),
+          sections: sectionsPayload,
+        });
+
+        setRemovedAssignmentQuestionIds([]);
+        showToast("Cập nhật bài tập thành công!");
+        navigate(PATH_TEACHER.assignmentDetail(assignmentId));
+      } else {
+        const saved = await saveAllToDraft({ silent: true });
+        if (!saved) throw new Error("SAVE_DRAFT_FAILED");
+
+        const selectedQuestionIds = collectSelectedQuestionIds();
+        if (!selectedQuestionIds.length) {
+          throw new Error("NO_SELECTED_QUESTION_IDS");
+        }
+
+        await assignmentApi.confirmAndPublishAssignment(assignmentId, {
+          sessionId,
+          bankId: scope.bankId ?? null,
+          selectedQuestionIds,
+        });
+
+        setSessionId(null);
+        itemIdMapRef.current = {};
+
+        showToast("Bài tập đã được xuất bản!");
+        navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
       }
-
-      await assignmentApi.confirmAndPublishAssignment(assignmentId, {
-        sessionId,
-        bankId: scope.bankId ?? null,
-        selectedQuestionIds,
-      });
-
-      setSessionId(null);
-      itemIdMapRef.current = {};
-
-      showToast("Bài tập đã được xuất bản!");
-      navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
     } catch (error) {
       const apiMessage = error?.response?.data?.message;
+      const fallbackMessage = isAssignmentUpdateMode
+        ? error?.message === "MISSING_DRAFT_SESSION_FOR_UPDATE"
+          ? "Không thể khởi tạo phiên nháp để cập nhật câu hỏi. Vui lòng thử lại."
+          : error?.message === "SAVE_DRAFT_FOR_UPDATE_FAILED"
+            ? "Không thể lưu tạm câu hỏi đã chỉnh sửa trước khi cập nhật."
+            : error?.message === "INVALID_UPDATE_QUESTION_REFERENCE"
+              ? "Có câu hỏi chưa hợp lệ để cập nhật. Vui lòng kiểm tra lại nội dung câu hỏi mới."
+              : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
+        : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
+
       showToast(
-        apiMessage ||
-          "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau",
+        apiMessage || fallbackMessage,
         "error",
       );
     } finally {
@@ -1155,8 +1652,15 @@ const ManualAssignmentCreatorPage = () => {
       isDraftHydratedRef.current = false;
       setShouldLoadDraft(false);
       setSessionId(null);
+      setRemovedAssignmentQuestionIds([]);
+      setAssignmentMeta({
+        title: "",
+        description: "",
+        setting: null,
+      });
       setMixedSections([]);
       setSingleModeSectionId(null);
+      setSingleModeSectionMeta(null);
       setNewSectionTitle("");
     }
 
@@ -1183,12 +1687,20 @@ const ManualAssignmentCreatorPage = () => {
     initPromiseRef.current
       .then(({ sid, hasPending }) => {
         if (!cancelled && sid) {
-          setSessionId(sid);
-          setShouldLoadDraft(hasPending);
+          const shouldUseWorkspace =
+            sourceModeFromStatusQuery === "workspace"
+              ? true
+              : sourceModeFromStatusQuery === "assignment"
+                ? false
+                : hasPending;
 
-          if (!hasPending) {
+          setSessionId(sid);
+          setShouldLoadDraft(shouldUseWorkspace);
+
+          if (!shouldUseWorkspace) {
             // Fresh session: mark current editor state as baseline to avoid autosave on first render.
             prevQuestionSnapshotsRef.current = buildSnapshotMap(qs);
+            prevOrderSignatureRef.current = buildOrderSignature(qs);
             isDraftHydratedRef.current = true;
           }
         }
@@ -1202,19 +1714,34 @@ const ManualAssignmentCreatorPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [scope]);
+  }, [scope, sourceModeFromStatusQuery]);
 
   useEffect(() => {
-    if (!sessionId || !shouldLoadDraft) return;
+    const preferWorkspace = sourceModeFromStatusQuery === "workspace";
+    const preferAssignment = sourceModeFromStatusQuery === "assignment";
+
+    if (!preferAssignment && !sessionId) return;
     let alive = true;
     const baselineQuestions = buildInitialQuestions(formatMode);
 
     const load = async () => {
       try {
-        const resp = await assignmentApi.getDraftWorkspace(sessionId);
-        const sections = Array.isArray(resp?.result?.sections)
-          ? resp.result.sections
-          : [];
+        let sections = [];
+
+        if (preferWorkspace || (!preferAssignment && shouldLoadDraft)) {
+          if (!sessionId) return;
+          const resp = await assignmentApi.getDraftWorkspace(sessionId);
+          sections = Array.isArray(resp?.result?.sections)
+            ? resp.result.sections
+            : [];
+        } else if (Number.isFinite(assignmentId) && assignmentId > 0) {
+          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          hydrateAssignmentMeta(assignmentResp?.result || null);
+          sections = Array.isArray(assignmentResp?.result?.sections)
+            ? assignmentResp.result.sections
+            : [];
+        }
+
         if (alive && formatMode !== FORMAT_MODE.MIXED) {
           const resolvedSectionId = resolveSingleModeSectionId(
             sections,
@@ -1222,6 +1749,20 @@ const ManualAssignmentCreatorPage = () => {
           );
           if (resolvedSectionId) {
             setSingleModeSectionId(resolvedSectionId);
+
+            const matchedSection = sections.find(
+              (section) =>
+                toPositiveId(section?.id || section?.sectionId) ===
+                toPositiveId(resolvedSectionId),
+            );
+
+            if (matchedSection) {
+              setSingleModeSectionMeta({
+                id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+                title: String(matchedSection?.title || "").trim(),
+                sectionType: normalizeSectionType(matchedSection?.sectionType),
+              });
+            }
           }
         }
         if (alive && formatMode === FORMAT_MODE.MIXED) {
@@ -1248,15 +1789,106 @@ const ManualAssignmentCreatorPage = () => {
           setMixedSections(nextSections);
         }
 
-        const loaded = sections.flatMap((section) => {
+        let loaded = sections.flatMap((section) => {
           const questions = Array.isArray(section?.draftQuestions)
             ? section.draftQuestions
             : Array.isArray(section?.questions)
               ? section.questions
               : [];
+          const sortedQuestions = [...questions].sort((left, right) => {
+            const leftOrder = Number(left?.orderIndex);
+            const rightOrder = Number(right?.orderIndex);
+
+            const normalizedLeft = Number.isFinite(leftOrder)
+              ? leftOrder
+              : Number.MAX_SAFE_INTEGER;
+            const normalizedRight = Number.isFinite(rightOrder)
+              ? rightOrder
+              : Number.MAX_SAFE_INTEGER;
+
+            return normalizedLeft - normalizedRight;
+          });
           const sectionId = section?.id || section?.sectionId || null;
-          return questions.map((item) => mapBackendQuestion(item, sectionId));
+          return sortedQuestions.map((item) => {
+            if (
+              item &&
+              typeof item === "object" &&
+              item.question &&
+              typeof item.question === "object"
+            ) {
+              return mapAssignmentQuestionToEditorQuestion(item, sectionId);
+            }
+
+            return mapBackendQuestion(item, sectionId);
+          });
         });
+
+        if (
+          alive &&
+          loaded.length === 0 &&
+          sourceModeFromStatusQuery !== "workspace" &&
+          Number.isFinite(assignmentId) &&
+          assignmentId > 0
+        ) {
+          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          hydrateAssignmentMeta(assignmentResp?.result || null);
+          const assignmentSections = Array.isArray(assignmentResp?.result?.sections)
+            ? assignmentResp.result.sections
+            : [];
+
+          if (formatMode !== FORMAT_MODE.MIXED) {
+            const resolvedSectionId = resolveSingleModeSectionId(
+              assignmentSections,
+              formatMode,
+            );
+            if (resolvedSectionId) {
+              setSingleModeSectionId(resolvedSectionId);
+
+              const matchedSection = assignmentSections.find(
+                (section) =>
+                  toPositiveId(section?.id || section?.sectionId) ===
+                  toPositiveId(resolvedSectionId),
+              );
+
+              if (matchedSection) {
+                setSingleModeSectionMeta({
+                  id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+                  title: String(matchedSection?.title || "").trim(),
+                  sectionType: normalizeSectionType(matchedSection?.sectionType),
+                });
+              }
+            }
+          }
+
+          if (formatMode === FORMAT_MODE.MIXED && assignmentSections.length > 0) {
+            const nextSections = assignmentSections
+              .map((section, index) => {
+                const normalizedSectionType = normalizeSectionType(
+                  section?.sectionType,
+                );
+
+                if (!normalizedSectionType) return null;
+
+                return {
+                  id: section?.id || section?.sectionId || `loaded-${index}`,
+                  title: String(
+                    section?.title ||
+                      section?.sectionTitle ||
+                      `Phần ${index + 1}`,
+                  ),
+                  sectionType: normalizedSectionType,
+                };
+              })
+              .filter(Boolean);
+
+            if (nextSections.length > 0) {
+              setMixedSections(nextSections);
+            }
+          }
+
+          loaded = mapAssignmentSectionsToEditorQuestions(assignmentSections);
+        }
+
         if (alive && loaded.length) {
           const normalizedLoaded = sanitizeQuestionsByFormat(
             loaded,
@@ -1269,17 +1901,21 @@ const ManualAssignmentCreatorPage = () => {
             if (q.backendItemId) itemIdMapRef.current[q.id] = q.backendItemId;
           });
           prevQuestionSnapshotsRef.current = buildSnapshotMap(normalizedLoaded);
+          prevOrderSignatureRef.current = buildOrderSignature(normalizedLoaded);
           isDraftHydratedRef.current = true;
         } else if (alive) {
           // No draft items returned: treat current editor state as baseline.
           prevQuestionSnapshotsRef.current =
             buildSnapshotMap(baselineQuestions);
+          prevOrderSignatureRef.current =
+            buildOrderSignature(baselineQuestions);
           isDraftHydratedRef.current = true;
         }
       } catch (error) {
         console.error("Load draft failed", error);
         // Allow autosave to continue even when reload draft fails.
         prevQuestionSnapshotsRef.current = buildSnapshotMap(baselineQuestions);
+        prevOrderSignatureRef.current = buildOrderSignature(baselineQuestions);
         isDraftHydratedRef.current = true;
       }
     };
@@ -1288,7 +1924,13 @@ const ManualAssignmentCreatorPage = () => {
     return () => {
       alive = false;
     };
-  }, [formatMode, sessionId, shouldLoadDraft]);
+  }, [
+    assignmentId,
+    formatMode,
+    sessionId,
+    shouldLoadDraft,
+    sourceModeFromStatusQuery,
+  ]);
 
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -1304,19 +1946,27 @@ const ManualAssignmentCreatorPage = () => {
       prevQuestionSnapshotsRef.current,
     ).some((id) => !qs.some((q) => String(q.id) === id));
 
-    if (!changedQuestions.length) {
+    const currentOrderSignature = buildOrderSignature(qs);
+    const hasOrderChanged =
+      currentOrderSignature !== prevOrderSignatureRef.current;
+
+    if (!changedQuestions.length && !hasOrderChanged) {
       if (hasRemovedQuestions) {
         prevQuestionSnapshotsRef.current = buildSnapshotMap(qs);
+        prevOrderSignatureRef.current = currentOrderSignature;
       }
       return;
     }
 
+    const questionsToSave = hasOrderChanged ? qs : changedQuestions;
+
     saveTimer.current = setTimeout(async () => {
-      const saved = await saveQuestionsToDraft(changedQuestions, {
+      const saved = await saveQuestionsToDraft(questionsToSave, {
         silent: true,
       });
       if (saved) {
         prevQuestionSnapshotsRef.current = buildSnapshotMap(qs);
+        prevOrderSignatureRef.current = currentOrderSignature;
       }
     }, 900);
 
@@ -1325,12 +1975,106 @@ const ManualAssignmentCreatorPage = () => {
     };
   }, [qs, sessionId]);
 
-  const renderQuestionCard = ({ q, idx }, sectionLabel, sectionType = null) => {
+  const handleQuestionDragStart = (event, qId, sectionKey) => {
+    draggedQuestionIdRef.current = qId;
+    draggedSectionKeyRef.current = sectionKey;
+    setDraggingQuestionId(qId);
+    setDragOverQuestionId(null);
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(qId));
+  };
+
+  const handleQuestionDragOver = (event, targetQId, sectionKey) => {
+    if (!draggedQuestionIdRef.current) return;
+    if (draggedSectionKeyRef.current !== sectionKey) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    if (dragOverQuestionId !== targetQId) {
+      setDragOverQuestionId(targetQId);
+    }
+  };
+
+  const handleQuestionDrop = (event, targetQId, sectionKey) => {
+    event.preventDefault();
+
+    const draggedId = draggedQuestionIdRef.current;
+    const draggedSectionKey = draggedSectionKeyRef.current;
+
+    setDragOverQuestionId(null);
+
+    if (!draggedId || draggedId === targetQId) return;
+    if (!draggedSectionKey || draggedSectionKey !== sectionKey) return;
+
+    setQs((prev) => {
+      const sectionIndexes = [];
+      const sectionQuestionIds = [];
+
+      prev.forEach((question, index) => {
+        if (getSectionKeyForQuestion(question) === sectionKey) {
+          sectionIndexes.push(index);
+          sectionQuestionIds.push(question.id);
+        }
+      });
+
+      const from = sectionQuestionIds.findIndex((id) => id === draggedId);
+      const to = sectionQuestionIds.findIndex((id) => id === targetQId);
+
+      if (from < 0 || to < 0) return prev;
+
+      const reorderedIds = [...sectionQuestionIds];
+      const [movedId] = reorderedIds.splice(from, 1);
+      reorderedIds.splice(to, 0, movedId);
+
+      const sectionQuestionMap = new Map(
+        sectionIndexes.map((globalIdx) => [
+          prev[globalIdx].id,
+          prev[globalIdx],
+        ]),
+      );
+      const next = [...prev];
+
+      sectionIndexes.forEach((globalIdx, relativeIdx) => {
+        next[globalIdx] = sectionQuestionMap.get(reorderedIds[relativeIdx]);
+      });
+
+      return next;
+    });
+  };
+
+  const handleQuestionDragEnd = () => {
+    draggedQuestionIdRef.current = null;
+    draggedSectionKeyRef.current = null;
+    setDraggingQuestionId(null);
+    setDragOverQuestionId(null);
+  };
+
+  const renderQuestionCard = (
+    { q, idx },
+    sectionLabel,
+    sectionType = null,
+    sectionKey,
+  ) => {
     const isActive = q.id === activeSafe;
     const num = idx + 1;
+    const mcCorrectIndexes = getMcCorrectIndexes(q.correct);
 
     return (
-      <div key={q.id} className={`qc${isActive ? " active" : ""}`}>
+      <div
+        key={q.id}
+        className={`qc${isActive ? " active" : ""}${draggingQuestionId === q.id ? " dragging" : ""}${dragOverQuestionId === q.id ? " drag-over" : ""}`}
+        onDragOver={(event) => handleQuestionDragOver(event, q.id, sectionKey)}
+        onDrop={(event) => handleQuestionDrop(event, q.id, sectionKey)}
+        ref={(node) => {
+          if (node) {
+            questionElementRefs.current[String(q.id)] = node;
+          } else {
+            delete questionElementRefs.current[String(q.id)];
+          }
+        }}
+      >
         <div
           className="qc-hdr"
           onClick={() => {
@@ -1338,7 +2082,15 @@ const ManualAssignmentCreatorPage = () => {
             toggleCollapse(q.id);
           }}
         >
-          <div className="qc-grip">
+          <div
+            className="qc-grip"
+            draggable
+            onDragStart={(event) =>
+              handleQuestionDragStart(event, q.id, sectionKey)
+            }
+            onDragEnd={handleQuestionDragEnd}
+            onClick={(event) => event.stopPropagation()}
+          >
             <Ic.GripV />
           </div>
           <div className="qc-num">{num}</div>
@@ -1440,7 +2192,9 @@ const ManualAssignmentCreatorPage = () => {
                         showToast(
                           sectionType === SECTION_TYPE.ESSAY
                             ? "Phần tự luận chỉ hỗ trợ loại câu hỏi tự luận."
-                            : "Phần này không hỗ trợ loại câu hỏi đã chọn.",
+                            : sectionType === SECTION_TYPE.OBJECTIVE
+                              ? "Phần trắc nghiệm chỉ hỗ trợ câu trắc nghiệm / đúng sai / điền khuyết."
+                              : "Phần này không hỗ trợ loại câu hỏi đã chọn.",
                           "error",
                         );
                         return;
@@ -1454,7 +2208,7 @@ const ManualAssignmentCreatorPage = () => {
                           makeOption(),
                           makeOption(),
                         ];
-                        upd.correct = -1;
+                        upd.correct = [];
                       } else {
                         upd.options = [];
                       }
@@ -1506,15 +2260,22 @@ const ManualAssignmentCreatorPage = () => {
 
             {q.type === "MULTIPLE_CHOICE" && (
               <div className="fg">
-                <label className="fl">Đáp án (bấm ○ chọn đáp án đúng)</label>
+                <label className="fl">
+                  Đáp án (bấm chọn để đánh dấu một hoặc nhiều đáp án đúng)
+                </label>
                 <div className="opts">
                   {q.options.map((o, oi) => (
                     <div key={o.id} className="opt-row">
                       <div
-                        className={`opt-radio${q.correct === oi ? " on" : ""}`}
-                        onClick={() => setCor(q.id, oi)}
+                        className={`opt-radio${mcCorrectIndexes.includes(oi) ? " on" : ""}`}
+                        onClick={() => {
+                          const next = mcCorrectIndexes.includes(oi)
+                            ? mcCorrectIndexes.filter((idx) => idx !== oi)
+                            : [...mcCorrectIndexes, oi];
+                          updateQ(q.id, { correct: next });
+                        }}
                       >
-                        {q.correct === oi && <Ic.Check />}
+                        {mcCorrectIndexes.includes(oi) && <Ic.Check />}
                       </div>
                       <div className="opt-letter">{LETTERS[oi]}</div>
                       <input
@@ -1638,7 +2399,7 @@ const ManualAssignmentCreatorPage = () => {
                     <button
                       key={q.id}
                       className={`nav-dot${isActive ? " active" : ""}${isFilled && !isActive ? " filled" : ""}`}
-                      onClick={() => setActiveId(q.id)}
+                      onClick={() => focusQuestionCard(q.id)}
                     >
                       {idx + 1}
                     </button>
@@ -1656,7 +2417,7 @@ const ManualAssignmentCreatorPage = () => {
             disabled={publishing}
           >
             <Ic.Save />
-            {publishing ? "Đang kiểm tra & xuất bản..." : "Xuất bản"}
+            {publishing ? sideActionBusyLabel : primaryActionLabel}
           </button>
           <div
             className={`autosave${autoSaveStatus === "error" ? " error" : ""}`}
@@ -1694,7 +2455,7 @@ const ManualAssignmentCreatorPage = () => {
               disabled={publishing}
             >
               <Ic.Save />
-              {publishing ? "Đang xử lý..." : "Xuất bản"}
+              {publishing ? topbarActionBusyLabel : primaryActionLabel}
             </button>
           </div>
         </div>
@@ -1706,7 +2467,6 @@ const ManualAssignmentCreatorPage = () => {
                 <div className="section-title">
                   Cấu hình phần cho đề hỗn hợp
                 </div>
-                <div className="section-sub">Tạo section qua API</div>
               </div>
               <div className="section-body">
                 <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
@@ -1723,10 +2483,11 @@ const ManualAssignmentCreatorPage = () => {
                         value={newSectionType}
                         onChange={(e) => setNewSectionType(e.target.value)}
                       >
-                        <option value={SECTION_TYPE.MULTIPLE_CHOICE}>
+                        <option value={SECTION_TYPE.OBJECTIVE}>
                           Phần trắc nghiệm
                         </option>
                         <option value={SECTION_TYPE.ESSAY}>Phần tự luận</option>
+                        <option value={SECTION_TYPE.MIXED}>Phần hỗn hợp</option>
                       </select>
                     </div>
                     <button
@@ -1762,6 +2523,7 @@ const ManualAssignmentCreatorPage = () => {
                       item,
                       group.sectionLabel,
                       group.sectionType,
+                      `${group.sectionType || "group"}:${group.sectionId ?? group.key}`,
                     ),
                   )
                 ) : (

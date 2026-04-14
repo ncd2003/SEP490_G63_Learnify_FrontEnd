@@ -1,0 +1,184 @@
+.classroom-lecture-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lecture-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lecture-header h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.open-external-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-weight: 600;
+  color: #0f172a;
+  text-decoration: none;
+  background: #ffffff;
+}
+
+.open-external-btn:hover {
+  border-color: #94a3b8;
+}
+
+.lecture-session-summary {
+  border: 1px solid #d8e1ea;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lecture-session-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lecture-session-title span {
+  font-weight: 600;
+  color: #334155;
+}
+
+.lecture-session-title strong {
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.lecture-session-description {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.lecture-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.lecture-meta-item {
+  border: 1px solid #d8e1ea;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-label {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.meta-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.meta-value-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jitsi-frame-wrap {
+  border: 1px solid #d8e1ea;
+  border-radius: 14px;
+  background: #ffffff;
+  min-height: 640px;
+  overflow: hidden;
+}
+
+.jitsi-frame {
+  width: 100%;
+  height: 640px;
+}
+
+.lecture-state {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.lecture-state-error {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1200px) {
+  .lecture-meta-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .lecture-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lecture-session-summary {
+    padding: 14px;
+  }
+
+  .lecture-session-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .lecture-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .jitsi-frame-wrap,
+  .jitsi-frame {
+    min-height: 500px;
+    height: 500px;
+  }
+}

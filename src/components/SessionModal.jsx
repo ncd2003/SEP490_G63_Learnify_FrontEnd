@@ -3,6 +3,47 @@ import { X } from 'lucide-react';
 import { SESSION_TYPE, validateSessionForm } from '@/schema/scheduleSchema';
 import '@/assets/css/components/eventModal.css';
 
+const roundToNextQuarterHour = (date) => {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 15;
+  const addMinutes = remainder === 0 ? 15 : 15 - remainder;
+  rounded.setMinutes(minutes + addMinutes);
+  return rounded;
+};
+
+const toTimeInput = (date) => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+const toDateInput = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const createDefaultFormData = (defaultDate = '') => {
+  const now = new Date();
+  const start = roundToNextQuarterHour(now);
+  const end = new Date(start);
+  end.setHours(end.getHours() + 1);
+
+  return {
+    title: '',
+    description: '',
+    sessionDate: defaultDate || toDateInput(start),
+    startTime: toTimeInput(start),
+    endTime: toTimeInput(end),
+    type: SESSION_TYPE.OFFLINE,
+    location: '',
+    meetingLink: '',
+  };
+};
+
 /**
  * Modal for creating/editing a ClassSession.
  * Form fields map 1:1 to CreateClassSessionRequestDTO.
@@ -43,22 +84,18 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
   }, [session, isOpen, presetDate]);
 
   const resetForm = (defaultDate = '') => {
-    setFormData({
-      title: '',
-      description: '',
-      sessionDate: defaultDate,
-      startTime: '',
-      endTime: '',
-      type: SESSION_TYPE.OFFLINE,
-      location: '',
-      meetingLink: '',
-    });
+    setFormData(createDefaultFormData(defaultDate));
     setErrors({});
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, type, value, checked } = e.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+
+    setFormData((prev) => {
+      const next = { ...prev, [name]: nextValue };
+      return next;
+    });
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -230,6 +267,7 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
           {formData.type === SESSION_TYPE.ONLINE && (
             <div className="form-section">
               <h3>Link Cuộc Họp Trực Tuyến</h3>
+              <p className="form-helper-text">Link phòng học sẽ được hệ thống tự động khởi tạo.</p>
               <div className="form-group">
                 <label>Link cuộc họp</label>
                 <input

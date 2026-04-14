@@ -4,13 +4,12 @@ import { CheckCircle2, CircleX, Loader2, Pencil, RotateCcw, Save, X, ArrowLeft }
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import useSchedule from "@/hooks/useSchedule";
 import useAttendance, { STATUS } from "@/hooks/use-attendance";
-import { enrollmentApi } from "@/apis/enrollment.api";
+import { classroomMemberApi } from "@/apis/classroom-member.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PATH_TEACHER } from "@/routes/paths";
 import "@/assets/css/pages/classroom/attendancePage.css";
 
 const ATTENDANCE_GRACE_MINUTES = 15;
-const MSG97 = "MSG97: Đã hết thời gian học. Hệ thống khóa biểu mẫu ở chế độ chỉ đọc.";
 
 const parseDateTime = (date, time) => {
   if (!date || !time) return null;
@@ -34,10 +33,23 @@ const formatDate = (date) => {
   });
 };
 
-const getSessionStatusLabel = (session, isWithinWindow) => {
+const getSessionStatusLabel = (session) => {
   if (!session) return "Không có buổi học";
-  if (isWithinWindow) return "Đang mở điểm danh";
-  return "Đã đóng khung giờ điểm danh";
+  
+  const start = parseDateTime(session.sessionDate, session.startTime);
+  const end = parseDateTime(session.sessionDate, session.endTime);
+  if (!start || !end) return "Không xác định";
+
+  const now = new Date();
+  const endWithGrace = new Date(end.getTime() + ATTENDANCE_GRACE_MINUTES * 60 * 1000);
+
+  if (now < start) {
+    return "Chưa đến giờ điểm danh";
+  }
+  if (now > endWithGrace) {
+    return "Đã quá hạn điểm danh";
+  }
+  return "Đang mở điểm danh";
 };
 
 const extractRoster = (classroom) => {
@@ -123,7 +135,7 @@ const AttendancePage = () => {
       try {
         setClassroomLoading(true);
         setClassroomError("");
-        const response = await enrollmentApi.getAcceptedMembers(classroomId);
+        const response = await classroomMemberApi.getAcceptedMembers(classroomId);
         setClassroom({ acceptedMembers: response?.result ?? [] });
       } catch (err) {
         setClassroomError(err?.response?.data?.message ?? "Không thể tải danh sách thành viên lớp học.");
@@ -179,7 +191,7 @@ const AttendancePage = () => {
               </div>
               <div>
                 <span>Trạng thái:</span>
-                <strong>{getSessionStatusLabel(selectedSession, isWithinAttendanceWindow)}</strong>
+                <strong>{getSessionStatusLabel(selectedSession)}</strong>
               </div>
               <div>
                 <span>Ngày học:</span>
@@ -207,13 +219,17 @@ const AttendancePage = () => {
           <button onClick={markAllAbsent} disabled={locked || readOnlyByRule || attendanceLoading || submitting}>
             Đánh dấu tất cả vắng mặt
           </button>
-          <button onClick={resetChanges} disabled={attendanceLoading || submitting}>
+          <button onClick={resetChanges} disabled={attendanceLoading || submitting || readOnlyByRule}>
             Nhập lại buổi trước
           </button>
         </div>
 
         {!isWithinAttendanceWindow && selectedSession && (
-          <div className="attendance-alert error">{MSG97}</div>
+          <div className="attendance-alert error">
+            {new Date() < parseDateTime(selectedSession.sessionDate, selectedSession.startTime)
+              ? "Chưa đến thời gian điểm danh cho buổi học này."
+              : "Thời gian điểm danh đã kết thúc. Bạn chỉ có thể xem thông tin điểm danh."}
+          </div>
         )}
         {!isTeacher && <div className="attendance-alert error">Chỉ giáo viên mới có thể điểm danh.</div>}
         {selectedSessionNotFound && (
@@ -317,7 +333,7 @@ const AttendancePage = () => {
             </button>
           ) : (
             <>
-              <button className="btn-cancel" onClick={resetChanges} disabled={submitting}>
+              <button className="btn-cancel" onClick={resetChanges} disabled={submitting || readOnlyByRule}>
                 <X size={16} /> Hủy
               </button>
               <button

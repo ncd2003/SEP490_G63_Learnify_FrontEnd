@@ -20,7 +20,8 @@ const SUBJECT_OPTIONS = [
   "OTHER",
 ];
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/jpg"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/gif"];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const INITIAL_FIELDS = { name: "", description: "" };
 const INITIAL_ERRORS = { name: "", subject: "", description: "" };
@@ -82,7 +83,12 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG hoặc PNG dưới 5MB.");
+      toast.error("Tệp không hợp lệ. Vui lòng tải ảnh JPG, JPEG, PNG hoặc GIF dưới 5MB.");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Kích thước tệp vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn.");
       return;
     }
 
@@ -96,7 +102,12 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Tệp không hợp lệ. Vui lòng tải lên hình ảnh JPEG hoặc PNG dưới 5MB.");
+      toast.error("Tệp không hợp lệ. Vui lòng tải ảnh JPG, JPEG, PNG hoặc GIF dưới 5MB.");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Kích thước tệp vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn.");
       return;
     }
 
@@ -297,13 +308,16 @@ const CreateClassroomDialog = ({ onClose, onSuccess }) => {
                   <span className="image-placeholder-text">
                     Kéo thả hoặc nhấn để chọn ảnh
                   </span>
+                  <span className="image-placeholder-hint">
+                    Hỗ trợ: JPG, JPEG, PNG, GIF · Tối đa 5MB
+                  </span>
                 </div>
               )}
             </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept=".jpg,.jpeg,.png,.gif"
               className="hidden-file-input"
               onChange={handleFileChange}
             />

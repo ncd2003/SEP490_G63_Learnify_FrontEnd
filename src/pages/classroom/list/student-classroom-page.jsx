@@ -1,32 +1,93 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { BookOpen, Plus, Search, Loader2, MoreVertical, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { enrollmentApi } from "@/apis/enrollment.api";
+import { classroomMemberApi, ENROLLMENT_STATUS } from "@/apis/classroom-member.api";
 import useDebounce from "@/hooks/use-debounce";
 import JoinClassModal from "@/pages/classroom/search/join-class-modal";
 import { PATH_STUDENT } from "@/routes/paths";
 import "@/assets/css/pages/classroom/studentClassroom.css";
 
+const STATUS_FILTERS = [
+  {
+    value: ENROLLMENT_STATUS.ACCEPTED,
+    label: "Đã được duyệt",
+    emptyTitle: "Bạn chưa có lớp học nào đã được duyệt",
+    emptyDesc: "Khi giáo viên chấp nhận yêu cầu tham gia, lớp học sẽ xuất hiện ở đây.",
+  },
+  {
+    value: ENROLLMENT_STATUS.PENDING,
+    label: "Đang chờ duyệt",
+    emptyTitle: "Không có lớp học nào đang chờ duyệt",
+    emptyDesc: "Các yêu cầu tham gia đang chờ giáo viên xử lý sẽ hiển thị tại đây.",
+  },
+  {
+    value: ENROLLMENT_STATUS.REJECTED,
+    label: "Đã bị từ chối",
+    emptyTitle: "Không có lớp học nào bị từ chối",
+    emptyDesc: "Các yêu cầu tham gia bị từ chối sẽ hiển thị tại đây để bạn theo dõi.",
+  },
+];
+
+const INITIAL_STATUS_COUNTS = {
+  [ENROLLMENT_STATUS.ACCEPTED]: 0,
+  [ENROLLMENT_STATUS.PENDING]: 0,
+  [ENROLLMENT_STATUS.REJECTED]: 0,
+};
+
 const StudentClassroomPage = () => {
   const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
+  const [statusCounts, setStatusCounts] = useState(INITIAL_STATUS_COUNTS);
+  const [selectedStatus, setSelectedStatus] = useState(
+    ENROLLMENT_STATUS.ACCEPTED,
+  );
   const navigate = useNavigate();
+
+  const selectedStatusMeta =
+    STATUS_FILTERS.find((item) => item.value === selectedStatus) ??
+    STATUS_FILTERS[0];
 
   const fetchMyClassrooms = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await enrollmentApi.getMyClassrooms();
-      setClassrooms(res.result ?? []);
+      const res = await classroomMemberApi.getMyClassrooms(
+        selectedStatus,
+      );
+      const result = res.result ?? [];
+      setClassrooms(result);
+      setStatusCounts((prev) => ({
+        ...prev,
+        [selectedStatus]: result.length,
+      }));
     } catch (err) {
       setError(err.response?.data?.message ?? "Không thể tải danh sách lớp học.");
     } finally {
       setLoading(false);
     }
+  }, [selectedStatus]);
+
+  const fetchStatusCounts = useCallback(async () => {
+    const responses = await Promise.all(
+      STATUS_FILTERS.map(({ value }) =>
+        classroomMemberApi
+          .getMyClassrooms(value)
+          .then((res) => ({ status: value, count: (res.result ?? []).length }))
+          .catch(() => ({ status: value, count: 0 })),
+      ),
+    );
+
+    const nextCounts = responses.reduce((acc, item) => {
+      acc[item.status] = item.count;
+      return acc;
+    }, { ...INITIAL_STATUS_COUNTS });
+
+    setStatusCounts(nextCounts);
   }, []);
 
   useEffect(() => { fetchMyClassrooms(); }, [fetchMyClassrooms]);
+  useEffect(() => { fetchStatusCounts(); }, [fetchStatusCounts]);
 
   const [searchQuery, setSearchQuery]   = useState("");
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -47,8 +108,8 @@ const StudentClassroomPage = () => {
     );
   }, [classrooms, debouncedSearch]);
 
-  const handleJoinSuccess = () => {
-    fetchMyClassrooms();
+  const handleJoinSuccess = async () => {
+    await Promise.all([fetchMyClassrooms(), fetchStatusCounts()]);
   };
 
   const handleLeaveConfirm = async () => {
@@ -56,9 +117,9 @@ const StudentClassroomPage = () => {
     setLeaveLoading(true);
     setLeaveError(null);
     try {
-      await enrollmentApi.leaveClass(leaveTarget.id);
+      await classroomMemberApi.leaveClass(leaveTarget.id);
       setLeaveTarget(null);
-      fetchMyClassrooms();
+      await Promise.all([fetchMyClassrooms(), fetchStatusCounts()]);
     } catch (err) {
       setLeaveError(err.response?.data?.message ?? "Đã xảy ra lỗi. Vui lòng thử lại.");
     } finally {
@@ -82,6 +143,27 @@ const StudentClassroomPage = () => {
 
       {/* Search bar */}
       <div className="student-classroom-toolbar">
+        <div className="status-filter-grid" role="tablist" aria-label="Lọc trạng thái lớp học">
+          {STATUS_FILTERS.map((statusItem) => {
+            const isActive = selectedStatus === statusItem.value;
+
+            return (
+              <button
+                key={statusItem.value}
+                type="button"
+                className={`status-filter-box ${isActive ? "active" : ""}`}
+                onClick={() => setSelectedStatus(statusItem.value)}
+              >
+                <span className="status-filter-label">{statusItem.label}</span>
+                <span className="status-filter-value">{statusItem.value}</span>
+                <span className="status-filter-count">
+                  {statusCounts[statusItem.value] ?? 0} lớp
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="search-box">
           <Search size={16} className="search-icon" />
           <input
@@ -115,17 +197,19 @@ const StudentClassroomPage = () => {
               <p>Không tìm thấy lớp học phù hợp với &quot;{searchQuery}&quot;</p>
             ) : (
               <>
-                <p className="empty-title">Bạn chưa tham gia lớp học nào</p>
+                <p className="empty-title">{selectedStatusMeta.emptyTitle}</p>
                 <p className="empty-desc">
-                  Nhấn &quot;Tham gia lớp học&quot; và nhập mã lớp của giáo viên để bắt đầu.
+                  {selectedStatusMeta.emptyDesc}
                 </p>
-                <button
-                  className="btn-join-class"
-                  onClick={() => setShowJoinModal(true)}
-                >
-                  <Plus size={16} />
-                  Tham gia lớp học
-                </button>
+                {selectedStatus === ENROLLMENT_STATUS.ACCEPTED && (
+                  <button
+                    className="btn-join-class"
+                    onClick={() => setShowJoinModal(true)}
+                  >
+                    <Plus size={16} />
+                    Tham gia lớp học
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -135,6 +219,7 @@ const StudentClassroomPage = () => {
               <StudentClassroomCard
                 key={classroom.id}
                 classroom={classroom}
+                status={selectedStatus}
                 onNavigate={() =>
                   navigate(PATH_STUDENT.classroom.detail(classroom.id))
                 }
@@ -194,9 +279,9 @@ const StudentClassroomPage = () => {
 };
 
 /**
- * @param {{ classroom: import("@/schema/classroom.schema").TClassroom & { teacherName?: string }, onNavigate: () => void, onLeave: () => void }} props
+ * @param {{ classroom: import("@/schema/classroom.schema").TClassroom & { teacherName?: string }, status: "PENDING" | "ACCEPTED" | "REJECTED", onNavigate: () => void, onLeave: () => void }} props
  */
-const StudentClassroomCard = ({ classroom, onNavigate, onLeave }) => {
+const StudentClassroomCard = ({ classroom, status, onNavigate, onLeave }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -268,6 +353,9 @@ const StudentClassroomCard = ({ classroom, onNavigate, onLeave }) => {
         {classroom.subject && (
           <p className="student-card-subject">{classroom.subject}</p>
         )}
+        <p className={`student-card-status-badge status-${status.toLowerCase()}`}>
+          Trạng thái: {status}
+        </p>
         {classroom.teacherName && (
           <p className="student-card-teacher">Giáo viên: {classroom.teacherName}</p>
         )}

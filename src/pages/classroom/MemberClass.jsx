@@ -370,7 +370,7 @@ const MemberClass = () => {
             <h2>Thành viên lớp học ({classSize})</h2>
           </header>
 
-          <div className="members-layout">
+          <div className={`members-layout ${!isTeacher ? 'no-aside' : ''}`}>
             <div className="members-main">
               <div className="members-toolbar">
                 <div className="members-view-toggle" aria-hidden="true">
@@ -472,8 +472,8 @@ const MemberClass = () => {
               )}
             </div>
 
-            <aside className="members-sidecard">
-              {isTeacher ? (
+            {isTeacher && (
+              <aside className="members-sidecard">
                 <>
                   <h3>Chờ duyệt • {pendingRequests.length}</h3>
                   <p>
@@ -569,13 +569,8 @@ const MemberClass = () => {
                     </>
                   )}
                 </>
-              ) : (
-                <>
-                  <h3>Danh sách thành viên</h3>
-                  <p>Bấm vào nút Xem trong cột Hành động để xem chi tiết và gửi báo cáo.</p>
-                </>
-              )}
-            </aside>
+              </aside>
+            )}
           </div>
         </section>
 

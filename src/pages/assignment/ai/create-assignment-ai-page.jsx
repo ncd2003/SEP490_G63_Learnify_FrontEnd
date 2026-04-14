@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const COG = [
@@ -16,81 +17,404 @@ const QT = [
   { v: "FILL_IN_BLANK", l: "Điền khuyết", ic: "FB" },
   { v: "ESSAY", l: "Tự luận", ic: "ES" },
 ];
-const mkQ = (n) => {
-  const pool = [
-    {
-      type: "MULTIPLE_CHOICE",
-      prompt:
-        "Trong không gian Oxyz, mặt phẳng đi qua A(1;2;3) có vectơ pháp tuyến n⃗=(2;-1;3) có phương trình là:",
-      opts: ["2x-y+3z-9=0", "2x+y+3z-9=0", "2x-y-3z+9=0", "x+y-3z=0"],
-      cor: 0,
-    },
-    {
-      type: "MULTIPLE_CHOICE",
-      prompt: "Khoảng cách từ M(1;0;-1) đến mp (P): x+2y-2z+3=0 bằng:",
-      opts: ["2/3", "2", "4/3", "8/3"],
-      cor: 1,
-    },
-    {
-      type: "TRUE_FALSE",
-      prompt: "Hai mp x+2y-z+5=0 và 2x+4y-2z+1=0 song song với nhau.",
-      cor: true,
-    },
-    {
-      type: "MULTIPLE_CHOICE",
-      prompt: "Cho mặt cầu (S): (x-1)²+(y+2)²+(z-3)²=16. Bán kính bằng:",
-      opts: ["2", "4", "8", "16"],
-      cor: 1,
-    },
-    {
-      type: "FILL_IN_BLANK",
-      prompt: "Góc giữa (P): x+y+z-1=0 và (Q): x+y-1=0 bằng ___ độ.",
-      ans: "35",
-    },
-    {
-      type: "MULTIPLE_CHOICE",
-      prompt: "Thể tích khối chóp S.ABC có SA⊥(ABC), SA=3, △ABC đều cạnh 4:",
-      opts: ["4√3", "8√3", "12√3", "6√3"],
-      cor: 1,
-    },
-    {
-      type: "TRUE_FALSE",
-      prompt:
-        "Đường thẳng vuông góc với mp thì vuông góc với mọi đường thẳng trong mp đó.",
-      cor: true,
-    },
-    {
-      type: "ESSAY",
-      prompt:
-        "Cho hình chóp S.ABCD, đáy hình vuông cạnh a, SA⊥(ABCD), SA=a√2.\na) Tính thể tích.\nb) Tính khoảng cách từ A đến (SBC).",
-    },
-    {
-      type: "MULTIPLE_CHOICE",
-      prompt: "Phương trình mp qua A(1;0;0), B(0;2;0), C(0;0;3):",
-      opts: ["6x+3y+2z-6=0", "x+2y+3z-1=0", "6x+3y+2z+6=0", "2x+3y+6z=6"],
-      cor: 0,
-    },
-    {
-      type: "FILL_IN_BLANK",
-      prompt: "Mặt cầu x²+y²+z²-4x+6y-2z+5=0 có R = ___",
-      ans: "3",
-    },
-    {
-      type: "MULTIPLE_CHOICE",
-      prompt: "Khoảng cách giữa 2 mp song song 2x-y+2z-1=0 và 2x-y+2z+5=0:",
-      opts: ["2", "6/3", "4/3", "6"],
-      cor: 0,
-    },
-    {
-      type: "TRUE_FALSE",
-      prompt: "Hai mp có VTPT cùng phương thì song song hoặc trùng nhau.",
-      cor: true,
-    },
-  ];
-  return Array.from({ length: n }, (_, i) => ({
-    id: i + 1,
-    ...pool[i % pool.length],
-  }));
+
+const API_COG_MAP = {
+  REMEMBER: "REMEMBERING",
+  UNDERSTAND: "UNDERSTANDING",
+  APPLY: "APPLYING",
+  ANALYZE: "ANALYZING",
+  EVALUATE: "EVALUATING",
+  CREATE: "CREATING",
+};
+
+const API_QT_MAP = {
+  MULTIPLE_CHOICE: "MULTIPLE_CHOICE",
+  TRUE_FALSE: "TRUE_FALSE",
+  FILL_IN_BLANK: "FILL_IN_THE_BLANK",
+  ESSAY: "ESSAY",
+};
+
+const UI_QT_MAP = {
+  MULTIPLE_CHOICE: "MULTIPLE_CHOICE",
+  TRUE_FALSE: "TRUE_FALSE",
+  FILL_IN_THE_BLANK: "FILL_IN_BLANK",
+  FILL_IN_BLANK: "FILL_IN_BLANK",
+  ESSAY: "ESSAY",
+};
+
+const SECTION_TYPE = {
+  OBJECTIVE: "OBJECTIVE",
+  ESSAY: "ESSAY",
+  MIXED: "MIXED",
+};
+
+const normalizeSectionType = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === SECTION_TYPE.ESSAY) return SECTION_TYPE.ESSAY;
+  if (normalized === SECTION_TYPE.MIXED) return SECTION_TYPE.MIXED;
+  if (
+    normalized === SECTION_TYPE.OBJECTIVE ||
+    normalized === "MULTIPLE_CHOICE"
+  ) {
+    return SECTION_TYPE.OBJECTIVE;
+  }
+  return SECTION_TYPE.OBJECTIVE;
+};
+
+const getAllowedQuestionTypesBySectionType = (sectionType) => {
+  if (sectionType === SECTION_TYPE.ESSAY) {
+    return ["ESSAY"];
+  }
+
+  if (sectionType === SECTION_TYPE.OBJECTIVE) {
+    return ["MULTIPLE_CHOICE", "TRUE_FALSE", "FILL_IN_BLANK"];
+  }
+
+  return ["MULTIPLE_CHOICE", "TRUE_FALSE", "FILL_IN_BLANK", "ESSAY"];
+};
+
+const toPositiveId = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const isOptionCorrect = (option) =>
+  Boolean(option?.correct ?? option?.isCorrect);
+
+const normalizeQuestionTypeFromApi = (rawType) =>
+  UI_QT_MAP[String(rawType || "").toUpperCase()] || "MULTIPLE_CHOICE";
+
+const SECTION_TYPE_LABEL = {
+  OBJECTIVE: "Trắc nghiệm",
+  ESSAY: "Tự luận",
+  MIXED: "Hỗn hợp",
+};
+
+const toSectionTypeLabel = (sectionType) =>
+  SECTION_TYPE_LABEL[normalizeSectionType(sectionType)] || "Trắc nghiệm";
+
+const DEFAULT_REQUIREMENT_COGNITIVE = "APPLY";
+const DEFAULT_REQUIREMENT_QUANTITY = 1;
+
+const clampRequirementQuantity = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_REQUIREMENT_QUANTITY;
+  return Math.min(50, Math.max(1, Math.round(parsed)));
+};
+
+const buildRequirementConfig = (config = {}) => {
+  const safeCognitiveLevel = COG.some(
+    (level) => level.v === config.cognitiveLevel,
+  )
+    ? config.cognitiveLevel
+    : DEFAULT_REQUIREMENT_COGNITIVE;
+
+  return {
+    quantity: clampRequirementQuantity(config.quantity),
+    cognitiveLevel: safeCognitiveLevel,
+  };
+};
+
+const toSectionConfigKey = (sectionId) => {
+  const safeSectionId = toPositiveId(sectionId);
+  return safeSectionId ? `section-${safeSectionId}` : "section-default";
+};
+
+const normalizeQuestionTypesBySection = (types = [], allowedTypes = []) => {
+  if (!Array.isArray(allowedTypes) || allowedTypes.length === 0) return [];
+
+  const source = Array.isArray(types) ? types : [];
+  const normalized = source
+    .map((type) => String(type || "").trim())
+    .filter(
+      (type, index, self) =>
+        type && self.indexOf(type) === index && allowedTypes.includes(type),
+    );
+
+  return normalized;
+};
+
+const buildTypeRequirementsByQuestionTypes = (
+  questionTypes = [],
+  requirementMap = {},
+) => {
+  const next = {};
+
+  questionTypes.forEach((type) => {
+    next[type] = buildRequirementConfig(requirementMap?.[type]);
+  });
+
+  return next;
+};
+
+const workspacePreviewRequestCache = new Map();
+
+const toSafeOrderIndex = (value, fallback = 1) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0
+    ? Math.floor(parsed)
+    : Math.floor(fallback);
+};
+
+const sortQuestionsByOrderIndex = (questions = []) =>
+  [...questions].sort((a, b) => {
+    const orderA = toSafeOrderIndex(a?.orderIndex, Number.MAX_SAFE_INTEGER);
+    const orderB = toSafeOrderIndex(b?.orderIndex, Number.MAX_SAFE_INTEGER);
+    if (orderA !== orderB) return orderA - orderB;
+
+    const idA = toPositiveId(a?.id) || 0;
+    const idB = toPositiveId(b?.id) || 0;
+    return idA - idB;
+  });
+
+const flattenQuestionsBySections = (sections = []) =>
+  sections.flatMap((section) =>
+    sortQuestionsByOrderIndex(
+      Array.isArray(section?.questions) ? section.questions : [],
+    ),
+  );
+
+const applyQuestionDropToSections = (
+  sections = [],
+  sourceSectionId,
+  targetSectionId,
+  sourceQuestionId,
+  targetQuestionId,
+) => {
+  const safeSourceSectionId = toPositiveId(sourceSectionId);
+  const safeTargetSectionId = toPositiveId(targetSectionId);
+  if (!safeSourceSectionId || !safeTargetSectionId) {
+    return {
+      didReorder: false,
+      nextSections: sections,
+      affectedSectionIds: [],
+    };
+  }
+
+  const sourceSection = sections.find((section) => section.id === safeSourceSectionId);
+  const targetSection = sections.find((section) => section.id === safeTargetSectionId);
+
+  if (!sourceSection || !targetSection) {
+    return {
+      didReorder: false,
+      nextSections: sections,
+      affectedSectionIds: [],
+    };
+  }
+
+  const sourceQuestions = [...sourceSection.questions];
+  const targetQuestions =
+    safeSourceSectionId === safeTargetSectionId
+      ? sourceQuestions
+      : [...targetSection.questions];
+
+  const fromIndex = sourceQuestions.findIndex(
+    (question) => question.id === sourceQuestionId,
+  );
+  const toIndex = targetQuestions.findIndex(
+    (question) => question.id === targetQuestionId,
+  );
+
+  if (fromIndex < 0 || toIndex < 0) {
+    return {
+      didReorder: false,
+      nextSections: sections,
+      affectedSectionIds: [],
+    };
+  }
+
+  if (safeSourceSectionId === safeTargetSectionId && fromIndex === toIndex) {
+    return {
+      didReorder: false,
+      nextSections: sections,
+      affectedSectionIds: [],
+    };
+  }
+
+  const [movedQuestion] = sourceQuestions.splice(fromIndex, 1);
+  targetQuestions.splice(toIndex, 0, {
+    ...movedQuestion,
+    sectionId: safeTargetSectionId,
+  });
+
+  const nextSections = sections.map((section) => {
+    if (section.id === safeSourceSectionId && section.id === safeTargetSectionId) {
+      return {
+        ...section,
+        questions: sourceQuestions.map((question, index) => ({
+          ...question,
+          sectionId: section.id,
+          orderIndex: index + 1,
+        })),
+      };
+    }
+
+    if (section.id === safeSourceSectionId) {
+      return {
+        ...section,
+        questions: sourceQuestions.map((question, index) => ({
+          ...question,
+          sectionId: section.id,
+          orderIndex: index + 1,
+        })),
+      };
+    }
+
+    if (section.id === safeTargetSectionId) {
+      return {
+        ...section,
+        questions: targetQuestions.map((question, index) => ({
+          ...question,
+          sectionId: section.id,
+          orderIndex: index + 1,
+        })),
+      };
+    }
+
+    return section;
+  });
+
+  return {
+    didReorder: true,
+    nextSections,
+    affectedSectionIds:
+      safeSourceSectionId === safeTargetSectionId
+        ? [safeSourceSectionId]
+        : [safeSourceSectionId, safeTargetSectionId],
+  };
+};
+
+const getDraftWorkspaceCached = (sessionId, refreshTick) => {
+  const cacheKey = `${sessionId}:${refreshTick}`;
+  const cached = workspacePreviewRequestCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const requestPromise = assignmentApi
+    .getDraftWorkspace(sessionId)
+    .catch((error) => {
+      workspacePreviewRequestCache.delete(cacheKey);
+      throw error;
+    });
+
+  workspacePreviewRequestCache.set(cacheKey, requestPromise);
+
+  if (workspacePreviewRequestCache.size > 30) {
+    const oldestKey = workspacePreviewRequestCache.keys().next().value;
+    workspacePreviewRequestCache.delete(oldestKey);
+  }
+
+  return requestPromise;
+};
+
+const normalizeRichText = (value) =>
+  String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+const toQuestionFromDraft = (item, index) => {
+  const questionData = item?.questionData || item || {};
+  const type = normalizeQuestionTypeFromApi(questionData?.questionType);
+  const rawOptions = Array.isArray(questionData?.options)
+    ? questionData.options
+    : [];
+  const sectionId = toPositiveId(item?.sectionId);
+  const sampleAnswer = normalizeRichText(
+    questionData?.sampleAnswer ?? item?.sampleAnswer ?? "",
+  );
+  const orderIndex = toSafeOrderIndex(
+    item?.orderIndex ?? questionData?.orderIndex,
+    index + 1,
+  );
+
+  const id =
+    toPositiveId(item?.id) ||
+    toPositiveId(item?.itemId) ||
+    toPositiveId(item?.rowNumber) ||
+    Date.now() + Math.random() + index;
+
+  if (type === "MULTIPLE_CHOICE") {
+    const options =
+      rawOptions.length > 0
+        ? rawOptions.map((option) => normalizeRichText(option?.content || ""))
+        : ["", "", "", ""];
+    const correctIndex = rawOptions.findIndex((option) =>
+      isOptionCorrect(option),
+    );
+
+    return {
+      id,
+      type,
+      prompt: normalizeRichText(questionData?.content || ""),
+      opts: options,
+      cor: correctIndex >= 0 ? correctIndex : 0,
+      sampleAnswer,
+      sectionId,
+      orderIndex,
+      status: String(item?.status || "").toUpperCase(),
+      errors: Array.isArray(item?.errors) ? item.errors : [],
+    };
+  }
+
+  if (type === "TRUE_FALSE") {
+    const correctOption = rawOptions.find((option) => isOptionCorrect(option));
+    const normalizedText = String(correctOption?.content || "")
+      .trim()
+      .toLowerCase();
+    const isTrue =
+      normalizedText === "đúng" ||
+      normalizedText === "dung" ||
+      normalizedText === "true";
+
+    return {
+      id,
+      type,
+      prompt: normalizeRichText(questionData?.content || ""),
+      cor: isTrue,
+      sampleAnswer,
+      sectionId,
+      orderIndex,
+      status: String(item?.status || "").toUpperCase(),
+      errors: Array.isArray(item?.errors) ? item.errors : [],
+    };
+  }
+
+  if (type === "FILL_IN_BLANK") {
+    const answerOption = rawOptions.find((option) => isOptionCorrect(option));
+
+    return {
+      id,
+      type,
+      prompt: normalizeRichText(questionData?.content || ""),
+      ans: normalizeRichText(
+        answerOption?.content ?? questionData?.sampleAnswer ?? "",
+      ),
+      sampleAnswer,
+      sectionId,
+      orderIndex,
+      status: String(item?.status || "").toUpperCase(),
+      errors: Array.isArray(item?.errors) ? item.errors : [],
+    };
+  }
+
+  return {
+    id,
+    type: "ESSAY",
+    prompt: normalizeRichText(questionData?.content || ""),
+    sampleAnswer,
+    sectionId,
+    orderIndex,
+    status: String(item?.status || "").toUpperCase(),
+    errors: Array.isArray(item?.errors) ? item.errors : [],
+  };
 };
 
 const I = {
@@ -358,18 +682,84 @@ const PP = 5,
 
 const CreateAssignmentAiPage = () => {
   const navigate = useNavigate();
-  const [cog, setCog] = useState("");
-  const [qty, setQty] = useState(5);
-  const [qts, setQts] = useState(["MULTIPLE_CHOICE"]);
+  const [searchParams] = useSearchParams();
+
+  const bankId = toPositiveId(searchParams.get("bankId"));
+  const assignmentId = toPositiveId(searchParams.get("assignmentId"));
+  const initialFormat = String(searchParams.get("format") || "")
+    .trim()
+    .toUpperCase();
+  const initialSectionId = toPositiveId(searchParams.get("sectionId"));
+  const initialSessionId = toPositiveId(searchParams.get("sessionId"));
+  const draftSessionStorageKey = assignmentId
+    ? `learnify:assignment-ai:session:${assignmentId}`
+    : null;
+  const assignmentSectionsStorageKey = assignmentId
+    ? `learnify:assignment-ai:sections:${assignmentId}`
+    : null;
+
+  const storedDraftSessionId = (() => {
+    if (!draftSessionStorageKey || typeof window === "undefined") return null;
+    const raw = window.sessionStorage.getItem(draftSessionStorageKey);
+    return toPositiveId(raw);
+  })();
+
+  const storedAssignmentSections = (() => {
+    if (!assignmentSectionsStorageKey || typeof window === "undefined") {
+      return [];
+    }
+
+    try {
+      const raw = window.sessionStorage.getItem(assignmentSectionsStorageKey);
+      if (!raw) return [];
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed
+        .map((section, index) => {
+          const id = toPositiveId(section?.id || section?.sectionId);
+          if (!id) return null;
+
+          return {
+            id,
+            title: String(section?.title || "").trim() || `Phần ${index + 1}`,
+            sectionType: normalizeSectionType(section?.sectionType),
+          };
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  })();
+
+  const [sectionConfigs, setSectionConfigs] = useState({});
   const [addP, setAddP] = useState("");
   const [srcT, setSrcT] = useState("file");
-  const [aiF, setAiF] = useState("");
+  const [aiF, setAiF] = useState(null);
   const [raw, setRaw] = useState("");
   const [phase, setPhase] = useState("config");
+  const [draftSessionId, setDraftSessionId] = useState(
+    initialSessionId || storedDraftSessionId,
+  );
+  const [assignmentSections, setAssignmentSections] = useState(
+    storedAssignmentSections,
+  );
+  const [workspaceSections, setWorkspaceSections] = useState([]);
+  const [workspaceRefreshTick, setWorkspaceRefreshTick] = useState(0);
+  const [selectedSectionId, setSelectedSectionId] = useState(
+    initialSectionId || toPositiveId(storedAssignmentSections?.[0]?.id),
+  );
   const [qs, setQs] = useState([]);
+  const [requestError, setRequestError] = useState("");
   const [pg, setPg] = useState(1);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState(null);
+  const [draggingQuestion, setDraggingQuestion] = useState(null);
+  const [dragOverTarget, setDragOverTarget] = useState(null);
+  const [reorderSaving, setReorderSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
   const [msgs, setMsgs] = useState([
     {
       role: "bot",
@@ -381,29 +771,626 @@ const CreateAssignmentAiPage = () => {
   const [typing, setTyping] = useState(false);
   const chatEnd = useRef(null);
   const fRef = useRef(null);
+
+  const selectedSection = assignmentSections.find(
+    (section) => toPositiveId(section?.id) === toPositiveId(selectedSectionId),
+  );
+  const allowedQuestionTypes = getAllowedQuestionTypesBySectionType(
+    normalizeSectionType(selectedSection?.sectionType),
+  );
+  const allowedQuestionTypesKey = allowedQuestionTypes.join("|");
+  const activeSectionConfigKey = toSectionConfigKey(selectedSectionId);
+  const activeSectionConfig = sectionConfigs?.[activeSectionConfigKey] || {};
+  const qts = normalizeQuestionTypesBySection(
+    activeSectionConfig.qts,
+    allowedQuestionTypes,
+  );
+  const typeRequirements = buildTypeRequirementsByQuestionTypes(
+    qts,
+    activeSectionConfig.typeRequirements,
+  );
+
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, typing]);
-  const togQT = (v) =>
-    setQts((p) => (p.includes(v) ? p.filter((x) => x !== v) : [...p, v]));
-  const canGen = cog && qty >= 1 && qts.length > 0 && (aiF || raw.trim());
-  const doGen = () => {
+
+  useEffect(() => {
+    const validQuestionIdSet = new Set(
+      qs
+        .map((question) => toPositiveId(question?.id))
+        .filter(Boolean),
+    );
+
+    setSelectedQuestionIds((prev) => {
+      const next = prev.filter((id) => validQuestionIdSet.has(id));
+
+      if (next.length === prev.length) {
+        let same = true;
+        for (let index = 0; index < next.length; index += 1) {
+          if (next[index] !== prev[index]) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+
+      return next;
+    });
+  }, [qs]);
+
+  useEffect(() => {
+    if (!draftSessionStorageKey || typeof window === "undefined") return;
+
+    const safeSessionId = toPositiveId(draftSessionId);
+    if (!safeSessionId) {
+      window.sessionStorage.removeItem(draftSessionStorageKey);
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      draftSessionStorageKey,
+      String(safeSessionId),
+    );
+  }, [draftSessionId, draftSessionStorageKey]);
+
+  useEffect(() => {
+    if (!assignmentSectionsStorageKey || typeof window === "undefined") return;
+
+    const payload = assignmentSections
+      .map((section) => {
+        const id = toPositiveId(section?.id);
+        if (!id) return null;
+
+        return {
+          id,
+          title: String(section?.title || "").trim() || `Phần ${id}`,
+          sectionType: normalizeSectionType(section?.sectionType),
+        };
+      })
+      .filter(Boolean);
+
+    if (payload.length > 0) {
+      window.sessionStorage.setItem(
+        assignmentSectionsStorageKey,
+        JSON.stringify(payload),
+      );
+      return;
+    }
+
+    window.sessionStorage.removeItem(assignmentSectionsStorageKey);
+  }, [assignmentSections, assignmentSectionsStorageKey]);
+
+  useEffect(() => {
+    if (workspaceSections.length > 0) return;
+
+    if (assignmentSections.length > 0) {
+      setSelectedSectionId((prev) => {
+        const safePrev = toPositiveId(prev) || toPositiveId(initialSectionId);
+        const matched = assignmentSections.find(
+          (section) => section.id === safePrev,
+        );
+
+        return matched ? matched.id : assignmentSections[0].id;
+      });
+      return;
+    }
+
+    const safeSectionId = toPositiveId(initialSectionId);
+    if (!safeSectionId) return;
+
+    const fallbackType =
+      initialFormat === "ESSAY"
+        ? "ESSAY"
+        : initialFormat === "MULTIPLE_CHOICE"
+          ? "OBJECTIVE"
+          : "MIXED";
+
+    setAssignmentSections((prev) => {
+      const current = Array.isArray(prev)
+        ? prev.find((section) => toPositiveId(section?.id) === safeSectionId)
+        : null;
+
+      return [
+        {
+          id: safeSectionId,
+          title: String(current?.title || "").trim() || "Phần áp dụng",
+          sectionType: normalizeSectionType(
+            current?.sectionType || fallbackType,
+          ),
+        },
+      ];
+    });
+    setSelectedSectionId(safeSectionId);
+  }, [workspaceSections, initialSectionId, assignmentSections, initialFormat]);
+
+  useEffect(() => {
+    if (!allowedQuestionTypes.length) return;
+
+    setSectionConfigs((prev) => {
+      const current = prev?.[activeSectionConfigKey] || {};
+      const normalizedQts = normalizeQuestionTypesBySection(
+        current.qts,
+        allowedQuestionTypes,
+      );
+      const normalizedRequirements = buildTypeRequirementsByQuestionTypes(
+        normalizedQts,
+        current.typeRequirements,
+      );
+
+      const sameQts =
+        Array.isArray(current.qts) &&
+        current.qts.length === normalizedQts.length &&
+        current.qts.every((type, index) => type === normalizedQts[index]);
+
+      const sameRequirements = normalizedQts.every((type) => {
+        const prevRequirement = buildRequirementConfig(
+          current.typeRequirements?.[type],
+        );
+        const nextRequirement = normalizedRequirements[type];
+        return (
+          prevRequirement.quantity === nextRequirement.quantity &&
+          prevRequirement.cognitiveLevel === nextRequirement.cognitiveLevel
+        );
+      });
+
+      if (sameQts && sameRequirements) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [activeSectionConfigKey]: {
+          qts: normalizedQts,
+          typeRequirements: normalizedRequirements,
+        },
+      };
+    });
+  }, [activeSectionConfigKey, allowedQuestionTypesKey]);
+
+  useEffect(() => {
+    const safeSessionId = toPositiveId(draftSessionId);
+    if (!safeSessionId) {
+      setWorkspaceSections([]);
+      return;
+    }
+
+    let alive = true;
+
+    const loadWorkspacePreview = async () => {
+      try {
+        const response = await getDraftWorkspaceCached(
+          safeSessionId,
+          workspaceRefreshTick,
+        );
+        if (!alive) return;
+
+        const sections = Array.isArray(response?.result?.sections)
+          ? response.result.sections
+          : [];
+
+        const normalizedSections = sections
+          .map((section, sectionIndex) => {
+            const safeSectionId = toPositiveId(
+              section?.id || section?.sectionId,
+            );
+            if (!safeSectionId) return null;
+
+            const draftQuestions = Array.isArray(section?.draftQuestions)
+              ? section.draftQuestions
+              : [];
+
+            const questions = sortQuestionsByOrderIndex(
+              draftQuestions.map((question, questionIndex) =>
+                toQuestionFromDraft(
+                  {
+                    ...question,
+                    sectionId: safeSectionId,
+                  },
+                  questionIndex,
+                ),
+              ),
+            );
+
+            return {
+              id: safeSectionId,
+              title:
+                String(section?.title || "").trim() ||
+                `Phần ${sectionIndex + 1}`,
+              sectionType: normalizeSectionType(section?.sectionType),
+              orderIndex: Number(section?.orderIndex ?? sectionIndex + 1),
+              questions,
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.orderIndex - b.orderIndex);
+
+        setWorkspaceSections(normalizedSections);
+
+        if (normalizedSections.length > 0) {
+          const flatQuestions = flattenQuestionsBySections(normalizedSections);
+          setQs(flatQuestions);
+          setPg(1);
+          setAssignmentSections(
+            normalizedSections.map(({ id, title, sectionType }) => ({
+              id,
+              title,
+              sectionType,
+            })),
+          );
+
+          setSelectedSectionId((prev) => {
+            const safePrev =
+              toPositiveId(prev) || toPositiveId(initialSectionId);
+            const matched = normalizedSections.find(
+              (section) => section.id === safePrev,
+            );
+            return matched ? matched.id : normalizedSections[0].id;
+          });
+
+          setPhase("results");
+        }
+      } catch {
+        if (alive) {
+          setWorkspaceSections([]);
+        }
+      }
+    };
+
+    loadWorkspacePreview();
+
+    return () => {
+      alive = false;
+    };
+  }, [draftSessionId, initialSectionId, workspaceRefreshTick]);
+
+  const togQT = (v) => {
+    if (!allowedQuestionTypes.includes(v)) return;
+
+    setSectionConfigs((prev) => {
+      const current = prev?.[activeSectionConfigKey] || {};
+      const currentQts = normalizeQuestionTypesBySection(
+        current.qts,
+        allowedQuestionTypes,
+      );
+      const toggled = currentQts.includes(v)
+        ? currentQts.filter((item) => item !== v)
+        : [...currentQts, v];
+      const normalizedQts = normalizeQuestionTypesBySection(
+        toggled,
+        allowedQuestionTypes,
+      );
+
+      return {
+        ...prev,
+        [activeSectionConfigKey]: {
+          qts: normalizedQts,
+          typeRequirements: buildTypeRequirementsByQuestionTypes(
+            normalizedQts,
+            current.typeRequirements,
+          ),
+        },
+      };
+    });
+  };
+
+  const setRequirementQuantity = (type, value) => {
+    setSectionConfigs((prev) => {
+      const current = prev?.[activeSectionConfigKey] || {};
+      const currentQts = normalizeQuestionTypesBySection(
+        current.qts,
+        allowedQuestionTypes,
+      );
+      if (!currentQts.includes(type)) return prev;
+
+      const nextRequirements = buildTypeRequirementsByQuestionTypes(
+        currentQts,
+        current.typeRequirements,
+      );
+
+      nextRequirements[type] = {
+        ...nextRequirements[type],
+        quantity: clampRequirementQuantity(value),
+      };
+
+      return {
+        ...prev,
+        [activeSectionConfigKey]: {
+          qts: currentQts,
+          typeRequirements: nextRequirements,
+        },
+      };
+    });
+  };
+
+  const setRequirementCognitive = (type, value) => {
+    setSectionConfigs((prev) => {
+      const current = prev?.[activeSectionConfigKey] || {};
+      const currentQts = normalizeQuestionTypesBySection(
+        current.qts,
+        allowedQuestionTypes,
+      );
+      if (!currentQts.includes(type)) return prev;
+
+      const nextRequirements = buildTypeRequirementsByQuestionTypes(
+        currentQts,
+        current.typeRequirements,
+      );
+
+      nextRequirements[type] = {
+        ...nextRequirements[type],
+        cognitiveLevel: COG.some((level) => level.v === value)
+          ? value
+          : DEFAULT_REQUIREMENT_COGNITIVE,
+      };
+
+      return {
+        ...prev,
+        [activeSectionConfigKey]: {
+          qts: currentQts,
+          typeRequirements: nextRequirements,
+        },
+      };
+    });
+  };
+
+  const selectedRequirements = qts
+    .filter((type) => allowedQuestionTypes.includes(type))
+    .map((type) => ({
+      type,
+      ...buildRequirementConfig(typeRequirements?.[type]),
+    }));
+
+  const buildApiRequirementsFromSectionConfig = (sectionConfig, allowedTypes) => {
+    const configuredTypes = Array.isArray(sectionConfig?.qts)
+      ? sectionConfig.qts
+          .map((type) => String(type || "").trim())
+          .filter((type, index, self) => {
+            return (
+              type &&
+              self.indexOf(type) === index &&
+              Array.isArray(allowedTypes) &&
+              allowedTypes.includes(type)
+            );
+          })
+      : [];
+
+    if (!configuredTypes.length) return [];
+
+    const normalizedRequirements = buildTypeRequirementsByQuestionTypes(
+      configuredTypes,
+      sectionConfig?.typeRequirements,
+    );
+
+    return configuredTypes
+      .map((type) => {
+        const requirement = buildRequirementConfig(normalizedRequirements[type]);
+        return {
+          type: API_QT_MAP[type] || type,
+          quantity: clampRequirementQuantity(requirement.quantity),
+          cognitiveLevel: API_COG_MAP[requirement.cognitiveLevel] || "APPLYING",
+        };
+      })
+      .filter(
+        (requirement) =>
+          requirement.type &&
+          requirement.cognitiveLevel &&
+          Number.isFinite(requirement.quantity) &&
+          requirement.quantity >= 1,
+      );
+  };
+
+  const configuredGenerationTargets =
+    assignmentSections.length > 0
+      ? assignmentSections
+          .map((section) => {
+            const sectionId = toPositiveId(section?.id);
+            if (!sectionId) return null;
+
+            const sectionConfig = sectionConfigs[toSectionConfigKey(sectionId)] || {};
+            const allowedTypes = getAllowedQuestionTypesBySectionType(
+              normalizeSectionType(section?.sectionType),
+            );
+            const requirements = buildApiRequirementsFromSectionConfig(
+              sectionConfig,
+              allowedTypes,
+            );
+
+            if (!requirements.length) return null;
+
+            return {
+              sectionId,
+              sectionTitle: String(section?.title || "").trim() || null,
+              requirements,
+            };
+          })
+          .filter(Boolean)
+      : (() => {
+          const requirements = selectedRequirements
+            .map((requirement) => ({
+              type: API_QT_MAP[requirement.type] || requirement.type,
+              quantity: clampRequirementQuantity(requirement.quantity),
+              cognitiveLevel:
+                API_COG_MAP[requirement.cognitiveLevel] || "APPLYING",
+            }))
+            .filter(
+              (requirement) =>
+                requirement.type &&
+                requirement.cognitiveLevel &&
+                Number.isFinite(requirement.quantity) &&
+                requirement.quantity >= 1,
+            );
+
+          if (!requirements.length) return [];
+
+          return [
+            {
+              sectionId: toPositiveId(selectedSectionId) || undefined,
+              sectionTitle: null,
+              requirements,
+            },
+          ];
+        })();
+
+  const totalConfiguredQuestions = configuredGenerationTargets.reduce(
+    (sum, target) =>
+      sum +
+      target.requirements.reduce(
+        (innerSum, requirement) => innerSum + requirement.quantity,
+        0,
+      ),
+    0,
+  );
+
+  const canGen =
+    configuredGenerationTargets.length > 0 &&
+    totalConfiguredQuestions > 0 &&
+    (aiF || raw.trim()) &&
+    (!assignmentSections.length || toPositiveId(selectedSectionId));
+
+  const doGen = async () => {
+    if (phase === "loading") return;
+
+    if (!configuredGenerationTargets.length) {
+      setRequestError(
+        "Vui lòng cấu hình ít nhất một loại câu hỏi cho ít nhất một section.",
+      );
+      return;
+    }
+
+    if (totalConfiguredQuestions < 1) {
+      setRequestError("Tổng số lượng câu hỏi phải lớn hơn hoặc bằng 1.");
+      return;
+    }
+
+    if (assignmentSections.length > 0 && !toPositiveId(selectedSectionId)) {
+      setRequestError("Vui lòng chọn section để AI thêm câu hỏi vào.");
+      return;
+    }
+
+    setRequestError("");
     setPhase("loading");
-    setTimeout(() => {
-      const r = mkQ(qty);
-      setQs(r);
+
+    try {
+      let currentSessionId = toPositiveId(draftSessionId);
+      let totalGenerated = 0;
+      let successfulSections = 0;
+      const warningMessages = [];
+      const failedSections = [];
+
+      for (const target of configuredGenerationTargets) {
+        try {
+          const response = await assignmentApi.generateAiDraftSession(
+            {
+              requirements: target.requirements,
+              sectionId: target.sectionId || undefined,
+              additionalPrompt: addP,
+              rawText: raw,
+              file: aiF,
+              sessionId: currentSessionId || undefined,
+            },
+            {
+              bankId,
+              assignmentId,
+            },
+          );
+
+          const result = response?.result || {};
+          const mappedQuestions = Array.isArray(result?.questions)
+            ? result.questions.map((item, index) =>
+                toQuestionFromDraft(item, index),
+              )
+            : [];
+          const warnings = Array.isArray(result?.warnings)
+            ? result.warnings.filter(Boolean)
+            : [];
+          const nextSessionId = toPositiveId(result?.sessionId);
+
+          if (nextSessionId) {
+            currentSessionId = nextSessionId;
+          }
+
+          successfulSections += 1;
+          totalGenerated += mappedQuestions.length;
+          if (warnings.length > 0) {
+            warningMessages.push(...warnings);
+          }
+        } catch (error) {
+          const sectionLabel =
+            target.sectionTitle ||
+            `Section ${String(target.sectionId || "").trim() || "?"}`;
+          const message =
+            error?.response?.data?.message ||
+            "Không thể tạo câu hỏi cho section này.";
+          failedSections.push(`${sectionLabel}: ${message}`);
+        }
+      }
+
+      if (successfulSections === 0) {
+        const failMessage = failedSections.length
+          ? `Không thể tạo câu hỏi cho các section đã chọn: ${failedSections.join(" | ")}`
+          : "Không thể tạo câu hỏi với AI. Vui lòng thử lại.";
+
+        setRequestError(failMessage);
+        setPhase("config");
+        setMsgs((p) => [
+          ...p,
+          {
+            role: "bot",
+            text: `Tạo câu hỏi thất bại: ${failMessage}`,
+            time: "Vừa xong",
+          },
+        ]);
+        return;
+      }
+
+      if (!currentSessionId) {
+        setRequestError("Không thể khởi tạo phiên nháp AI.");
+        setPhase("config");
+        return;
+      }
+
+      setDraftSessionId(currentSessionId);
       setPhase("results");
+      setWorkspaceRefreshTick((prev) => prev + 1);
       setPg(1);
       setEditId(null);
+      setEditData(null);
+      setSelectedQuestionIds([]);
+      setSectionConfigs({});
+
       setMsgs((p) => [
         ...p,
         {
           role: "bot",
-          text: `Đã tạo ${r.length} câu! Bấm ✏️ Sửa để chỉnh thủ công, hoặc nhắn cho tôi:\n• \"Sửa câu 3 cho dễ hơn\"\n• \"Thêm 2 câu tự luận\"`,
+          text: `Đã xử lý tạo câu hỏi cho ${configuredGenerationTargets.length} section.${totalGenerated ? `\nSinh mới ${totalGenerated} câu hỏi.` : ""}${warningMessages.length ? `\nCảnh báo: ${warningMessages.join("; ")}` : ""}${failedSections.length ? `\nSection lỗi: ${failedSections.join(" | ")}` : ""}\nBạn có thể tiếp tục chọn format mới để tạo thêm.`,
           time: "Vừa xong",
         },
       ]);
-    }, 2200);
+
+      if (failedSections.length > 0) {
+        setRequestError(
+          `Một số section chưa tạo được: ${failedSections.join(" | ")}`,
+        );
+      } else {
+        setRequestError("");
+      }
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        "Không thể tạo câu hỏi với AI. Vui lòng thử lại.";
+
+      setRequestError(message);
+      setPhase("config");
+      setMsgs((p) => [
+        ...p,
+        {
+          role: "bot",
+          text: `Tạo câu hỏi thất bại: ${message}`,
+          time: "Vừa xong",
+        },
+      ]);
+    }
   };
   const startEdit = (q) => {
     setEditId(q.id);
@@ -414,34 +1401,307 @@ const CreateAssignmentAiPage = () => {
     setEditData(null);
   };
   const saveEdit = () => {
-    setQs((p) => p.map((q) => (q.id === editId ? { ...editData } : q)));
+    if (!editData) return;
+    const nextQuestion = { ...editData };
+
+    setQs((p) => p.map((q) => (q.id === editId ? nextQuestion : q)));
+    setWorkspaceSections((prev) =>
+      prev.map((section) => ({
+        ...section,
+        questions: section.questions.map((question) =>
+          question.id === editId ? nextQuestion : question,
+        ),
+      })),
+    );
     cancelEdit();
   };
   const deleteQ = (id) => {
     setQs((p) => p.filter((q) => q.id !== id));
+    setWorkspaceSections((prev) =>
+      prev.map((section) => ({
+        ...section,
+        questions: section.questions.filter((question) => question.id !== id),
+      })),
+    );
     if (editId === id) cancelEdit();
   };
-  const sendChat = () => {
-    if (!chatIn.trim()) return;
-    setMsgs((p) => [
-      ...p,
-      { role: "user", text: chatIn.trim(), time: "Vừa xong" },
-    ]);
-    const m = chatIn;
+
+  const reorderQuestionsInSection = (
+    sourceSectionId,
+    targetSectionId,
+    sourceQuestionId,
+    targetQuestionId,
+  ) => {
+    const safeSourceSectionId = toPositiveId(sourceSectionId);
+    const safeTargetSectionId = toPositiveId(targetSectionId);
+    const safeSessionId = toPositiveId(draftSessionId);
+
+    if (
+      !safeSourceSectionId ||
+      !safeTargetSectionId ||
+      sourceQuestionId === targetQuestionId ||
+      reorderSaving
+    ) {
+      return;
+    }
+
+    const previousSections = workspaceSections;
+    const { didReorder, nextSections, affectedSectionIds } =
+      applyQuestionDropToSections(
+      previousSections,
+      safeSourceSectionId,
+      safeTargetSectionId,
+      sourceQuestionId,
+      targetQuestionId,
+      );
+
+    if (!didReorder) return;
+
+    setWorkspaceSections(nextSections);
+    setQs(flattenQuestionsBySections(nextSections));
+    setPg(1);
+
+    if (!safeSessionId) {
+      setMsgs((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: "Đổi vị trí tạm thời trên giao diện. Chưa có draft session để lưu thứ tự lên server.",
+          time: "Vừa xong",
+        },
+      ]);
+      return;
+    }
+
+    const reorderItems = nextSections
+      .filter((section) => affectedSectionIds.includes(section.id))
+      .flatMap((section) =>
+        section.questions.map((question, index) => {
+          const safeItemId = toPositiveId(question?.id);
+          if (!safeItemId) return null;
+
+          return {
+            itemId: safeItemId,
+            sectionId: section.id,
+            orderIndex: index + 1,
+          };
+        }),
+      )
+      .filter(Boolean);
+
+    if (!reorderItems.length) return;
+
+    setReorderSaving(true);
+
+    assignmentApi
+      .batchAutoSaveDraftItems(safeSessionId, reorderItems, {
+        bankId,
+        assignmentId,
+      })
+      .catch(() => {
+        setWorkspaceSections(previousSections);
+        setQs(flattenQuestionsBySections(previousSections));
+        setMsgs((prev) => [
+          ...prev,
+          {
+            role: "bot",
+            text: "Không thể lưu thứ tự mới lên server. Đã hoàn tác về thứ tự cũ.",
+            time: "Vừa xong",
+          },
+        ]);
+      })
+      .finally(() => {
+        setReorderSaving(false);
+      });
+  };
+
+  const sendChat = async () => {
+    const message = String(chatIn || "").trim();
+    if (!message || typing) return;
+
+    setMsgs((p) => [...p, { role: "user", text: message, time: "Vừa xong" }]);
+
     setChatIn("");
     setTyping(true);
-    setTimeout(() => {
+
+    try {
+      const safeSessionId = toPositiveId(draftSessionId);
+      const safeSectionId = toPositiveId(selectedSectionId);
+
+      if (!safeSessionId) {
+        setMsgs((p) => [
+          ...p,
+          {
+            role: "bot",
+            text: "Vui lòng tạo câu hỏi AI trước, rồi tôi sẽ refine theo yêu cầu của thầy/cô.",
+            time: "Vừa xong",
+          },
+        ]);
+        return;
+      }
+
+      const normalizedSelectedQuestionIds = selectedQuestionIds
+        .map((id) => toPositiveId(id))
+        .filter(Boolean);
+
+      const response = await assignmentApi.refineAiQuestions(
+        safeSessionId,
+        {
+          prompt: message,
+          sectionId: safeSectionId || undefined,
+          selectQuestionIds:
+            normalizedSelectedQuestionIds.length > 0
+              ? normalizedSelectedQuestionIds
+              : undefined,
+        },
+        {
+          bankId,
+          assignmentId,
+        },
+      );
+
+      const result = response?.result || {};
+      const mappedQuestions = Array.isArray(result?.questions)
+        ? result.questions.map((item, index) =>
+            toQuestionFromDraft(item, index),
+          )
+        : [];
+      const warnings = Array.isArray(result?.warnings)
+        ? result.warnings.filter(Boolean)
+        : [];
+      const nextSessionId = toPositiveId(result?.sessionId);
+
+      if (nextSessionId) {
+        setDraftSessionId(nextSessionId);
+      }
+
+      if (mappedQuestions.length > 0) {
+        setQs(mappedQuestions);
+        setPhase("results");
+        setWorkspaceRefreshTick((prev) => prev + 1);
+        setPg(1);
+        setEditId(null);
+        setEditData(null);
+      } else {
+        setWorkspaceRefreshTick((prev) => prev + 1);
+      }
+
+      setMsgs((p) => [
+        ...p,
+        {
+          role: "bot",
+          text: `Đã refine theo yêu cầu của thầy/cô.${normalizedSelectedQuestionIds.length ? `\nPhạm vi: ${normalizedSelectedQuestionIds.length} câu được chọn.` : "\nPhạm vi: toàn bộ câu hỏi."}${mappedQuestions.length ? `\nCập nhật ${mappedQuestions.length} câu hỏi.` : ""}${warnings.length ? `\nCảnh báo: ${warnings.join("; ")}` : ""}`,
+          time: "Vừa xong",
+        },
+      ]);
+    } catch (error) {
+      const messageError =
+        error?.response?.data?.message ||
+        "Không thể refine câu hỏi lúc này. Vui lòng thử lại.";
+
+      setMsgs((p) => [
+        ...p,
+        {
+          role: "bot",
+          text: `Refine thất bại: ${messageError}`,
+          time: "Vừa xong",
+        },
+      ]);
+    } finally {
       setTyping(false);
-      let r = "Đã ghi nhận! ";
-      if (m.includes("sửa") || m.includes("đổi")) r += "Câu hỏi đã cập nhật.";
-      else if (m.includes("thêm")) r += "Đã thêm câu hỏi mới.";
-      else if (m.includes("xóa")) r += "Đã xóa.";
-      else r += "Mô tả cụ thể câu cần sửa nhé!";
-      setMsgs((p) => [...p, { role: "bot", text: r, time: "Vừa xong" }]);
-    }, 1400);
+    }
+  };
+
+  const collectConfirmQuestionIds = () => {
+    const allQuestionIds = [
+      ...new Set(
+        qs.map((question) => toPositiveId(question?.id)).filter(Boolean),
+      ),
+    ];
+
+    if (selectedQuestionIds.length > 0) {
+      const selectedIds = selectedQuestionIds.filter((id) =>
+        allQuestionIds.includes(id),
+      );
+      return selectedIds.length > 0 ? selectedIds : allQuestionIds;
+    }
+
+    return allQuestionIds;
+  };
+
+  const handlePublish = async () => {
+    if (publishing) return;
+
+    const safeAssignmentId = toPositiveId(assignmentId);
+    if (!safeAssignmentId) {
+      setRequestError("Thiếu assignmentId để xuất bản bài tập.");
+      return;
+    }
+
+    const safeSessionId = toPositiveId(draftSessionId);
+    if (!safeSessionId) {
+      setRequestError("Chưa có phiên nháp để xuất bản. Vui lòng tạo câu hỏi trước.");
+      return;
+    }
+
+    const selectedIds = collectConfirmQuestionIds();
+    if (!selectedIds.length) {
+      setRequestError("Không có câu hỏi hợp lệ để xuất bản.");
+      return;
+    }
+
+    setPublishing(true);
+    setRequestError("");
+
+    try {
+      await assignmentApi.confirmAndPublishAssignment(safeAssignmentId, {
+        sessionId: safeSessionId,
+        bankId: bankId || null,
+        selectedQuestionIds: selectedIds,
+      });
+
+      setMsgs((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: "Xuất bản bài tập thành công. Đang chuyển sang màn hình gán lớp học.",
+          time: "Vừa xong",
+        },
+      ]);
+
+      navigate(PATH_TEACHER.assignmentAssignClasses(safeAssignmentId));
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại.";
+      setRequestError(message);
+      setMsgs((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: `Xuất bản thất bại: ${message}`,
+          time: "Vừa xong",
+        },
+      ]);
+    } finally {
+      setPublishing(false);
+    }
   };
   const totalPg = Math.ceil(qs.length / PP);
   const vis = qs.slice((pg - 1) * PP, (pg - 1) * PP + PP);
+  const selectedQuestionIdSet = new Set(selectedQuestionIds);
+  const getGlobalQuestionNumber = (sectionIndex, questionIndex) => {
+    let count = questionIndex + 1;
+
+    for (let idx = 0; idx < sectionIndex; idx += 1) {
+      const sectionQuestions = Array.isArray(workspaceSections[idx]?.questions)
+        ? workspaceSections[idx].questions
+        : [];
+      count += sectionQuestions.length;
+    }
+
+    return count;
+  };
   const sugs =
     phase === "results"
       ? [
@@ -451,6 +1711,224 @@ const CreateAssignmentAiPage = () => {
           "Xóa câu cuối",
         ]
       : ["Gợi ý chủ đề", "Giải thích cách dùng"];
+
+  const renderQuestionCard = (
+    q,
+    num,
+    key,
+    animationIndex = 0,
+    dragOptions = {},
+  ) => {
+    const isEd = editId === q.id;
+    const d = isEd ? editData : q;
+    const safeQuestionId = toPositiveId(q?.id);
+    const isQuestionSelected = safeQuestionId
+      ? selectedQuestionIdSet.has(safeQuestionId)
+      : false;
+    const isDragging = Boolean(dragOptions?.isDragging);
+    const isDropTarget = Boolean(dragOptions?.isDropTarget);
+    const isDraggable = Boolean(dragOptions?.draggable);
+
+    return (
+      <div
+        key={key}
+        className={`qc${isEd ? " editing" : ""}`}
+        draggable={isDraggable}
+        onDragStart={dragOptions?.onDragStart}
+        onDragOver={dragOptions?.onDragOver}
+        onDrop={dragOptions?.onDrop}
+        onDragEnd={dragOptions?.onDragEnd}
+        style={{
+          animationDelay: `${animationIndex * 0.04}s`,
+          cursor: isDraggable ? "grab" : "default",
+          opacity: isDragging ? 0.55 : 1,
+          outline: isDropTarget ? "2px dashed var(--p)" : "none",
+        }}
+      >
+        <div className="qc-main">
+          <div className="qc-top">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexShrink: 0,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isQuestionSelected}
+                disabled={!safeQuestionId || typing}
+                draggable={false}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+                onChange={() => {
+                  if (!safeQuestionId) return;
+                  setSelectedQuestionIds((prev) => {
+                    if (prev.includes(safeQuestionId)) {
+                      return prev.filter((id) => id !== safeQuestionId);
+                    }
+                    return [...prev, safeQuestionId];
+                  });
+                }}
+                style={{ width: 14, height: 14, cursor: "pointer" }}
+              />
+              <div className="qc-n">{num}</div>
+            </div>
+            <div className="qc-body">
+              <span className={`qc-tb ${TC[d.type]}`}>{TL[d.type]}</span>
+              {isEd ? (
+                <textarea
+                  className="ed-prompt"
+                  value={d.prompt}
+                  onChange={(e) =>
+                    setEditData({ ...d, prompt: e.target.value })
+                  }
+                />
+              ) : (
+                <div className="qc-pr">{d.prompt}</div>
+              )}
+            </div>
+          </div>
+          {d.type === "MULTIPLE_CHOICE" &&
+            d.opts &&
+            (isEd ? (
+              <div style={{ marginLeft: 38 }}>
+                <div className="ed-lbl">Đáp án (bấm ○ chọn đúng)</div>
+                {d.opts.map((o, oi) => (
+                  <div key={oi} className="ed-opt-row">
+                    <div
+                      className={`ed-opt-radio${d.cor === oi ? " on" : ""}`}
+                      onClick={() => setEditData({ ...d, cor: oi })}
+                    >
+                      {d.cor === oi && <I.Check />}
+                    </div>
+                    <div
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 4,
+                        background: "var(--bl)",
+                        fontSize: 9,
+                        fontWeight: 800,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--t3)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {LT[oi]}
+                    </div>
+                    <input
+                      className="ed-opt-input"
+                      value={o}
+                      onChange={(e) => {
+                        const nw = [...d.opts];
+                        nw[oi] = e.target.value;
+                        setEditData({ ...d, opts: nw });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="qc-opts">
+                {d.opts.map((o, oi) => (
+                  <div
+                    key={oi}
+                    className={`qc-opt${oi === d.cor ? " ok" : ""}`}
+                  >
+                    <div className="qc-ol">{LT[oi]}</div>
+                    {o}
+                  </div>
+                ))}
+              </div>
+            ))}
+          {d.type === "TRUE_FALSE" &&
+            (isEd ? (
+              <>
+                <div className="ed-lbl">Đáp án</div>
+                <div className="ed-tf">
+                  <div
+                    className={`ed-tfb${d.cor === true ? " on" : ""}`}
+                    onClick={() => setEditData({ ...d, cor: true })}
+                  >
+                    Đúng
+                  </div>
+                  <div
+                    className={`ed-tfb${d.cor === false ? " on" : ""}`}
+                    onClick={() => setEditData({ ...d, cor: false })}
+                  >
+                    Sai
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="qc-tf">
+                Đáp án: <span className="ctag">{d.cor ? "Đúng" : "Sai"}</span>
+              </div>
+            ))}
+          {d.type === "FILL_IN_BLANK" &&
+            (isEd ? (
+              <>
+                <div className="ed-lbl">Đáp án</div>
+                <input
+                  className="ed-ans"
+                  value={d.ans || ""}
+                  onChange={(e) => setEditData({ ...d, ans: e.target.value })}
+                />
+              </>
+            ) : (
+              <div className="qc-fb">
+                Đáp án: <span>{d.ans}</span>
+              </div>
+            ))}
+          {d.type === "ESSAY" && !isEd && (
+            <>
+              <div className="qc-fb" style={{ fontStyle: "italic" }}>
+                Tự luận - chấm thủ công
+              </div>
+              {String(d.sampleAnswer || "").trim() && (
+                <div className="qc-fb" style={{ whiteSpace: "pre-line" }}>
+                  Gợi ý trả lời: <span>{d.sampleAnswer}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div className="qc-bar">
+          <div className="qc-bar-l">
+            {isEd ? (
+              <>
+                <button className="ab sv" onClick={saveEdit}>
+                  <I.Check /> Lưu
+                </button>
+                <button className="ab" onClick={cancelEdit}>
+                  <I.Undo /> Hủy
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="ab ed" onClick={() => startEdit(q)}>
+                  <I.Edit /> Sửa
+                </button>
+                <button className="ab">
+                  <I.Copy /> Nhân bản
+                </button>
+              </>
+            )}
+          </div>
+          <div className="qc-bar-r">
+            <button className="ab dng" onClick={() => deleteQ(q.id)}>
+              <I.Trash /> Xóa
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -480,8 +1958,12 @@ const CreateAssignmentAiPage = () => {
                 >
                   <I.Refresh /> Tạo lại
                 </button>
-                <button className="btn btn-p">
-                  <I.Save /> Lưu vào ngân hàng
+                <button
+                  className="btn btn-p"
+                  onClick={handlePublish}
+                  disabled={publishing}
+                >
+                  <I.Save /> {publishing ? "Đang xuất bản..." : "Xuất bản"}
                 </button>
               </>
             )}
@@ -492,67 +1974,279 @@ const CreateAssignmentAiPage = () => {
             <div className="cfg-t">
               <I.Zap /> Cấu hình sinh câu hỏi
             </div>
-            <div className="cfg-d">
+            <div
+              className="cfg-d"
+              style={{
+                fontSize: 10,
+                fontStyle: "italic",
+                fontWeight: 500,
+                lineHeight: 1.5,
+                fontFamily: "var(--f)",
+              }}
+            >
               Thiết lập thông số để AI sinh câu hỏi phù hợp.
             </div>
-            <div className="fg">
-              <label className="fl">
-                Mức độ nhận thức <span className="rq">*</span>
-              </label>
-              <div className="cg">
-                {COG.map((c) => (
-                  <div
-                    key={c.v}
-                    className={`cp${cog === c.v ? " on" : ""}`}
-                    onClick={() => setCog(c.v)}
-                  >
-                    <div className="cp-n">
-                      <div className="cp-dot" style={{ background: c.c }} />
-                      {c.l}
-                    </div>
-                    <div className="cp-d">{c.d}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="fg">
-              <label className="fl">
-                Số lượng <span className="rq">*</span>
-              </label>
-              <div className="qr">
-                <button
-                  className="qb"
-                  onClick={() => setQty(Math.max(1, qty - 1))}
+
+            {assignmentSections.length > 0 && (
+              <div className="fg">
+                <label className="fl">
+                  Phần áp dụng <span className="rq">*</span>
+                </label>
+                <select
+                  value={selectedSectionId || ""}
+                  onChange={(event) =>
+                    setSelectedSectionId(toPositiveId(event.target.value))
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    border: "1.5px solid var(--b)",
+                    borderRadius: "var(--rm)",
+                    fontSize: 12,
+                    fontFamily: "var(--f)",
+                    color: "var(--t)",
+                    background: "var(--inp)",
+                    outline: "none",
+                  }}
                 >
-                  −
-                </button>
-                <div className="qv">{qty}</div>
-                <button
-                  className="qb"
-                  onClick={() => setQty(Math.min(50, qty + 1))}
+                  {assignmentSections.map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.title} -{" "}
+                      {toSectionTypeLabel(section.sectionType)}
+                    </option>
+                  ))}
+                </select>
+                <p
+                  style={{
+                    marginTop: 6,
+                    fontSize: 10,
+                    color: "var(--t3)",
+                    fontStyle: "italic",
+                    fontWeight: 500,
+                    lineHeight: 1.5,
+                    fontFamily: "var(--f)",
+                  }}
                 >
-                  +
-                </button>
-                <span style={{ fontSize: 11, color: "var(--t3)" }}>câu</span>
+                  Câu hỏi AI sinh ra sẽ được gán vào phần đã chọn.
+                </p>
               </div>
-            </div>
+            )}
+
             <div className="fg">
               <label className="fl">
                 Loại câu hỏi <span className="rq">*</span>
               </label>
               <div className="qtg">
-                {QT.map((q) => (
-                  <div
-                    key={q.v}
-                    className={`qtp${qts.includes(q.v) ? " on" : ""}`}
-                    onClick={() => togQT(q.v)}
-                  >
-                    <div className="qti">{q.ic}</div>
-                    <div className="qtl">{q.l}</div>
-                  </div>
-                ))}
+                {QT.map((q) => {
+                  const disabled = !allowedQuestionTypes.includes(q.v);
+
+                  return (
+                    <div
+                      key={q.v}
+                      className={`qtp${qts.includes(q.v) ? " on" : ""}`}
+                      onClick={() => !disabled && togQT(q.v)}
+                      style={{
+                        opacity: disabled ? 0.45 : 1,
+                        cursor: disabled ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <div className="qti">{q.ic}</div>
+                      <div className="qtl">{q.l}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+
+            {qts.length > 0 && (
+              <div className="fg">
+                <label className="fl">
+                  Cấu hình chi tiết theo loại <span className="rq">*</span>
+                </label>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  {qts.map((type) => {
+                    const questionType = QT.find((item) => item.v === type);
+                    const requirement = buildRequirementConfig(
+                      typeRequirements?.[type],
+                    );
+
+                    return (
+                      <div
+                        key={type}
+                        style={{
+                          border: "1px solid var(--b)",
+                          borderRadius: "var(--rm)",
+                          padding: "8px 10px",
+                          background: "var(--plr)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "minmax(150px,1fr) minmax(230px,1fr) minmax(250px,1.2fr)",
+                            gap: 10,
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: "var(--t2)",
+                              }}
+                            >
+                              <span className="qti" style={{ margin: 0 }}>
+                                {questionType?.ic || "QT"}
+                              </span>
+                              {questionType?.l || type}
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              minWidth: 0,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: "var(--t3)",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Số lượng
+                            </span>
+                            <div className="qr" style={{ gap: 6 }}>
+                              <button
+                                className="qb"
+                                onClick={() =>
+                                  setRequirementQuantity(
+                                    type,
+                                    Math.max(1, requirement.quantity - 1),
+                                  )
+                                }
+                                style={{ width: 30, height: 30, fontSize: 14 }}
+                              >
+                                −
+                              </button>
+                              <input
+                                className="qv"
+                                type="number"
+                                min="1"
+                                max="50"
+                                step="1"
+                                value={requirement.quantity}
+                                onChange={(event) => {
+                                  const parsed = Number(event.target.value);
+                                  if (!Number.isFinite(parsed)) return;
+                                  setRequirementQuantity(type, parsed);
+                                }}
+                                style={{
+                                  width: 52,
+                                  minWidth: 52,
+                                  height: 30,
+                                  border: "1.5px solid var(--b)",
+                                  borderRadius: "var(--rs)",
+                                  background: "var(--card)",
+                                  color: "var(--t)",
+                                  outline: "none",
+                                  lineHeight: "30px",
+                                  textAlign: "center",
+                                  padding: 0,
+                                  fontSize: 14,
+                                  fontFamily: "var(--fm)",
+                                  fontWeight: 700,
+                                }}
+                              />
+                              <button
+                                className="qb"
+                                onClick={() =>
+                                  setRequirementQuantity(
+                                    type,
+                                    Math.min(50, requirement.quantity + 1),
+                                  )
+                                }
+                                style={{ width: 30, height: 30, fontSize: 14 }}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              minWidth: 0,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: "var(--t3)",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Mức độ câu hỏi
+                            </span>
+                            <select
+                              value={requirement.cognitiveLevel}
+                              onChange={(event) =>
+                                setRequirementCognitive(
+                                  type,
+                                  event.target.value,
+                                )
+                              }
+                              style={{
+                                flex: 1,
+                                height: 30,
+                                border: "1.5px solid var(--b)",
+                                borderRadius: "var(--rs)",
+                                padding: "0 10px",
+                                fontSize: 11,
+                                fontWeight: 600,
+                                fontFamily: "var(--f)",
+                                color: "var(--t)",
+                                background: "var(--card)",
+                                outline: "none",
+                              }}
+                            >
+                              {COG.map((level) => (
+                                <option
+                                  key={`${type}-${level.v}`}
+                                  value={level.v}
+                                >
+                                  {level.l}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="fg">
               <label className="fl">Tài liệu nguồn</label>
               <div className="st">
@@ -577,7 +2271,8 @@ const CreateAssignmentAiPage = () => {
                     accept=".pdf,.doc,.docx,.txt"
                     style={{ display: "none" }}
                     onChange={(e) => {
-                      if (e.target.files?.[0]) setAiF(e.target.files[0].name);
+                      const file = e.target.files?.[0] || null;
+                      setAiF(file);
                     }}
                   />
                   <div
@@ -587,12 +2282,15 @@ const CreateAssignmentAiPage = () => {
                     {aiF ? (
                       <div className="uz-fi">
                         <I.File />
-                        <span className="uz-fn">{aiF}</span>
+                        <span className="uz-fn">{aiF.name}</span>
                         <button
                           className="uz-rm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setAiF("");
+                            setAiF(null);
+                            if (fRef.current) {
+                              fRef.current.value = "";
+                            }
                           }}
                         >
                           <I.X />
@@ -642,7 +2340,20 @@ const CreateAssignmentAiPage = () => {
                   textAlign: "center",
                 }}
               >
-                Chọn mức độ, loại câu hỏi và tài liệu
+                Chọn ít nhất 1 loại câu hỏi, cấu hình chi tiết và tài liệu
+              </p>
+            )}
+            {requestError && (
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--rd)",
+                  marginTop: 8,
+                  textAlign: "center",
+                  fontWeight: 600,
+                }}
+              >
+                {requestError}
               </p>
             )}
           </div>
@@ -676,7 +2387,7 @@ const CreateAssignmentAiPage = () => {
                 AI đang tạo...
               </div>
               <p style={{ fontSize: 12, color: "var(--t3)", marginBottom: 20 }}>
-                Đang sinh {qty} câu hỏi
+                Đang sinh {totalConfiguredQuestions} câu hỏi
               </p>
               {[1, 2, 3].map((i) => (
                 <div
@@ -695,218 +2406,174 @@ const CreateAssignmentAiPage = () => {
                   <span className="rc">{qs.length}</span>
                 </div>
               </div>
-              {vis.map((q, i) => {
-                const num = (pg - 1) * PP + i + 1;
-                const isEd = editId === q.id;
-                const d = isEd ? editData : q;
-                return (
-                  <div
-                    key={q.id}
-                    className={`qc${isEd ? " editing" : ""}`}
-                    style={{ animationDelay: `${i * 0.04}s` }}
-                  >
-                    <div className="qc-main">
-                      <div className="qc-top">
-                        <div className="qc-n">{num}</div>
-                        <div className="qc-body">
-                          <span className={`qc-tb ${TC[d.type]}`}>
-                            {TL[d.type]}
-                          </span>
-                          {isEd ? (
-                            <textarea
-                              className="ed-prompt"
-                              value={d.prompt}
-                              onChange={(e) =>
-                                setEditData({ ...d, prompt: e.target.value })
-                              }
-                            />
-                          ) : (
-                            <div className="qc-pr">{d.prompt}</div>
-                          )}
+
+              {workspaceSections.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    marginBottom: 12,
+                  }}
+                >
+                  {workspaceSections.map((section, sectionIndex) => (
+                    <div
+                      key={section.id}
+                      className="cfg"
+                      style={{ padding: 12 }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>
+                          Section {sectionIndex + 1}: {section.title}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--t3)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {toSectionTypeLabel(section.sectionType)} •{" "}
+                          {section.questions.length} câu
                         </div>
                       </div>
-                      {d.type === "MULTIPLE_CHOICE" &&
-                        d.opts &&
-                        (isEd ? (
-                          <div style={{ marginLeft: 38 }}>
-                            <div className="ed-lbl">
-                              Đáp án (bấm ○ chọn đúng)
-                            </div>
-                            {d.opts.map((o, oi) => (
-                              <div key={oi} className="ed-opt-row">
-                                <div
-                                  className={`ed-opt-radio${d.cor === oi ? " on" : ""}`}
-                                  onClick={() => setEditData({ ...d, cor: oi })}
-                                >
-                                  {d.cor === oi && <I.Check />}
-                                </div>
-                                <div
-                                  style={{
-                                    width: 18,
-                                    height: 18,
-                                    borderRadius: 4,
-                                    background: "var(--bl)",
-                                    fontSize: 9,
-                                    fontWeight: 800,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: "var(--t3)",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  {LT[oi]}
-                                </div>
-                                <input
-                                  className="ed-opt-input"
-                                  value={o}
-                                  onChange={(e) => {
-                                    const nw = [...d.opts];
-                                    nw[oi] = e.target.value;
-                                    setEditData({ ...d, opts: nw });
-                                  }}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="qc-opts">
-                            {d.opts.map((o, oi) => (
-                              <div
-                                key={oi}
-                                className={`qc-opt${oi === d.cor ? " ok" : ""}`}
-                              >
-                                <div className="qc-ol">{LT[oi]}</div>
-                                {o}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      {d.type === "TRUE_FALSE" &&
-                        (isEd ? (
-                          <>
-                            <div className="ed-lbl">Đáp án</div>
-                            <div className="ed-tf">
-                              <div
-                                className={`ed-tfb${d.cor === true ? " on" : ""}`}
-                                onClick={() => setEditData({ ...d, cor: true })}
-                              >
-                                Đúng
-                              </div>
-                              <div
-                                className={`ed-tfb${d.cor === false ? " on" : ""}`}
-                                onClick={() =>
-                                  setEditData({ ...d, cor: false })
-                                }
-                              >
-                                Sai
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="qc-tf">
-                            Đáp án:{" "}
-                            <span className="ctag">
-                              {d.cor ? "Đúng" : "Sai"}
-                            </span>
-                          </div>
-                        ))}
-                      {d.type === "FILL_IN_BLANK" &&
-                        (isEd ? (
-                          <>
-                            <div className="ed-lbl">Đáp án</div>
-                            <input
-                              className="ed-ans"
-                              value={d.ans || ""}
-                              onChange={(e) =>
-                                setEditData({ ...d, ans: e.target.value })
-                              }
-                            />
-                          </>
-                        ) : (
-                          <div className="qc-fb">
-                            Đáp án: <span>{d.ans}</span>
-                          </div>
-                        ))}
-                      {d.type === "ESSAY" && !isEd && (
-                        <div className="qc-fb" style={{ fontStyle: "italic" }}>
-                          Tự luận — chấm thủ công
+                      {section.questions.length > 0 ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                          }}
+                        >
+                          {section.questions.map((question, questionIndex) =>
+                            renderQuestionCard(
+                              question,
+                              getGlobalQuestionNumber(sectionIndex, questionIndex),
+                              `section-${section.id}-${question.id}-${questionIndex}`,
+                              questionIndex,
+                              {
+                                draggable: !reorderSaving,
+                                isDragging:
+                                  draggingQuestion?.sectionId === section.id &&
+                                  draggingQuestion?.questionId === question.id,
+                                isDropTarget:
+                                  dragOverTarget?.sectionId === section.id &&
+                                  dragOverTarget?.questionId === question.id,
+                                onDragStart: (event) => {
+                                  if (reorderSaving) return;
+                                  event.dataTransfer.effectAllowed = "move";
+                                  setDraggingQuestion({
+                                    sectionId: section.id,
+                                    questionId: question.id,
+                                  });
+                                  setDragOverTarget({
+                                    sectionId: section.id,
+                                    questionId: question.id,
+                                  });
+                                },
+                                onDragOver: (event) => {
+                                  event.preventDefault();
+                                  event.dataTransfer.dropEffect = "move";
+                                  if (
+                                    dragOverTarget?.sectionId !== section.id ||
+                                    dragOverTarget?.questionId !== question.id
+                                  ) {
+                                    setDragOverTarget({
+                                      sectionId: section.id,
+                                      questionId: question.id,
+                                    });
+                                  }
+                                },
+                                onDrop: (event) => {
+                                  event.preventDefault();
+                                  if (reorderSaving) return;
+                                  if (
+                                    draggingQuestion?.questionId !== question.id
+                                  ) {
+                                    reorderQuestionsInSection(
+                                      draggingQuestion.sectionId,
+                                      section.id,
+                                      draggingQuestion.questionId,
+                                      question.id,
+                                    );
+                                  }
+                                  setDraggingQuestion(null);
+                                  setDragOverTarget(null);
+                                },
+                                onDragEnd: () => {
+                                  setDraggingQuestion(null);
+                                  setDragOverTarget(null);
+                                },
+                              },
+                            ),
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: "var(--t3)" }}>
+                          Section này chưa có câu hỏi.
                         </div>
                       )}
                     </div>
-                    <div className="qc-bar">
-                      <div className="qc-bar-l">
-                        {isEd ? (
-                          <>
-                            <button className="ab sv" onClick={saveEdit}>
-                              <I.Check /> Lưu
-                            </button>
-                            <button className="ab" onClick={cancelEdit}>
-                              <I.Undo /> Hủy
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              className="ab ed"
-                              onClick={() => startEdit(q)}
-                            >
-                              <I.Edit /> Sửa
-                            </button>
-                            <button className="ab">
-                              <I.Copy /> Nhân bản
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      <div className="qc-bar-r">
-                        <button
-                          className="ab dng"
-                          onClick={() => deleteQ(q.id)}
-                        >
-                          <I.Trash /> Xóa
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {totalPg > 1 && (
-                <div className="pag">
-                  <button
-                    className="pg"
-                    disabled={pg <= 1}
-                    onClick={() => setPg(pg - 1)}
-                  >
-                    <I.ChevL />
-                  </button>
-                  {Array.from({ length: totalPg }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      className={`pg${p === pg ? " on" : ""}`}
-                      onClick={() => setPg(p)}
-                    >
-                      {p}
-                    </button>
                   ))}
-                  <button
-                    className="pg"
-                    disabled={pg >= totalPg}
-                    onClick={() => setPg(pg + 1)}
-                  >
-                    <I.ChevR />
-                  </button>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: "var(--t3)",
-                      fontWeight: 600,
-                      marginLeft: 6,
-                    }}
-                  >
-                    {qs.length} câu
-                  </span>
                 </div>
+              ) : (
+                <>
+                  {vis.map((q, i) => {
+                    return renderQuestionCard(
+                      q,
+                      (pg - 1) * PP + i + 1,
+                      `flat-${q.id}-${i}`,
+                      i,
+                    );
+                  })}
+                  {totalPg > 1 && (
+                    <div className="pag">
+                      <button
+                        className="pg"
+                        disabled={pg <= 1}
+                        onClick={() => setPg(pg - 1)}
+                      >
+                        <I.ChevL />
+                      </button>
+                      {Array.from({ length: totalPg }, (_, i) => i + 1).map(
+                        (p) => (
+                          <button
+                            key={p}
+                            className={`pg${p === pg ? " on" : ""}`}
+                            onClick={() => setPg(p)}
+                          >
+                            {p}
+                          </button>
+                        ),
+                      )}
+                      <button
+                        className="pg"
+                        disabled={pg >= totalPg}
+                        onClick={() => setPg(pg + 1)}
+                      >
+                        <I.ChevR />
+                      </button>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "var(--t3)",
+                          fontWeight: 600,
+                          marginLeft: 6,
+                        }}
+                      >
+                        {qs.length} câu
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
@@ -963,6 +2630,51 @@ const CreateAssignmentAiPage = () => {
           ))}
         </div>
         <div className="ch-inp">
+          {assignmentSections.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 10,
+                  color: "var(--t3)",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                }}
+              >
+                Section tinh chỉnh
+              </label>
+              <select
+                value={selectedSectionId || ""}
+                onChange={(event) =>
+                  setSelectedSectionId(toPositiveId(event.target.value))
+                }
+                style={{
+                  width: "100%",
+                  height: 32,
+                  border: "1.5px solid var(--b)",
+                  borderRadius: "var(--rs)",
+                  padding: "0 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  fontFamily: "var(--f)",
+                  color: "var(--t)",
+                  background: "var(--card)",
+                  outline: "none",
+                }}
+              >
+                {assignmentSections.map((section) => (
+                  <option key={`chat-section-${section.id}`} value={section.id}>
+                    {section.title} - {toSectionTypeLabel(section.sectionType)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="ch-ht">
+            {selectedQuestionIds.length > 0
+              ? `Đang chọn ${selectedQuestionIds.length} câu để tinh chỉnh.`
+              : "Chưa chọn câu hỏi: AI sẽ tinh chỉnh toàn bộ."}
+          </div>
           <div className="ch-ir">
             <textarea
               className="ch-ta"

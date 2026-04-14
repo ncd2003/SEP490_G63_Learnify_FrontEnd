@@ -73,8 +73,8 @@ const StudentClassroomListPage = Loadable(
 const ClassroomPostPage = Loadable(
   lazy(() => import("@/pages/classroom/feed/post-page")),
 );
-const PendingRequestsPage = Loadable(
-  lazy(() => import("@/pages/classroom/PendingRequests")),
+const MemberClassPage = Loadable(
+  lazy(() => import("@/pages/classroom/MemberClass")),
 );
 const AssignmentPage = Loadable(
   lazy(() => import("@/pages/assignment/list/assignment-page")),
@@ -105,8 +105,20 @@ const CreateAssignmentAiPage = Loadable(
 const ImportAssignmentFilePage = Loadable(
   lazy(() => import("@/pages/assignment/import/import-assignment-file-page")),
 );
+const QuestionBankPickerPage = Loadable(
+  lazy(() => import("@/pages/assignment/bank/question-bank-picker-page")),
+);
+const TeacherSchedulePage = Loadable(
+  lazy(() => import("@/pages/classroom/schedule/teacher-schedule-page")),
+);
 const SchedulePage = Loadable(
   lazy(() => import("@/pages/classroom/schedule/schedulePage")),
+);
+const ClassroomLecturePage = Loadable(
+  lazy(() => import("@/pages/classroom/lecture/lecture-page")),
+);
+const ClassroomRecordingPage = Loadable(
+  lazy(() => import("@/pages/classroom/recording/recording-page")),
 );
 const AttendanceListPage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
@@ -290,6 +302,10 @@ const AppRoutes = () =>
           element: <ClassroomListOrStudentPage />,
         },
         {
+          path: PATH_TEACHER.schedule,
+          element: <TeacherSchedulePage />,
+        },
+        {
           path: PATH_TEACHER.assignments,
           element: <AssignmentHubPage />,
         },
@@ -302,12 +318,16 @@ const AppRoutes = () =>
           element: <CreateAssignmentMethodPage />,
         },
         {
+          path: PATH_TEACHER.assignmentCreateAiSetup,
+          element: <ManualAssignmentSetupPage mode="ai" />,
+        },
+        {
           path: PATH_TEACHER.assignmentCreateAi,
           element: <CreateAssignmentAiPage />,
         },
         {
           path: PATH_TEACHER.assignmentCreateManual,
-          element: <ManualAssignmentSetupPage />,
+          element: <ManualAssignmentSetupPage mode="manual" />,
         },
         {
           path: PATH_TEACHER.assignmentCreateManualQuestions,
@@ -320,6 +340,10 @@ const AppRoutes = () =>
         {
           path: PATH_TEACHER.assignmentCreateImport,
           element: <ImportAssignmentFilePage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentQuestionBankPicker,
+          element: <QuestionBankPickerPage />,
         },
         {
           path: PATH_TEACHER.classroom.assignments(":id"),
@@ -425,7 +449,7 @@ const AppRoutes = () =>
       path: "classrooms/:id/pending-requests",
       element: (
         <AuthGuard>
-          <PendingRequestsPage />
+          <MemberClassPage />
         </AuthGuard>
       ),
     },
@@ -444,6 +468,14 @@ const AppRoutes = () =>
           <AttendanceListPage />
         </AuthGuard>
       ),
+    },
+    {
+      path: "classrooms/:id/lecture",
+      element: <AuthGuard><ClassroomLecturePage /></AuthGuard>,
+    },
+    {
+      path: "classrooms/:id/recordings",
+      element: <AuthGuard><ClassroomRecordingPage /></AuthGuard>,
     },
     {
       path: "classrooms/:id/attendance/:sessionId",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   MessageSquare, 
@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   ChevronLeft,
   Calendar,
+  Video,
   ChevronsLeft,
   ChevronsRight,
   ChevronDown,
@@ -32,6 +33,7 @@ const MENU_ITEMS = [
   { key: 'folders', label: 'Tài liệu', icon: FolderOpen, path: '/folders' },
   { key: 'grades', label: 'Bảng điểm', icon: BarChart3, path: '/grades' },
   { key: 'attendance', label: 'Điểm danh', icon: ClipboardCheck, path: '/attendance' },
+  { key: 'recordings', label: 'Bài giảng', icon: Video, path: '/recordings' },
 ];
 
 const ClassroomDetailLayout = ({ children }) => {
@@ -44,10 +46,6 @@ const ClassroomDetailLayout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-  useEffect(() => {
-    fetchClassroomInfo();
-  }, [id]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -92,7 +90,7 @@ const ClassroomDetailLayout = ({ children }) => {
     };
   }, []);
 
-  const fetchClassroomInfo = async () => {
+  const fetchClassroomInfo = useCallback(async () => {
     try {
       setLoading(true);
       const response = await classroomApi.getClassroomById(id);
@@ -106,7 +104,11 @@ const ClassroomDetailLayout = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchClassroomInfo();
+  }, [fetchClassroomInfo]);
 
   const handleBackToClassrooms = () => {
     navigate(PATH_TEACHER.classroom.root);
@@ -130,6 +132,7 @@ const ClassroomDetailLayout = ({ children }) => {
   const getActiveMenuItem = () => {
     const path = location.pathname;
     if (path.includes('/attendance')) return 'attendance';
+    if (path.includes('/recordings')) return 'recordings';
     if (path.includes('/schedule')) return 'schedule';
     if (path.includes('/pending-requests')) return 'members';
     if (path.includes('/members')) return 'members';
@@ -142,11 +145,13 @@ const ClassroomDetailLayout = ({ children }) => {
   const activeKey = getActiveMenuItem();
   const activeMenuLabel = MENU_ITEMS.find((item) => item.key === activeKey)?.label || 'Lop hoc';
 
+  const normalizedRole = normalizeRole(user?.role);
+  const isTeacher = normalizedRole === 'TEACHER';
+
   const roleLabel = (() => {
-    const role = normalizeRole(user?.role);
-    if (role === 'TEACHER') return 'Giáo viên';
-    if (role === 'STUDENT') return 'Học sinh';
-    if (role === 'ADMIN') return 'Quản trị viên';
+    if (normalizedRole === 'TEACHER') return 'Giáo viên';
+    if (normalizedRole === 'STUDENT') return 'Học sinh';
+    if (normalizedRole === 'ADMIN') return 'Quản trị viên';
     return 'Người dùng';
   })();
 
@@ -291,7 +296,7 @@ const ClassroomDetailLayout = ({ children }) => {
           })}
         </nav>
 
-        {!collapsed && (
+        {!collapsed && isTeacher && (
           <div className="classroom-plan-usage-card">
             <div className="classroom-plan-usage-head">
               <span className="classroom-plan-usage-label">Gói hiện tại</span>

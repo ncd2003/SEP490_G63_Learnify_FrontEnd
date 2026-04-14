@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
-import { classroomApi } from "@/apis/classroom.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const defaultSettings = () => ({
@@ -17,6 +16,79 @@ const defaultSettings = () => ({
   limitTabs: "",
   requireFullScreen: false,
 });
+
+const SETTINGS_PANEL_CSS = `
+.assign-setting-panel{background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(26,35,50,.04)}
+.assign-step-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.assign-step-head-left{display:flex;align-items:center;gap:10px}
+.assign-step-number{width:28px;height:28px;border-radius:50%;background:#EFF6FF;color:#2563EB;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.assign-step-label{font-size:14px;font-weight:700;color:#1E293B}
+.assign-save-btn{height:34px;padding:0 14px;border-radius:10px;border:none;background:linear-gradient(135deg,#3B82F6,#2563EB);color:#FFF;font-size:12px;font-weight:700;font-family:'Be Vietnam Pro','Segoe UI',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.assign-save-btn:disabled{cursor:not-allowed;opacity:.65}
+.assign-form-group{margin-bottom:12px}
+.assign-form-group:last-child{margin-bottom:0}
+.assign-label{display:block;font-size:11px;font-weight:700;color:#64748B;margin-bottom:5px;letter-spacing:.02em}
+.assign-input,.assign-select{width:100%;height:36px;border:1.5px solid #E2E8F0;border-radius:10px;padding:0 11px;font-size:12px;font-family:'Be Vietnam Pro','Segoe UI',sans-serif;color:#1E293B;background:#F8FAFC;transition:all .2s ease;outline:none}
+.assign-input:focus,.assign-select:focus{border-color:#3B82F6;background:#FFFFFF;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.assign-setting-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+.assign-setting-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
+.assign-toggle-item{padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:12px;background:#FFFFFF}
+.assign-pill-group{display:flex;gap:8px;flex-wrap:nowrap}
+.assign-pill{flex:1;display:inline-flex;justify-content:center;align-items:center;padding:8px 11px;border-radius:999px;font-size:12px;font-weight:600;font-family:'Be Vietnam Pro','Segoe UI',sans-serif;border:1.5px solid #E2E8F0;background:#FFFFFF;color:#64748B;cursor:pointer;transition:all .2s ease}
+.assign-pill:hover{border-color:#3B82F6;color:#2563EB;background:#EFF6FF}
+.assign-pill.active{background:#3B82F6;border-color:#3B82F6;color:#FFFFFF;box-shadow:0 2px 8px rgba(59,130,246,.25)}
+@media(max-width:1024px){.assign-setting-grid,.assign-setting-checks{grid-template-columns:1fr}}
+@media(max-width:640px){.assign-step-head{flex-direction:column;align-items:flex-start}.assign-save-btn{width:100%;justify-content:center}}
+`;
+
+const toLocalDateTimeInput = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const toIsoDateTime = (value) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString();
+};
+
+const toOverridePayload = (config = {}, category = "HOMEWORK") => {
+  const isTest = String(category || "").toUpperCase() === "TEST";
+  const durationMinutes = Number(config.durationMinutes);
+  const limitTabs = Number(config.limitTabs);
+
+  return {
+    password: String(config.password || "").trim() || null,
+    durationMinutes:
+      Number.isFinite(durationMinutes) && durationMinutes > 0
+        ? Math.round(durationMinutes)
+        : null,
+    startTime: toIsoDateTime(config.startTime),
+    deadline: toIsoDateTime(config.deadline),
+    allowLateSubmission: Boolean(config.allowLateSubmission),
+    shuffleQuestions: isTest ? Boolean(config.shuffleQuestions) : false,
+    limitTabs:
+      !isTest || String(config.limitTabs || "").trim() === ""
+        ? null
+        : Number.isFinite(limitTabs)
+          ? Math.max(0, Math.round(limitTabs))
+          : null,
+    requireFullScreen: isTest ? Boolean(config.requireFullScreen) : false,
+  };
+};
 
 const getInitials = (name) => {
   const value = String(name || "").trim();
@@ -147,6 +219,8 @@ const AssignToClassesPage = () => {
   const [openCards, setOpenCards] = useState({});
   const [toast, setToast] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [baseSettings, setBaseSettings] = useState(defaultSettings());
+  const [assignmentCategory, setAssignmentCategory] = useState("HOMEWORK");
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -157,26 +231,40 @@ const AssignToClassesPage = () => {
     let alive = true;
 
     const loadClasses = async () => {
+      if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
+        setClasses([]);
+        setLoadingClasses(false);
+        return;
+      }
+
       setLoadingClasses(true);
       try {
-        const resp = await classroomApi.getClassroomsByTeacher();
-        const source = Array.isArray(resp?.data?.result)
-          ? resp.data.result
-          : Array.isArray(resp?.result)
-            ? resp.result
-            : [];
-
-        const normalized = source.map(normalizeClassroom).filter(Boolean);
+        const response =
+          await assignmentApi.getAvailableClassroomsForAssignment(assignmentId);
+        const normalized = (
+          Array.isArray(response?.result) ? response.result : []
+        )
+          .map(normalizeClassroom)
+          .filter(Boolean);
+        const uniqueClassrooms = Array.from(
+          new Map(normalized.map((item) => [item.id, item])).values(),
+        );
 
         if (alive) {
-          setClasses(normalized);
+          setClasses(uniqueClassrooms);
+          setSelected(new Set());
+          setSettings({});
+          setOpenCards({});
         }
       } catch (error) {
         if (alive) {
           setClasses([]);
+          setSelected(new Set());
+          setSettings({});
+          setOpenCards({});
           showToast(
             error?.response?.data?.message ||
-              "Không thể tải danh sách lớp học.",
+              "Không thể tải danh sách lớp có thể giao bài.",
             "error",
           );
         }
@@ -190,7 +278,50 @@ const AssignToClassesPage = () => {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [assignmentId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(assignmentId) || assignmentId <= 0) return;
+
+    let alive = true;
+
+    assignmentApi
+      .getAssignment(assignmentId)
+      .then((response) => {
+        if (!alive) return;
+
+        const setting = response?.result?.setting || {};
+        const category = String(response?.result?.category || "HOMEWORK")
+          .trim()
+          .toUpperCase();
+        const nextDefaults = {
+          ...defaultSettings(),
+          password: String(setting.password || ""),
+          durationMinutes: Number(setting.durationMinutes || 45),
+          startTime: toLocalDateTimeInput(setting.startTime),
+          deadline: toLocalDateTimeInput(setting.deadline),
+          allowLateSubmission: Boolean(setting.allowLateSubmission),
+          shuffleQuestions: Boolean(setting.shuffleQuestions),
+          limitTabs:
+            setting.limitTabs === null || setting.limitTabs === undefined
+              ? ""
+              : String(setting.limitTabs),
+          requireFullScreen: Boolean(setting.requireFullScreen),
+        };
+
+        setAssignmentCategory(category === "TEST" ? "TEST" : "HOMEWORK");
+        setBaseSettings(nextDefaults);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setAssignmentCategory("HOMEWORK");
+        setBaseSettings(defaultSettings());
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [assignmentId]);
 
   const toggleClass = (id) => {
     setSelected((prev) => {
@@ -209,11 +340,21 @@ const AssignToClassesPage = () => {
         });
       } else {
         next.add(id);
-        setSettings((s) => ({ ...s, [id]: defaultSettings() }));
+        setSettings((s) => ({ ...s, [id]: { ...baseSettings } }));
         setOpenCards((o) => ({ ...o, [id]: true }));
       }
       return next;
     });
+  };
+
+  const updateSetting = (classId, key, value) => {
+    setSettings((prev) => ({
+      ...prev,
+      [classId]: {
+        ...(prev[classId] || { ...baseSettings }),
+        [key]: value,
+      },
+    }));
   };
 
   const toggleCard = (id) => {
@@ -221,6 +362,11 @@ const AssignToClassesPage = () => {
   };
 
   const selectedArr = useMemo(() => Array.from(selected), [selected]);
+
+  const isTestCategory = assignmentCategory === "TEST";
+  const settingPanelTitle = isTestCategory
+    ? "Thiết lập bài kiểm tra"
+    : "Thiết lập bài tập";
 
   const totalStudents = useMemo(
     () =>
@@ -241,8 +387,27 @@ const AssignToClassesPage = () => {
 
     setSubmitting(true);
     try {
-      await assignmentApi.publishAssignment(assignmentId, selectedArr);
-      showToast("Giao bài thành công!");
+      const response = await assignmentApi.assignToClassrooms(assignmentId, {
+        classrooms: selectedArr.map((classroomId) => ({
+          classroomId,
+          settingOverride: toOverridePayload(
+            settings[classroomId] || baseSettings,
+            assignmentCategory,
+          ),
+        })),
+      });
+
+      const totalAssigned = Number(response?.result?.totalAssigned || 0);
+      const totalSkipped = Number(response?.result?.totalSkipped || 0);
+
+      if (totalSkipped > 0) {
+        showToast(
+          `Giao bài thành công (${totalAssigned} lớp mới, ${totalSkipped} lớp đã được giao trước đó).`,
+        );
+      } else {
+        showToast("Giao bài cho lớp học thành công!");
+      }
+
       setTimeout(() => {
         navigate(PATH_TEACHER.assignments);
       }, 400);
@@ -257,8 +422,18 @@ const AssignToClassesPage = () => {
     }
   };
 
+  const handleSaveClassSetting = (classroomId) => {
+    if (submitting) return;
+
+    const classInfo = classes.find((item) => item.id === classroomId);
+
+    setOpenCards((prev) => ({ ...prev, [classroomId]: false }));
+    showToast(`Đã hoàn tất cấu hình lớp ${classInfo?.name || classroomId}.`);
+  };
+
   return (
     <>
+      <style>{SETTINGS_PANEL_CSS}</style>
       <div
         style={{
           display: "flex",
@@ -667,15 +842,227 @@ const AssignToClassesPage = () => {
                     </div>
 
                     {openCards[id] && (
-                      <div
-                        style={{
-                          padding: "12px 16px",
-                          color: "#64748B",
-                          fontSize: 12,
-                        }}
-                      >
-                        Cài đặt chi tiết cho từng lớp sẽ được kết nối API ở bước
-                        tiếp theo.
+                      <div style={{ padding: "14px 16px 16px" }}>
+                        <div className="assign-setting-panel">
+                          <div className="assign-step-head">
+                            <div className="assign-step-head-left">
+                              <div className="assign-step-number">2</div>
+                              <div className="assign-step-label">
+                                {settingPanelTitle}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="assign-save-btn"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleSaveClassSetting(id);
+                              }}
+                              disabled={submitting}
+                            >
+                              <Ic.Check width={12} height={12} />
+                              Xong
+                            </button>
+                          </div>
+
+                          <div className="assign-setting-grid">
+                            <div className="assign-form-group">
+                              <label className="assign-label">Mật khẩu</label>
+                              <input
+                                className="assign-input"
+                                value={settings[id]?.password || ""}
+                                onChange={(event) =>
+                                  updateSetting(
+                                    id,
+                                    "password",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Để trống nếu không dùng"
+                              />
+                            </div>
+
+                            <div className="assign-form-group">
+                              <label className="assign-label">
+                                Thời lượng (phút)
+                              </label>
+                              <input
+                                className="assign-input"
+                                type="number"
+                                min={1}
+                                value={settings[id]?.durationMinutes ?? ""}
+                                onChange={(event) =>
+                                  updateSetting(
+                                    id,
+                                    "durationMinutes",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+
+                            <div className="assign-form-group">
+                              <label className="assign-label">Bắt đầu</label>
+                              <input
+                                className="assign-input"
+                                type="datetime-local"
+                                value={settings[id]?.startTime || ""}
+                                onChange={(event) =>
+                                  updateSetting(
+                                    id,
+                                    "startTime",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+
+                            <div className="assign-form-group">
+                              <label className="assign-label">Hạn nộp</label>
+                              <input
+                                className="assign-input"
+                                type="datetime-local"
+                                value={settings[id]?.deadline || ""}
+                                onChange={(event) =>
+                                  updateSetting(
+                                    id,
+                                    "deadline",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+
+                            <div className="assign-toggle-item">
+                              <label className="assign-label">
+                                Cho phép nộp muộn
+                              </label>
+                              <div className="assign-pill-group">
+                                <button
+                                  type="button"
+                                  className={`assign-pill${settings[id]?.allowLateSubmission ? " active" : ""}`}
+                                  onClick={() =>
+                                    updateSetting(
+                                      id,
+                                      "allowLateSubmission",
+                                      true,
+                                    )
+                                  }
+                                >
+                                  Bật
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`assign-pill${!settings[id]?.allowLateSubmission ? " active" : ""}`}
+                                  onClick={() =>
+                                    updateSetting(
+                                      id,
+                                      "allowLateSubmission",
+                                      false,
+                                    )
+                                  }
+                                >
+                                  Tắt
+                                </button>
+                              </div>
+                            </div>
+
+                            {isTestCategory ? (
+                              <div className="assign-toggle-item">
+                                <label className="assign-label">
+                                  Trộn câu hỏi
+                                </label>
+                                <div className="assign-pill-group">
+                                  <button
+                                    type="button"
+                                    className={`assign-pill${settings[id]?.shuffleQuestions ? " active" : ""}`}
+                                    onClick={() =>
+                                      updateSetting(
+                                        id,
+                                        "shuffleQuestions",
+                                        true,
+                                      )
+                                    }
+                                  >
+                                    Bật
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`assign-pill${!settings[id]?.shuffleQuestions ? " active" : ""}`}
+                                    onClick={() =>
+                                      updateSetting(
+                                        id,
+                                        "shuffleQuestions",
+                                        false,
+                                      )
+                                    }
+                                  >
+                                    Tắt
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {isTestCategory ? (
+                            <div className="assign-setting-checks">
+                              <div className="assign-toggle-item">
+                                <label className="assign-label">
+                                  Giới hạn chuyển tab
+                                </label>
+                                <input
+                                  className="assign-input"
+                                  type="number"
+                                  min={0}
+                                  value={settings[id]?.limitTabs ?? ""}
+                                  onChange={(event) =>
+                                    updateSetting(
+                                      id,
+                                      "limitTabs",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Để trống nếu không giới hạn"
+                                />
+                              </div>
+
+                              <div className="assign-toggle-item">
+                                <label className="assign-label">
+                                  Yêu cầu toàn màn hình
+                                </label>
+                                <div className="assign-pill-group">
+                                  <button
+                                    type="button"
+                                    className={`assign-pill${settings[id]?.requireFullScreen ? " active" : ""}`}
+                                    onClick={() =>
+                                      updateSetting(
+                                        id,
+                                        "requireFullScreen",
+                                        true,
+                                      )
+                                    }
+                                  >
+                                    Bật
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`assign-pill${!settings[id]?.requireFullScreen ? " active" : ""}`}
+                                    onClick={() =>
+                                      updateSetting(
+                                        id,
+                                        "requireFullScreen",
+                                        false,
+                                      )
+                                    }
+                                  >
+                                    Tắt
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     )}
                   </div>

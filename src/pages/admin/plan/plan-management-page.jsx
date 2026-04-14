@@ -34,6 +34,43 @@ const PLAN_STATUS_OPTIONS = [
 
 // Benefit creation inside form removed; DEFAULT_BENEFIT_* not required.
 const PLAN_FETCH_PARAMS = { page: 1, size: 100 };
+const BYTES_PER_GB = 1024 * 1024 * 1024;
+
+const mapBenefitLimitForForm = (benefitCode, limitValue) => {
+  const normalizedCode = String(benefitCode || "").toUpperCase();
+  const numericLimit = Number(limitValue);
+
+  if (!Number.isFinite(numericLimit) || numericLimit <= 0) {
+    return "";
+  }
+
+  if (normalizedCode === "STORAGE") {
+    // Support both old payloads (bytes) and normalized payloads (GB).
+    const gbValue = numericLimit >= BYTES_PER_GB
+      ? (numericLimit / BYTES_PER_GB)
+      : numericLimit;
+    return Number.isInteger(gbValue)
+      ? String(gbValue)
+      : String(Number(gbValue.toFixed(2)));
+  }
+
+  return String(numericLimit);
+};
+
+const mapBenefitLimitForPayload = (benefitCode, limitValue) => {
+  const normalizedCode = String(benefitCode || "").toUpperCase();
+  const numericLimit = Number(limitValue);
+
+  if (!Number.isFinite(numericLimit) || numericLimit <= 0) {
+    return 0;
+  }
+
+  if (normalizedCode === "STORAGE") {
+    return Math.round(numericLimit * BYTES_PER_GB);
+  }
+
+  return Math.round(numericLimit);
+};
 
 const EMPTY_FORM = {
   name: "",
@@ -107,7 +144,7 @@ const normalizeFormFromPlan = (plan) => {
     ? plan.benefits
       .map((item) => ({
         id: Number(item?.benefit?.id),
-        limit: String(item?.limitValue ?? ""),
+        limit: mapBenefitLimitForForm(item?.benefit?.code, item?.limitValue),
       }))
       .filter((item) => Number.isFinite(item.id) && item.id > 0)
     : [];
@@ -142,6 +179,17 @@ const AdminPlanManagementPage = () => {
   const [planToDelete, setPlanToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
+
+  const benefitCodeById = useMemo(() => {
+    const map = new Map();
+    benefits.forEach((benefit) => {
+      const benefitId = Number(benefit?.id);
+      if (Number.isFinite(benefitId) && benefitId > 0) {
+        map.set(benefitId, String(benefit?.code || "").toUpperCase());
+      }
+    });
+    return map;
+  }, [benefits]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -331,10 +379,18 @@ const AdminPlanManagementPage = () => {
       durationUnit: form.durationUnit,
       durationValue: Number(form.durationValue),
       planStatus: form.planStatus,
-      benefits: form.benefits.map((item) => ({
-        id: Number(item.id),
-        limit: Number(item.limit),
-      })),
+      benefits: form.benefits
+        .map((item) => {
+          const benefitId = Number(item.id);
+          const benefitCode = benefitCodeById.get(benefitId);
+          const mappedLimit = mapBenefitLimitForPayload(benefitCode, item.limit);
+
+          return {
+            id: benefitId,
+            limit: mappedLimit,
+          };
+        })
+        .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.limit > 0),
     };
 
     setSubmitting(true);
@@ -471,7 +527,7 @@ const AdminPlanManagementPage = () => {
                 <th>Giá</th>
                 <th>Thời hạn</th>
                 <th>Trạng thái</th>
-                <th>Benefits</th>
+                <th>Lợi ích</th>
                 <th>Mô tả</th>
                 <th>Thao tác</th>
               </tr>
@@ -674,8 +730,8 @@ const AdminPlanManagementPage = () => {
                           <div className="plan-benefit-limit-wrap">
                             <input
                               type="number"
-                              min={1}
-                              step={1}
+                              min={benefit?.code === "STORAGE" ? 0.1 : 1}
+                              step={benefit?.code === "STORAGE" ? 0.1 : 1}
                               disabled={!selected}
                               value={selected ? selectedBenefit?.limit || "" : ""}
                               onChange={(event) => changeBenefitLimit(benefit.id, event.target.value)}
