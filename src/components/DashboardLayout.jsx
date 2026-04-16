@@ -15,6 +15,7 @@ import {
   Home,
   Users,
   FileText,
+  Calendar,
   Settings,
   LogOut,
   Menu,
@@ -271,6 +272,11 @@ const DashboardLayout = () => {
       path: PATH_TEACHER.classroom.root,
     },
     {
+      icon: Calendar,
+      label: "Lịch học",
+      path: PATH_TEACHER.schedule,
+    },
+    {
       icon: Users,
       label: "Học sinh",
       path: PATH_TEACHER.students,
@@ -303,6 +309,11 @@ const DashboardLayout = () => {
       icon: BookOpen,
       label: "Lớp học của tôi",
       path: PATH_STUDENT.classroom.root,
+    },
+    {
+      icon: Calendar,
+      label: "Lịch học",
+      path: PATH_STUDENT.schedule,
     },
   ];
 

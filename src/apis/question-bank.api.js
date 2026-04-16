@@ -25,6 +25,8 @@ import {
  */
 
 const BASE = API_SUFFIX.QUESTION_BANK;
+const CREATE_BANK_BASE = "/banks";
+const LIST_BANK_BASE = "/banks";
 const DELETE_RESOURCE_BANK_TIMEOUT_MS = 4000;
 
 const DEFAULT_LIST_PARAMS = {
@@ -153,7 +155,7 @@ const normalizeQuestionBankListResult = (result) => {
 const getQuestionBanks = (params) => {
   const normalizedParams = normalizeListParams(params);
   return apiRequest
-    .get(BASE, { params: normalizedParams })
+    .get(LIST_BANK_BASE, { params: normalizedParams })
     .then((response) => ({
       ...response,
       result: normalizeQuestionBankListResult(response?.result),
@@ -203,7 +205,7 @@ const getQuestions = (bankId, params) => {
  */
 const createQuestionBank = (data) => {
   const parsed = CreateQuestionBankSchema.parse(data);
-  return apiRequest.post(BASE, parsed).then((response) => ({
+  return apiRequest.post(CREATE_BANK_BASE, parsed).then((response) => ({
     ...response,
     result: normalizeQuestionBank(response?.result),
   }));

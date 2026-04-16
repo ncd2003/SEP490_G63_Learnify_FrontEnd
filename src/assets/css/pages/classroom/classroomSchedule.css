@@ -152,6 +152,14 @@
   background: #eff6ff;
 }
 
+.calendar-day.past {
+  background: #f7f8fa;
+}
+
+.calendar-day.past .day-number {
+  color: #6b7280;
+}
+
 .calendar-day:hover:not(.empty) {
   background: #f9fafb;
 }
@@ -291,6 +299,15 @@
 
 .week-board-day.today {
   background: #fbfdff;
+}
+
+.week-board-day.past {
+  background: #f7f8fa;
+}
+
+.week-board-day.past .week-board-day-name,
+.week-board-day.past .week-board-day-date {
+  color: #6b7280;
 }
 
 .week-board-header {
@@ -462,6 +479,18 @@
 
 .week-board-join-btn:hover {
   background: #1f6fb8;
+}
+
+.week-board-join-btn:disabled,
+.day-detail-join-btn:disabled {
+  background: #d1d5db;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.week-board-join-btn:disabled:hover,
+.day-detail-join-btn:disabled:hover {
+  background: #d1d5db;
 }
 
 .week-view-container.compact {

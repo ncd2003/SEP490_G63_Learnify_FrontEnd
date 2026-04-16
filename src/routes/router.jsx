@@ -6,12 +6,13 @@ import RoleBasedGuard from "@/guards/role-base-guard";
 import DashboardLayout from "@/components/DashboardLayout";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
-import { isAdminRole } from "@/lib/auth-role";
+import { isAdminRole, isStudentRole } from "@/lib/auth-role";
 import {
   PATH_AUTH,
   PATH_ADMIN,
   PATH_COMMON,
   PATH_PAYMENT,
+  PATH_STUDENT,
   PATH_TEACHER,
 } from "@/routes/paths";
 
@@ -79,6 +80,17 @@ const MemberClassPage = Loadable(
 const AssignmentPage = Loadable(
   lazy(() => import("@/pages/assignment/list/assignment-page")),
 );
+const StudentAssignmentListPage = Loadable(
+  lazy(() => import("@/pages/assignment/student/student-assignment-list-page")),
+);
+const StudentAssignmentExamPage = Loadable(
+  lazy(() => import("@/pages/assignment/student/student-assignment-exam-page")),
+);
+const StudentAssignmentResultPage = Loadable(
+  lazy(
+    () => import("@/pages/assignment/student/student-assignment-result-page"),
+  ),
+);
 const AssignmentHubPage = Loadable(
   lazy(() => import("@/pages/assignment/hub/assignment-hub-page")),
 );
@@ -105,8 +117,20 @@ const CreateAssignmentAiPage = Loadable(
 const ImportAssignmentFilePage = Loadable(
   lazy(() => import("@/pages/assignment/import/import-assignment-file-page")),
 );
+const QuestionBankPickerPage = Loadable(
+  lazy(() => import("@/pages/assignment/bank/question-bank-picker-page")),
+);
+const TeacherSchedulePage = Loadable(
+  lazy(() => import("@/pages/classroom/schedule/teacher-schedule-page")),
+);
 const SchedulePage = Loadable(
   lazy(() => import("@/pages/classroom/schedule/schedulePage")),
+);
+const ClassroomLecturePage = Loadable(
+  lazy(() => import("@/pages/classroom/lecture/lecture-page")),
+);
+const ClassroomRecordingPage = Loadable(
+  lazy(() => import("@/pages/classroom/recording/recording-page")),
 );
 const AttendanceListPage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
@@ -186,6 +210,16 @@ const ClassroomListOrStudentPage = () => {
   ) : (
     <ClassroomListPage />
   );
+};
+
+const ClassroomAssignmentsPageByRole = () => {
+  const { user } = useAuth();
+
+  if (isStudentRole(user?.role)) {
+    return <StudentAssignmentListPage />;
+  }
+
+  return <AssignmentPage />;
 };
 
 const RootRedirect = () => {
@@ -290,6 +324,10 @@ const AppRoutes = () =>
           element: <ClassroomListOrStudentPage />,
         },
         {
+          path: PATH_TEACHER.schedule,
+          element: <TeacherSchedulePage />,
+        },
+        {
           path: PATH_TEACHER.assignments,
           element: <AssignmentHubPage />,
         },
@@ -302,12 +340,16 @@ const AppRoutes = () =>
           element: <CreateAssignmentMethodPage />,
         },
         {
+          path: PATH_TEACHER.assignmentCreateAiSetup,
+          element: <ManualAssignmentSetupPage mode="ai" />,
+        },
+        {
           path: PATH_TEACHER.assignmentCreateAi,
           element: <CreateAssignmentAiPage />,
         },
         {
           path: PATH_TEACHER.assignmentCreateManual,
-          element: <ManualAssignmentSetupPage />,
+          element: <ManualAssignmentSetupPage mode="manual" />,
         },
         {
           path: PATH_TEACHER.assignmentCreateManualQuestions,
@@ -322,16 +364,12 @@ const AppRoutes = () =>
           element: <ImportAssignmentFilePage />,
         },
         {
-          path: PATH_TEACHER.classroom.assignments(":id"),
-          element: <AssignmentPage />,
+          path: PATH_TEACHER.assignmentQuestionBankPicker,
+          element: <QuestionBankPickerPage />,
         },
         {
           path: PATH_TEACHER.classroom.assignmentCreateManual(":id"),
           element: <ManualAssignmentSetupPage />,
-        },
-        {
-          path: PATH_TEACHER.classroom.assignmentCreateManualQuestions(":id"),
-          element: <ManualAssignmentCreatorPage />,
         },
         {
           path: PATH_TEACHER.questionBank,
@@ -430,6 +468,34 @@ const AppRoutes = () =>
       ),
     },
     {
+      path: "classrooms/:id/assignments",
+      element: (
+        <AuthGuard>
+          <ClassroomAssignmentsPageByRole />
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/assignments/:assignmentId/start",
+      element: (
+        <AuthGuard>
+          <RoleBasedGuard role="ROLE_STUDENT">
+            <StudentAssignmentExamPage />
+          </RoleBasedGuard>
+        </AuthGuard>
+      ),
+    },
+    {
+      path: PATH_STUDENT.assignmentResult(":submissionId"),
+      element: (
+        <AuthGuard>
+          <RoleBasedGuard role="ROLE_STUDENT">
+            <StudentAssignmentResultPage />
+          </RoleBasedGuard>
+        </AuthGuard>
+      ),
+    },
+    {
       path: "classrooms/:id/schedule",
       element: (
         <AuthGuard>
@@ -444,6 +510,14 @@ const AppRoutes = () =>
           <AttendanceListPage />
         </AuthGuard>
       ),
+    },
+    {
+      path: "classrooms/:id/lecture",
+      element: <AuthGuard><ClassroomLecturePage /></AuthGuard>,
+    },
+    {
+      path: "classrooms/:id/recordings",
+      element: <AuthGuard><ClassroomRecordingPage /></AuthGuard>,
     },
     {
       path: "classrooms/:id/attendance/:sessionId",

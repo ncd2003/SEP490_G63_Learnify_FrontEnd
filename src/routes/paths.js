@@ -48,13 +48,16 @@ export const PATH_COMMON = {
 // ─── TEACHER ──────────────────────────────────────────────────────────────────
 export const PATH_TEACHER = {
   root: "/",
+  schedule: path(ROOTS_TEACHER, "/classrooms/schedule"),
   classroom: {
     root: "/classrooms",
     detail: (id) => `/classrooms/${id}`,
     create: "/classrooms/new",
     edit: (id) => `/classrooms/${id}/edit`,
+    lecture: (id) => `/classrooms/${id}/lecture`,
     pendingRequests: (id) => `/classrooms/${id}/pending-requests`,
     schedule: (id) => `/classrooms/${id}/schedule`,
+    recordings: (id) => `/classrooms/${id}/recordings`,
     assignments: (id) => `/classrooms/${id}/assignments`,
     assignmentCreateManual: (id) =>
       `/classrooms/${id}/assignments/create/manual`,
@@ -67,6 +70,7 @@ export const PATH_TEACHER = {
   },
   assignments: path(ROOTS_TEACHER, "/assignments"),
   assignmentCreateMethod: path(ROOTS_TEACHER, "/assignments/create-method"),
+  assignmentCreateAiSetup: path(ROOTS_TEACHER, "/assignments/create/ai/setup"),
   assignmentCreateAi: path(ROOTS_TEACHER, "/assignments/create/ai"),
   assignmentCreateManual: path(ROOTS_TEACHER, "/assignments/create/manual"),
   assignmentCreateManualQuestions: path(
@@ -78,6 +82,10 @@ export const PATH_TEACHER = {
   assignmentAssignClasses: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}/assign-classes`),
   assignmentCreateImport: path(ROOTS_TEACHER, "/assignments/create/import"),
+  assignmentQuestionBankPicker: path(
+    ROOTS_TEACHER,
+    "/assignments/question-bank-picker",
+  ),
   students: path(ROOTS_TEACHER, "/students"),
   documents: path(ROOTS_TEACHER, "/documents"),
   questionBank: path(ROOTS_TEACHER, "/question-bank"),
@@ -99,9 +107,19 @@ export const PATH_TEACHER = {
 // ─── STUDENT ──────────────────────────────────────────────────────────────────
 export const PATH_STUDENT = {
   root: "/",
+  assignmentResult: (submissionId) =>
+    `/student/submissions/${submissionId}/result`,
+  schedule: "/classrooms/schedule",
   classroom: {
     root: "/classrooms",
     detail: (id) => `/classrooms/${id}`,
+    assignments: (id) => `/classrooms/${id}/assignments`,
+    assignmentDo: (classId, assignmentId) =>
+      `/classrooms/${classId}/assignments/${assignmentId}/start`,
+    folders: (id) => `/classrooms/${id}/folders`,
+    members: (id) => `/classrooms/${id}/pending-requests`,
+    schedule: (id) => `/classrooms/${id}/schedule`,
+    attendance: (id) => `/classrooms/${id}/attendance`,
   },
 };
 

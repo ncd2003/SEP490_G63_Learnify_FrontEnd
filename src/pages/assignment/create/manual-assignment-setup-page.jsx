@@ -47,6 +47,36 @@ const Icons = {
       <line x1="16" y1="17" x2="8" y2="17" />
     </svg>
   ),
+  Eye: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  EyeOff: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M17.94 17.94A10.94 10.94 0 0112 20C5 20 1 12 1 12a21.77 21.77 0 015.06-6.94" />
+      <path d="M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.62 21.62 0 01-2.12 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M9.53 9.53a3 3 0 004.24 4.24" />
+    </svg>
+  ),
 };
 
 const CSS = `
@@ -91,6 +121,10 @@ const CSS = `
 .full{grid-column:1 / -1}
 .help{font-size:11px;color:var(--t3);margin-top:4px}
 .error{margin-top:12px;padding:10px 12px;border-radius:10px;background:#FDEDEB;color:#B91C1C;font-size:13px;font-weight:600}
+.password-wrap{position:relative}
+.password-input{padding-right:42px}
+.password-peek-btn{position:absolute;top:50%;right:8px;transform:translateY(-50%);width:30px;height:30px;border:none;background:transparent;color:var(--t3);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}
+.password-peek-btn:hover{background:var(--pl);color:var(--p)}
 .actions{display:flex;justify-content:flex-end;gap:10px}
 .btn{height:42px;padding:0 18px;border-radius:10px;font-size:13px;font-weight:700;font-family:var(--f);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:8px}
 .btn.secondary{background:#FFF;border:1.5px solid var(--b);color:var(--t2)}
@@ -111,6 +145,12 @@ const FORMAT_OPTIONS = [
   { value: "MULTIPLE_CHOICE", label: "Trắc nghiệm" },
   { value: "ESSAY", label: "Tự luận" },
   { value: "MIXED", label: "Hỗn hợp" },
+];
+
+const SECTION_TYPE_OPTIONS = [
+  { value: "OBJECTIVE", label: "Phần trắc nghiệm" },
+  { value: "ESSAY", label: "Phần tự luận" },
+  { value: "MIXED", label: "Phần hỗn hợp" },
 ];
 
 const RESULT_VISIBILITY_OPTIONS = [
@@ -161,19 +201,71 @@ const toPositiveId = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const createMixedSectionDraft = (sectionType = "OBJECTIVE") => ({
+  localId: `mixed-section-${Date.now()}-${Math.random()}`,
+  id: null,
+  title:
+    sectionType === "ESSAY"
+      ? "Phần tự luận"
+      : sectionType === "MIXED"
+        ? "Phần hỗn hợp"
+        : "Phần trắc nghiệm",
+  sectionType,
+});
+
+const normalizeSectionType = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (normalized === "ESSAY") return "ESSAY";
+  if (normalized === "MIXED") return "MIXED";
+  if (normalized === "OBJECTIVE" || normalized === "MULTIPLE_CHOICE") {
+    return "OBJECTIVE";
+  }
+  return "OBJECTIVE";
+};
+
+const mapSectionsFromAssignment = (sections = []) => {
+  if (!Array.isArray(sections)) return [];
+
+  return sections
+    .map((section) => {
+      const id = toPositiveId(section?.id || section?.sectionId);
+      const title = String(section?.title || "").trim();
+      if (!id && !title) return null;
+
+      return {
+        localId: `mixed-section-${id || Math.random()}`,
+        id,
+        title: title || (id ? `Phần ${id}` : "Phần mới"),
+        sectionType: normalizeSectionType(section?.sectionType),
+      };
+    })
+    .filter(Boolean);
+};
+
 const resolveDefaultSectionId = (sections, format) => {
   const list = Array.isArray(sections) ? sections : [];
   if (!list.length) return null;
 
+  const normalizedFormat = String(format || "").toUpperCase();
   const targetSectionType =
-    String(format || "").toUpperCase() === "ESSAY"
-      ? "ESSAY"
-      : "MULTIPLE_CHOICE";
+    normalizedFormat === "ESSAY" ? "ESSAY" : "OBJECTIVE";
 
-  const matched = list.find(
-    (section) =>
-      String(section?.sectionType || "").toUpperCase() === targetSectionType,
-  );
+  const matched = list.find((section) => {
+    const normalizedSectionType = String(section?.sectionType || "")
+      .trim()
+      .toUpperCase();
+
+    if (targetSectionType === "OBJECTIVE") {
+      return (
+        normalizedSectionType === "OBJECTIVE" ||
+        normalizedSectionType === "MULTIPLE_CHOICE"
+      );
+    }
+
+    return normalizedSectionType === targetSectionType;
+  });
 
   return (
     toPositiveId(matched?.id || matched?.sectionId) ||
@@ -181,9 +273,16 @@ const resolveDefaultSectionId = (sections, format) => {
   );
 };
 
-const ManualAssignmentSetupPage = () => {
+const toAiSectionsStorageKey = (assignmentId) => {
+  const safeId = toPositiveId(assignmentId);
+  return safeId ? `learnify:assignment-ai:sections:${safeId}` : null;
+};
+
+const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const isAiMode = String(mode || "").toLowerCase() === "ai";
 
   const existingAssignmentId = searchParams.get("assignmentId")
     ? Number(searchParams.get("assignmentId"))
@@ -195,7 +294,6 @@ const ManualAssignmentSetupPage = () => {
   const [format, setFormat] = useState(
     normalizeFormatFromQuery(searchParams.get("format")),
   );
-  const [totalScore, setTotalScore] = useState(10);
   const [setting, setSetting] = useState({
     password: "",
     durationMinutes: 45,
@@ -208,9 +306,27 @@ const ManualAssignmentSetupPage = () => {
     limitTabs: "",
     requireFullScreen: false,
   });
+  const [mixedSections, setMixedSections] = useState([
+    createMixedSectionDraft("OBJECTIVE"),
+    createMixedSectionDraft("ESSAY"),
+  ]);
   const [submitting, setSubmitting] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [isPasswordPeekVisible, setIsPasswordPeekVisible] = useState(false);
+
+  const pageTitle = isAiMode ? "Tạo bài tập với AI" : "Tạo bài tập thủ công";
+  const crumbTitle = isAiMode ? "Tạo với AI" : "Tạo thủ công";
+  const introDescription = isAiMode
+    ? "Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ thống sẽ chuyển sang trang tạo câu hỏi với AI để bạn sinh đề theo cấu hình mong muốn."
+    : "Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ thống sẽ chuyển sang trang soạn câu hỏi và tự động tạo phiên nháp để bạn tiếp tục làm dở.";
+  let continueButtonLabel = "Tiếp tục đến soạn câu hỏi";
+  if (isAiMode) {
+    continueButtonLabel = "Tiếp tục đến tạo câu hỏi với AI";
+  }
+  if (submitting) {
+    continueButtonLabel = "Đang khởi tạo...";
+  }
 
   const settingPanelTitle =
     category === "TEST" ? "Thiết lập bài kiểm tra" : "Thiết lập bài tập";
@@ -260,8 +376,8 @@ const ManualAssignmentSetupPage = () => {
         setTitle(String(data?.title || ""));
         setDescription(String(data?.description || ""));
         setCategory(String(data?.category || "HOMEWORK").toUpperCase());
-        setFormat(normalizeFormatFromQuery(data?.format));
-        setTotalScore(Number(data?.totalScore || 10) || 10);
+        const loadedFormat = normalizeFormatFromQuery(data?.format);
+        setFormat(loadedFormat);
         setSetting({
           password: String(loadedSetting?.password || ""),
           durationMinutes: Number(loadedSetting?.durationMinutes || 45) || 45,
@@ -278,6 +394,13 @@ const ManualAssignmentSetupPage = () => {
               : String(loadedSetting.limitTabs),
           requireFullScreen: Boolean(loadedSetting?.requireFullScreen),
         });
+
+        if (isAiMode && loadedFormat === "MIXED") {
+          const loadedSections = mapSectionsFromAssignment(data?.sections);
+          if (loadedSections.length > 0) {
+            setMixedSections(loadedSections);
+          }
+        }
       } catch (error) {
         console.error("Load assignment failed", error);
       } finally {
@@ -289,14 +412,26 @@ const ManualAssignmentSetupPage = () => {
     return () => {
       alive = false;
     };
-  }, [existingAssignmentId]);
+  }, [existingAssignmentId, isAiMode]);
+
+  useEffect(() => {
+    if (!isAiMode || format !== "MIXED") return;
+
+    setMixedSections((prev) =>
+      prev.length
+        ? prev
+        : [
+            createMixedSectionDraft("OBJECTIVE"),
+            createMixedSectionDraft("ESSAY"),
+          ],
+    );
+  }, [isAiMode, format]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     const safeTitle = String(title || "").trim();
     const safeDescription = String(description || "").trim();
-    const safeScore = Number(totalScore);
     const durationMinutes = Number(setting.durationMinutes);
 
     if (!category || !format) {
@@ -306,11 +441,6 @@ const ManualAssignmentSetupPage = () => {
 
     if (!safeTitle) {
       setErrorText("Vui lòng nhập tiêu đề bài tập.");
-      return;
-    }
-
-    if (!Number.isFinite(safeScore) || safeScore <= 0) {
-      setErrorText("Tổng điểm phải lớn hơn 0.");
       return;
     }
 
@@ -337,6 +467,28 @@ const ManualAssignmentSetupPage = () => {
     ) {
       setErrorText("Giới hạn chuyển tab phải là số nguyên không âm.");
       return;
+    }
+
+    const normalizedMixedSections = mixedSections.map((section) => ({
+      ...section,
+      title: String(section?.title || "").trim(),
+      sectionType: normalizeSectionType(section?.sectionType),
+      id: toPositiveId(section?.id),
+    }));
+
+    if (isAiMode && format === "MIXED") {
+      if (!normalizedMixedSections.length) {
+        setErrorText("Vui lòng tạo ít nhất một section cho đề hỗn hợp.");
+        return;
+      }
+
+      const hasInvalidTitle = normalizedMixedSections.some(
+        (section) => !section.title,
+      );
+      if (hasInvalidTitle) {
+        setErrorText("Vui lòng nhập đầy đủ tên section.");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -389,7 +541,6 @@ const ManualAssignmentSetupPage = () => {
       const basePayload = {
         title: safeTitle,
         description: safeDescription || null,
-        totalScore: safeScore,
         setting: settingPayload,
       };
 
@@ -398,6 +549,7 @@ const ManualAssignmentSetupPage = () => {
           ? existingAssignmentId
           : null;
       let defaultSectionId = null;
+      let sectionsForAiPage = [];
 
       if (assignmentId) {
         await assignmentApi.updateAssignment(assignmentId, basePayload);
@@ -424,12 +576,112 @@ const ManualAssignmentSetupPage = () => {
         );
       }
 
+      if (isAiMode && format === "MIXED") {
+        const existingSections = normalizedMixedSections.filter(
+          (section) => section.id,
+        );
+        const sectionsToCreate = normalizedMixedSections.filter(
+          (section) => !section.id,
+        );
+
+        const createdSections = [];
+        for (const section of sectionsToCreate) {
+          const sectionResp = await assignmentApi.createSection(assignmentId, {
+            title: section.title,
+            sectionType: section.sectionType,
+          });
+
+          const createdId = toPositiveId(
+            sectionResp?.result?.id || sectionResp?.result?.sectionId,
+          );
+          if (createdId) {
+            createdSections.push({ ...section, id: createdId });
+          }
+        }
+
+        const resolvedSections = [...existingSections, ...createdSections];
+        if (resolvedSections.length > 0) {
+          defaultSectionId = resolvedSections[0].id;
+          sectionsForAiPage = resolvedSections
+            .map((section) => {
+              const safeSectionId = toPositiveId(section?.id);
+              if (!safeSectionId) return null;
+
+              return {
+                id: safeSectionId,
+                title:
+                  String(section?.title || "").trim() ||
+                  `Phần ${safeSectionId}`,
+                sectionType: normalizeSectionType(section?.sectionType),
+              };
+            })
+            .filter(Boolean);
+
+          setMixedSections(
+            resolvedSections.map((section) => ({
+              ...section,
+              localId:
+                section.localId ||
+                `mixed-section-${section.id}-${Math.random()}`,
+            })),
+          );
+        }
+      } else if (isAiMode) {
+        const safeDefaultSectionId = toPositiveId(defaultSectionId);
+        if (safeDefaultSectionId) {
+          const sectionTypeByFormat =
+            format === "ESSAY"
+              ? "ESSAY"
+              : format === "MULTIPLE_CHOICE"
+                ? "OBJECTIVE"
+                : "MIXED";
+
+          sectionsForAiPage = [
+            {
+              id: safeDefaultSectionId,
+              title:
+                format === "ESSAY"
+                  ? "Phần tự luận"
+                  : format === "MULTIPLE_CHOICE"
+                    ? "Phần trắc nghiệm"
+                    : "Phần hỗn hợp",
+              sectionType: sectionTypeByFormat,
+            },
+          ];
+        }
+      }
+
+      if (isAiMode && typeof window !== "undefined") {
+        const storageKey = toAiSectionsStorageKey(assignmentId);
+        if (storageKey) {
+          if (sectionsForAiPage.length > 0) {
+            window.sessionStorage.setItem(
+              storageKey,
+              JSON.stringify(sectionsForAiPage),
+            );
+          } else {
+            window.sessionStorage.removeItem(storageKey);
+          }
+        }
+      }
+
+      const nextPath = isAiMode
+        ? PATH_TEACHER.assignmentCreateAi
+        : PATH_TEACHER.assignmentCreateManualQuestions;
+
+      const nextSectionId =
+        format === "MIXED"
+          ? isAiMode
+            ? defaultSectionId
+            : undefined
+          : defaultSectionId;
+
       navigate(
-        withQuery(PATH_TEACHER.assignmentCreateManualQuestions, {
+        withQuery(nextPath, {
           assignmentId,
           format: format.toLowerCase(),
           category: category.toLowerCase(),
-          sectionId: format === "MIXED" ? undefined : defaultSectionId,
+          sectionId: nextSectionId,
         }),
       );
     } catch (error) {
@@ -455,7 +707,7 @@ const ManualAssignmentSetupPage = () => {
           <button type="button" className="topbar-back" onClick={handleBack}>
             <Icons.ArrowLeft /> Quay lại
           </button>
-          <div className="topbar-title">Tạo bài tập thủ công</div>
+          <div className="topbar-title">{pageTitle}</div>
         </div>
         <button
           type="submit"
@@ -468,7 +720,7 @@ const ManualAssignmentSetupPage = () => {
       </div>
 
       <div className="main">
-        <div className="crumb">Khu vực làm việc / Bài tập / Tạo thủ công</div>
+        <div className="crumb">Khu vực làm việc / Bài tập / {crumbTitle}</div>
 
         <div className="intro">
           <div className="intro-icon">
@@ -478,11 +730,7 @@ const ManualAssignmentSetupPage = () => {
             <h1 className="intro-title">
               Cấu hình bài tập trước khi soạn câu hỏi
             </h1>
-            <p className="intro-desc">
-              Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ
-              thống sẽ chuyển sang trang soạn câu hỏi và tự động tạo phiên nháp
-              để bạn tiếp tục làm dở.
-            </p>
+            <p className="intro-desc">{introDescription}</p>
           </div>
         </div>
 
@@ -558,19 +806,100 @@ const ManualAssignmentSetupPage = () => {
                 </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="label">
-                  Tổng điểm <span className="req">*</span>
-                </label>
-                <input
-                  className="input"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={totalScore}
-                  onChange={(event) => setTotalScore(event.target.value)}
-                />
-              </div>
+              {isAiMode && format === "MIXED" ? (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="label">
+                    Section cho đề hỗn hợp <span className="req">*</span>
+                  </label>
+                  <div className="help" style={{ marginBottom: 8 }}>
+                    Tạo section trước để sang trang AI có thể chọn sectionId khi
+                    sinh câu hỏi theo từng phần.
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {mixedSections.map((section, index) => (
+                      <div
+                        key={section.localId}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 180px 110px",
+                          gap: 8,
+                          alignItems: "center",
+                        }}
+                      >
+                        <input
+                          className="input"
+                          value={section.title}
+                          placeholder={`Tên section ${index + 1}`}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setMixedSections((prev) =>
+                              prev.map((item) =>
+                                item.localId === section.localId
+                                  ? { ...item, title: value }
+                                  : item,
+                              ),
+                            );
+                          }}
+                        />
+
+                        <select
+                          className="select"
+                          value={section.sectionType}
+                          onChange={(event) => {
+                            const value = normalizeSectionType(
+                              event.target.value,
+                            );
+                            setMixedSections((prev) =>
+                              prev.map((item) =>
+                                item.localId === section.localId
+                                  ? { ...item, sectionType: value }
+                                  : item,
+                              ),
+                            );
+                          }}
+                        >
+                          {SECTION_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{ height: 40, padding: "0 10px" }}
+                          disabled={mixedSections.length <= 1}
+                          onClick={() => {
+                            setMixedSections((prev) =>
+                              prev.filter(
+                                (item) => item.localId !== section.localId,
+                              ),
+                            );
+                          }}
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    style={{ marginTop: 8, height: 40 }}
+                    onClick={() =>
+                      setMixedSections((prev) => [
+                        ...prev,
+                        createMixedSectionDraft("OBJECTIVE"),
+                      ])
+                    }
+                  >
+                    + Thêm section
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="setting-panel">
@@ -582,17 +911,35 @@ const ManualAssignmentSetupPage = () => {
               <div className="setting-grid">
                 <div className="form-group">
                   <label className="label">Mật khẩu (password)</label>
-                  <input
-                    className="input"
-                    value={setting.password}
-                    onChange={(event) =>
-                      setSetting((prev) => ({
-                        ...prev,
-                        password: event.target.value,
-                      }))
-                    }
-                    placeholder="Để trống nếu không dùng"
-                  />
+                  <div className="password-wrap">
+                    <input
+                      className="input password-input"
+                      type={isPasswordPeekVisible ? "text" : "password"}
+                      value={setting.password}
+                      onChange={(event) =>
+                        setSetting((prev) => ({
+                          ...prev,
+                          password: event.target.value,
+                        }))
+                      }
+                      placeholder="Để trống nếu không dùng"
+                    />
+                    <button
+                      type="button"
+                      className="password-peek-btn"
+                      aria-label="Nhấn giữ để xem mật khẩu"
+                      title="Nhấn giữ để xem mật khẩu"
+                      onMouseDown={() => setIsPasswordPeekVisible(true)}
+                      onMouseUp={() => setIsPasswordPeekVisible(false)}
+                      onMouseLeave={() => setIsPasswordPeekVisible(false)}
+                      onTouchStart={() => setIsPasswordPeekVisible(true)}
+                      onTouchEnd={() => setIsPasswordPeekVisible(false)}
+                      onTouchCancel={() => setIsPasswordPeekVisible(false)}
+                      onBlur={() => setIsPasswordPeekVisible(false)}
+                    >
+                      {isPasswordPeekVisible ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -824,9 +1171,23 @@ const ManualAssignmentSetupPage = () => {
               className="btn primary"
               disabled={submitting || isLoadingAssignment}
             >
-              <Icons.Check />{" "}
-              {submitting ? "Đang khởi tạo..." : "Tiếp tục đến soạn câu hỏi"}
+              <Icons.Check /> {continueButtonLabel}
             </button>
+          </div>
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#1D4ED8",
+              background: "#EFF6FF",
+              border: "1px solid #BFDBFE",
+              borderRadius: 10,
+              padding: "8px 12px",
+            }}
+          >
+            Gợi ý bằng Text: Bạn có thể thay đổi các cài đặt này sau khi đã soạn
+            xong đề thi.
           </div>
         </form>
       </div>

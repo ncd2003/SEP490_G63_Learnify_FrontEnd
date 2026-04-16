@@ -5,7 +5,6 @@ import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
 import EventDetailModal from '@/components/EventDetailModal';
 import useSchedule from '@/hooks/useSchedule';
-import scheduleApi from '@/apis/schedule.api';
 import { PATH_TEACHER } from '@/routes/paths';
 import { SESSION_TYPE } from '@/schema/scheduleSchema';
 import '@/assets/css/pages/classroom/classroomSchedule.css';
@@ -39,6 +38,31 @@ const isSameDay = (a, b) =>
 
 const isToday = (date) => date && isSameDay(date, new Date());
 
+const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const isPastDay = (date) => {
+  if (!date) return false;
+  return startOfDay(date).getTime() < startOfDay(new Date()).getTime();
+};
+
+const toSessionDateTime = (sessionDate, timeStr) => {
+  if (!sessionDate || !timeStr) return null;
+
+  const baseDate = parseSessionDate(sessionDate);
+  if (!baseDate) return null;
+
+  const [hours = 0, minutes = 0, seconds = 0] = timeStr.split(':').map(Number);
+  return new Date(
+    baseDate.getFullYear(),
+    baseDate.getMonth(),
+    baseDate.getDate(),
+    Number.isNaN(hours) ? 0 : hours,
+    Number.isNaN(minutes) ? 0 : minutes,
+    Number.isNaN(seconds) ? 0 : seconds,
+    0,
+  );
+};
+
 const getDaysInMonth = (date) => {
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -69,29 +93,6 @@ const toYmd = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-const extractRoomNameFromMeetingLink = (meetingLink) => {
-  if (!meetingLink) return null;
-
-  try {
-    const url = new URL(meetingLink);
-    const segments = url.pathname.split('/').filter(Boolean);
-    return segments.length ? decodeURIComponent(segments[segments.length - 1]) : null;
-  } catch {
-    const raw = meetingLink.split('?')[0];
-    const segments = raw.split('/').filter(Boolean);
-    return segments.length ? decodeURIComponent(segments[segments.length - 1]) : null;
-  }
-};
-
-const getCurrentUserRole = () => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user?.role || 'ROLE_STUDENT';
-  } catch {
-    return 'ROLE_STUDENT';
-  }
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -220,34 +221,40 @@ const SchedulePage = () => {
     routerNavigate(PATH_TEACHER.classroom.attendanceSession(classroomId, session.id));
   };
 
+  const getJoinDisabledReason = (session) => {
+    if (!session?.sessionDate || !session?.startTime || !session?.endTime) return 'Chưa có đủ thông tin thời gian buổi học.';
+
+    const now = new Date();
+    const start = toSessionDateTime(session.sessionDate, session.startTime);
+    const end = toSessionDateTime(session.sessionDate, session.endTime);
+
+    if (!start || !end) return 'Chưa có đủ thông tin thời gian buổi học.';
+
+    if (now < start) return 'Chưa đến giờ bắt đầu buổi học.';
+    if (now > end) return 'Buổi học đã kết thúc.';
+
+    return null;
+  };
+
+  const canJoinSession = (session) => !getJoinDisabledReason(session);
+
   const handleJoinMeeting = async (session, e) => {
     if (e) {
       e.stopPropagation();
     }
 
-    const roomName = extractRoomNameFromMeetingLink(session?.meetingLink);
-    if (!roomName) {
+    const disabledReason = getJoinDisabledReason(session);
+    if (disabledReason) {
+      alert(disabledReason);
+      return;
+    }
+
+    if (!session?.meetingLink || !session?.id) {
       alert('Không tìm thấy thông tin phòng họp hợp lệ.');
       return;
     }
 
-    try {
-      const response = await scheduleApi.generateJitsiMeetingLink({
-        roomName,
-        role: getCurrentUserRole(),
-      });
-
-      const joinUrl = response?.result?.meetingLink;
-      if (!joinUrl) {
-        alert('Không thể tạo link tham gia cuộc họp.');
-        return;
-      }
-
-      window.open(joinUrl, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      const msg = err.response?.data?.message ?? 'Không thể tham gia cuộc họp lúc này.';
-      alert(msg);
-    }
+    routerNavigate(`${PATH_TEACHER.classroom.lecture(classroomId)}?sessionId=${session.id}`);
   };
 
   // ─── Derived data ──────────────────────────────────────────────────────────
@@ -269,8 +276,6 @@ const SchedulePage = () => {
   return (
     <ClassroomDetailLayout>
       <div className="classroom-schedule-page">
-        <h1 className="schedule-title">Lịch Học</h1>
-
         {/* View mode tabs */}
         <div className="schedule-tabs">
           {Object.entries({ [VIEW_MODES.WEEK]: 'Tuần', [VIEW_MODES.MONTH]: 'Tháng' }).map(
@@ -322,10 +327,11 @@ const SchedulePage = () => {
                 const maxDisplay = 3;
                 const displaySessions = daySessions.slice(0, maxDisplay);
                 const remainingCount = daySessions.length - maxDisplay;
+                const isPast = isPastDay(date);
                 return (
                   <div 
                     key={index} 
-                    className={`calendar-day ${!date ? 'empty' : ''} ${isToday(date) ? 'today' : ''}`}
+                    className={`calendar-day ${!date ? 'empty' : ''} ${isToday(date) ? 'today' : ''} ${isPast ? 'past' : ''}`}
                     onClick={() => date && daySessions.length > 0 && handleDayClick(date)}
                     style={{ cursor: date && daySessions.length > 0 ? 'pointer' : 'default' }}
                   >
@@ -374,9 +380,10 @@ const SchedulePage = () => {
                     .slice()
                     .sort((a, b) => a.startTime.localeCompare(b.startTime));
                   const isDayToday = isToday(day);
+                  const isDayPast = isPastDay(day);
 
                   return (
-                    <div key={di} className={`week-board-day ${isDayToday ? 'today' : ''}`}>
+                    <div key={di} className={`week-board-day ${isDayToday ? 'today' : ''} ${isDayPast ? 'past' : ''}`}>
                       <div className="week-board-header">
                         <div className="week-board-day-heading">
                           <div className="week-board-day-name-row">
@@ -391,13 +398,15 @@ const SchedulePage = () => {
                             {String(day.getDate()).padStart(2, '0')}/{String(day.getMonth() + 1).padStart(2, '0')}
                           </div>
                         </div>
-                        <button
-                          className="week-board-add-btn"
-                          onClick={() => handleCreateForDate(day)}
-                          title="Thêm lịch học"
-                        >
-                          +
-                        </button>
+                        {!isDayPast && (
+                          <button
+                            className="week-board-add-btn"
+                            onClick={() => handleCreateForDate(day)}
+                            title="Thêm lịch học"
+                          >
+                            +
+                          </button>
+                        )}
                       </div>
 
                       <div className="week-board-body">
@@ -422,6 +431,8 @@ const SchedulePage = () => {
                                 <button
                                   type="button"
                                   className="week-board-join-btn"
+                                  disabled={!canJoinSession(s)}
+                                  title={getJoinDisabledReason(s) ?? 'Tham gia buổi học'}
                                   onClick={(e) => handleJoinMeeting(s, e)}
                                 >
                                   Tham gia
@@ -460,6 +471,8 @@ const SchedulePage = () => {
         onClose={handleCloseEventDetail}
         session={selectedEventForDetail}
         onJoin={handleJoinMeeting}
+        canJoinSession={canJoinSession}
+        getJoinDisabledReason={getJoinDisabledReason}
         onEdit={handleEventEdit}
         onDelete={handleEventDelete}
         onOpenAttendance={handleOpenAttendance}
@@ -511,7 +524,13 @@ const SchedulePage = () => {
                         {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
                           <div className="day-detail-event-location">
                             <Video size={14} />
-                            <button type="button" className="day-detail-join-btn" onClick={(e) => handleJoinMeeting(s, e)}>
+                            <button
+                              type="button"
+                              className="day-detail-join-btn"
+                              disabled={!canJoinSession(s)}
+                              title={getJoinDisabledReason(s) ?? 'Tham gia buổi học'}
+                              onClick={(e) => handleJoinMeeting(s, e)}
+                            >
                               Tham gia cuộc họp
                             </button>
                           </div>
