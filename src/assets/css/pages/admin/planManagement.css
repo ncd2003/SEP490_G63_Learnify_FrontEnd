@@ -99,6 +99,7 @@
   overflow-x: auto;
 }
 
+
 .plan-table {
   width: 100%;
   border-collapse: collapse;
@@ -543,4 +544,26 @@
   .plan-benefit-limit-input {
     width: 100%;
   }
+}
+
+/* Position pagination absolutely inside plan table wrapper; shift left 10px from right edge */
+.plan-table-wrapper {
+  position: relative;
+}
+.plan-table-wrapper .classroom-pagination.plan-pagination {
+  position: absolute !important;
+  right: 12px !important;
+  bottom: 12px !important;
+  transform: translateX(-10px) !important;
+  margin-top: 0 !important;
+}
+
+/* Ensure pagination inside plan table is left-aligned and slightly higher */
+.plan-table-wrapper .classroom-pagination.plan-pagination,
+.plan-table-wrapper .classroom-pagination {
+  margin-top: 8px !important;
+  justify-content: flex-start !important;
+  margin-top: 5px !important;
+  margin-left: 12px !important;
+  transform: translateX(-10px) !important;
 }

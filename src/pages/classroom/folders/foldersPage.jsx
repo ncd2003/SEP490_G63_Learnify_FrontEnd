@@ -405,6 +405,39 @@ const FolderFormModal = ({ open, title, name, onClose, onSubmit, submitting }) =
   );
 };
 
+const FolderDeleteModal = ({ open, folder, onClose, onConfirm, submitting }) => {
+  if (!open || !folder) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div>
+            <h3 className="modal-title">Xóa thư mục</h3>
+            <p className="modal-subtitle">Bạn có chắc muốn xóa thư mục "{folder.name}"?</p>
+          </div>
+          <button type="button" onClick={onClose} className="icon-btn ghost" aria-label="Đóng">
+            <X size={18} />
+          </button>
+        </div>
+
+        <p className="modal-text">Xóa thư mục có thể làm mất các thư mục con và tài liệu bên trong.</p>
+        <p className="modal-text">Hành động này không thể hoàn tác.</p>
+
+        <div className="modal-actions">
+          <button type="button" onClick={onClose} className="btn btn-ghost" disabled={submitting}>
+            Hủy
+          </button>
+          <button type="button" disabled={submitting} onClick={onConfirm} className="btn btn-danger">
+            {submitting && <span className="spinner" />}
+            Xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const FoldersPage = () => {
   const { id: classroomId } = useParams();
   const [selectedId, setSelectedId] = useState(null);
@@ -424,6 +457,8 @@ const FoldersPage = () => {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [formState, setFormState] = useState({ mode: null, targetId: null, parentId: null, name: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [folderDeleteState, setFolderDeleteState] = useState({ open: false, folder: null });
+  const [folderDeleteSubmitting, setFolderDeleteSubmitting] = useState(false);
   const [materialSearch, setMaterialSearch] = useState("");
   const [materialSortByCreatedAt, setMaterialSortByCreatedAt] = useState("desc");
   const [materialMoveState, setMaterialMoveState] = useState({ open: false, material: null, targetId: null });
@@ -508,13 +543,25 @@ const FoldersPage = () => {
     setSubmitting(false);
   };
 
-  const handleDelete = async (folder) => {
+  const handleDelete = (folder) => {
     if (!folder) return;
-    const confirmed = window.confirm(`Bạn có chắc muốn xóa thư mục "${folder.name}"?`);
-    if (!confirmed) return;
-    const result = await deleteFolder(folder.id);
-    if (result.success && selectedId === folder.id) {
-      setSelectedId(null);
+    setFolderDeleteState({ open: true, folder });
+  };
+
+  const closeFolderDelete = () => setFolderDeleteState({ open: false, folder: null });
+
+  const confirmFolderDelete = async () => {
+    const folder = folderDeleteState.folder;
+    if (!folder) return;
+    setFolderDeleteSubmitting(true);
+    try {
+      const result = await deleteFolder(folder.id);
+      if (result.success && selectedId === folder.id) {
+        setSelectedId(null);
+      }
+    } finally {
+      setFolderDeleteSubmitting(false);
+      closeFolderDelete();
     }
   };
 
@@ -987,6 +1034,14 @@ const FoldersPage = () => {
         onClose={closeForm}
         onSubmit={handleFormSubmit}
         submitting={submitting}
+      />
+
+      <FolderDeleteModal
+        open={canManageFolders && folderDeleteState.open}
+        folder={folderDeleteState.folder}
+        onClose={closeFolderDelete}
+        onConfirm={confirmFolderDelete}
+        submitting={folderDeleteSubmitting}
       />
 
       <MaterialMoveModal

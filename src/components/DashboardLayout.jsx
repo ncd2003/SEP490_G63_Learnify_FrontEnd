@@ -483,7 +483,7 @@ const DashboardLayout = () => {
           </button>
         </div>
 
-        {isSidebarOpen && <div className="sidebar-role-chip">{roleLabel}</div>}
+        {/* {isSidebarOpen && <div className="sidebar-role-chip">{roleLabel}</div>} */}
 
         <nav className="sidebar-nav">
           {menuItems.map((item) => (

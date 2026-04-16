@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pencil,
   Plus,
@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import CenteredConfirmModal from "@/components/CenteredConfirmModal";
+import Pagination from "@/components/Pagination";
 import { benefitApi } from "@/apis/benefit.api";
 import { planApi } from "@/apis/plan.api";
 import {
@@ -33,7 +34,7 @@ const PLAN_STATUS_OPTIONS = [
 ];
 
 // Benefit creation inside form removed; DEFAULT_BENEFIT_* not required.
-const PLAN_FETCH_PARAMS = { page: 1, size: 100 };
+const PLAN_PAGE_SIZE = 10;
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
 const mapBenefitLimitForForm = (benefitCode, limitValue) => {
@@ -165,6 +166,14 @@ const AdminPlanManagementPage = () => {
   const [benefits, setBenefits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [paging, setPaging] = useState({
+    pageNumber: 1,
+    pageSize: PLAN_PAGE_SIZE,
+    totalElements: 0,
+    totalPages: 1,
+    last: true,
+  });
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -191,36 +200,55 @@ const AdminPlanManagementPage = () => {
     return map;
   }, [benefits]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const [plansResponse, benefitsResponse] = await Promise.all([
-        planApi.getPlans(PLAN_FETCH_PARAMS),
+        planApi.getPlans({ page, size: PLAN_PAGE_SIZE }),
         benefitApi.getBenefits(),
       ]);
 
       const fetchedPlans = Array.isArray(plansResponse?.result?.content)
         ? plansResponse.result.content
         : [];
+      const pagingResult = plansResponse?.result ?? {};
       const fetchedBenefits = Array.isArray(benefitsResponse?.result)
         ? benefitsResponse.result
         : [];
+      const normalizedPage = Number(pagingResult.pageNumber);
+
+      if (Number.isFinite(normalizedPage) && normalizedPage > 0 && normalizedPage !== page) {
+        setPage(normalizedPage);
+      }
 
       setPlans(fetchedPlans);
+      setPaging({
+        pageNumber: pagingResult.pageNumber ?? page,
+        pageSize: pagingResult.pageSize ?? PLAN_PAGE_SIZE,
+        totalElements: pagingResult.totalElements ?? 0,
+        totalPages: Math.max(1, pagingResult.totalPages ?? 1),
+        last: Boolean(pagingResult.last),
+      });
       setBenefits(fetchedBenefits);
     } catch (err) {
       setError(buildErrorMessage(err, "Không thể tải dữ liệu gói dịch vụ."));
       setPlans([]);
       setBenefits([]);
+      setPaging((prev) => ({
+        ...prev,
+        totalElements: 0,
+        totalPages: 1,
+        last: true,
+      }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const filteredPlans = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -307,7 +335,7 @@ const AdminPlanManagementPage = () => {
     });
   };
 
-  
+
 
 
   const changeBenefitLimit = (benefitId, nextLimit) => {
@@ -511,7 +539,10 @@ const AdminPlanManagementPage = () => {
             type="text"
             placeholder="Tìm theo tên gói, mô tả, trạng thái..."
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setPage(1);
+            }}
           />
         </div>
       </div>
@@ -592,6 +623,17 @@ const AdminPlanManagementPage = () => {
               )}
             </tbody>
           </table>
+          <div className="mt-15">
+            {filteredPlans.length > 0 && (
+              <Pagination
+                page={page}
+                totalPages={paging.totalPages}
+                loading={loading}
+                onPageChange={setPage}
+                className="classroom-pagination plan-pagination"
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -711,8 +753,8 @@ const AdminPlanManagementPage = () => {
                         benefit?.code === "STORAGE"
                           ? "GB"
                           : benefit?.code === "AI_REQUEST"
-                          ? "yêu cầu"
-                          : "";
+                            ? "yêu cầu"
+                            : "";
 
                       return (
                         <div key={benefit.id} className="plan-benefit-row">
