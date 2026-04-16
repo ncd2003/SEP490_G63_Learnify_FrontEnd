@@ -107,10 +107,19 @@ export const PATH_TEACHER = {
 // ─── STUDENT ──────────────────────────────────────────────────────────────────
 export const PATH_STUDENT = {
   root: "/",
+  assignmentResult: (submissionId) =>
+    `/student/submissions/${submissionId}/result`,
   schedule: "/classrooms/schedule",
   classroom: {
     root: "/classrooms",
     detail: (id) => `/classrooms/${id}`,
+    assignments: (id) => `/classrooms/${id}/assignments`,
+    assignmentDo: (classId, assignmentId) =>
+      `/classrooms/${classId}/assignments/${assignmentId}/start`,
+    folders: (id) => `/classrooms/${id}/folders`,
+    members: (id) => `/classrooms/${id}/pending-requests`,
+    schedule: (id) => `/classrooms/${id}/schedule`,
+    attendance: (id) => `/classrooms/${id}/attendance`,
   },
 };
 

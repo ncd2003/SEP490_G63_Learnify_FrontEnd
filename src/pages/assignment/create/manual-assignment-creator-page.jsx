@@ -60,7 +60,9 @@ const makeQuestion = (type = "MULTIPLE_CHOICE") => ({
   options:
     type === "MULTIPLE_CHOICE"
       ? [makeOption(), makeOption(), makeOption(), makeOption()]
-      : [],
+      : type === "FILL_IN_BLANK"
+        ? [makeOption()]
+        : [],
   correct:
     type === "TRUE_FALSE" ? null : type === "MULTIPLE_CHOICE" ? [] : undefined,
   answer: "",
@@ -133,6 +135,30 @@ const ASSIGNMENT_STATUS = {
   DRAFT: "DRAFT",
   PUBLISHED: "PUBLISHED",
   ARCHIVED: "ARCHIVED",
+};
+
+const SESSION_TYPE = {
+  AI_GENERATION: "AI_GENERATION",
+  EXCEL_IMPORT: "EXCEL_IMPORT",
+  MANUAL_CREATION: "MANUAL_CREATION",
+};
+
+const normalizeSessionType = (rawType) => {
+  const normalized = String(rawType || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === SESSION_TYPE.AI_GENERATION) {
+    return SESSION_TYPE.AI_GENERATION;
+  }
+  if (normalized === SESSION_TYPE.EXCEL_IMPORT) {
+    return SESSION_TYPE.EXCEL_IMPORT;
+  }
+  if (normalized === SESSION_TYPE.MANUAL_CREATION) {
+    return SESSION_TYPE.MANUAL_CREATION;
+  }
+
+  return null;
 };
 
 const normalizeAssignmentStatus = (rawStatus) => {
@@ -242,6 +268,12 @@ const mapBackendQuestion = (item, sectionId = null) => {
     }, []);
   }
 
+  const fillOptionText = String(
+    opts.find((option) => String(option?.text || "").trim().length > 0)?.text ||
+      item?.sampleAnswer ||
+      "",
+  );
+
   return {
     id: Date.now() + Math.random(),
     assignmentQuestionId: null,
@@ -258,14 +290,19 @@ const mapBackendQuestion = (item, sectionId = null) => {
         ? opts.length
           ? opts
           : [makeOption(), makeOption(), makeOption(), makeOption()]
-        : [],
+        : type === "FILL_IN_BLANK"
+          ? [{ id: Date.now() + Math.random(), text: fillOptionText }]
+          : [],
     correct,
-    answer: item?.sampleAnswer || "",
+    answer: type === "ESSAY" ? item?.sampleAnswer || "" : "",
     collapsed: false,
   };
 };
 
-const mapAssignmentQuestionToEditorQuestion = (questionItem, sectionId = null) => {
+const mapAssignmentQuestionToEditorQuestion = (
+  questionItem,
+  sectionId = null,
+) => {
   const source =
     questionItem &&
     typeof questionItem === "object" &&
@@ -306,7 +343,9 @@ const mapAssignmentQuestionToEditorQuestion = (questionItem, sectionId = null) =
 
 const mapAssignmentSectionsToEditorQuestions = (sections = []) =>
   (Array.isArray(sections) ? sections : []).flatMap((section) => {
-    const questions = Array.isArray(section?.questions) ? section.questions : [];
+    const questions = Array.isArray(section?.questions)
+      ? section.questions
+      : [];
 
     const sortedQuestions = [...questions].sort((left, right) => {
       const leftOrder = Number(left?.orderIndex);
@@ -806,23 +845,35 @@ const ManualAssignmentCreatorPage = () => {
     [assignmentId, bankId],
   );
 
+  const isBankMode = Boolean(scope.bankId) && !scope.assignmentId;
+
   const setupPagePath = useMemo(() => {
+    if (isBankMode) {
+      return PATH_TEACHER.questionBankMethod(scope.bankId);
+    }
+
     const query = searchParams.toString();
     return query
       ? `${PATH_TEACHER.assignmentCreateManual}?${query}`
       : PATH_TEACHER.assignmentCreateManual;
-  }, [searchParams]);
+  }, [isBankMode, scope.bankId, searchParams]);
 
   const isAssignmentUpdateMode = sourceModeFromStatusQuery === "assignment";
-  const primaryActionLabel = isAssignmentUpdateMode
-    ? "Cập nhật bài tập"
-    : "Xuất bản";
-  const sideActionBusyLabel = isAssignmentUpdateMode
-    ? "Đang kiểm tra & cập nhật..."
-    : "Đang kiểm tra & xuất bản...";
-  const topbarActionBusyLabel = isAssignmentUpdateMode
-    ? "Đang cập nhật..."
-    : "Đang xử lý...";
+  const primaryActionLabel = isBankMode
+    ? "Lưu ngân hàng"
+    : isAssignmentUpdateMode
+      ? "Cập nhật bài tập"
+      : "Xuất bản";
+  const sideActionBusyLabel = isBankMode
+    ? "Đang kiểm tra & lưu ngân hàng..."
+    : isAssignmentUpdateMode
+      ? "Đang kiểm tra & cập nhật..."
+      : "Đang kiểm tra & xuất bản...";
+  const topbarActionBusyLabel = isBankMode
+    ? "Đang lưu..."
+    : isAssignmentUpdateMode
+      ? "Đang cập nhật..."
+      : "Đang xử lý...";
 
   useEffect(() => {
     setQs((prev) => sanitizeQuestionsByFormat(prev, formatMode));
@@ -888,7 +939,12 @@ const ManualAssignmentCreatorPage = () => {
     return () => {
       alive = false;
     };
-  }, [assignmentId, formatMode, singleModeSectionId, sourceModeFromStatusQuery]);
+  }, [
+    assignmentId,
+    formatMode,
+    singleModeSectionId,
+    sourceModeFromStatusQuery,
+  ]);
 
   const groupedQuestions = useMemo(() => {
     const indexed = qs.map((q, idx) => ({ q, idx }));
@@ -919,6 +975,21 @@ const ManualAssignmentCreatorPage = () => {
           sectionLabel: "Tự luận",
           emptyMessage: "Chưa có câu hỏi tự luận.",
           items: indexed.filter(({ q }) => q.type === "ESSAY"),
+        },
+      ];
+    }
+
+    if (isBankMode) {
+      return [
+        {
+          key: "bank-mixed",
+          sectionId: null,
+          sectionType: SECTION_TYPE.MIXED,
+          title: "Danh sách câu hỏi",
+          subtitle: "Không chia phần",
+          sectionLabel: "Câu hỏi",
+          emptyMessage: "Chưa có câu hỏi.",
+          items: indexed,
         },
       ];
     }
@@ -982,10 +1053,17 @@ const ManualAssignmentCreatorPage = () => {
         }),
       };
     });
-  }, [formatMode, mixedSections, qs, singleModeSectionId]);
+  }, [formatMode, isBankMode, mixedSections, qs, singleModeSectionId]);
 
   const createMixedSection = async () => {
     if (formatMode !== FORMAT_MODE.MIXED) return;
+
+    if (isBankMode) {
+      showToast(
+        "Chế độ ngân hàng đề không dùng chia phần. Bạn có thể thêm câu hỏi trực tiếp.",
+      );
+      return;
+    }
 
     if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
       showToast("Thiếu assignmentId để tạo phần.", "error");
@@ -1044,29 +1122,33 @@ const ManualAssignmentCreatorPage = () => {
     let nextSectionId = null;
 
     if (formatMode === FORMAT_MODE.MIXED) {
-      const targetSection = mixedSections.find(
-        (section) => String(section.id) === String(targetSectionId),
-      );
-
-      if (!targetSection) {
-        showToast("Không tìm thấy phần để thêm câu hỏi.", "error");
-        return;
-      }
-
-      const sectionAllowedTypes = getAllowedQuestionTypesBySectionType(
-        targetSection.sectionType,
-      );
-      if (!sectionAllowedTypes.includes(type)) {
-        showToast(
-          targetSection.sectionType === SECTION_TYPE.ESSAY
-            ? "Phần này chỉ thêm được câu hỏi tự luận."
-            : "Phần này chỉ thêm được câu hỏi trắc nghiệm / đúng sai / điền khuyết.",
-          "error",
+      if (isBankMode) {
+        nextSectionId = null;
+      } else {
+        const targetSection = mixedSections.find(
+          (section) => String(section.id) === String(targetSectionId),
         );
-        return;
-      }
 
-      nextSectionId = targetSection?.id || null;
+        if (!targetSection) {
+          showToast("Không tìm thấy phần để thêm câu hỏi.", "error");
+          return;
+        }
+
+        const sectionAllowedTypes = getAllowedQuestionTypesBySectionType(
+          targetSection.sectionType,
+        );
+        if (!sectionAllowedTypes.includes(type)) {
+          showToast(
+            targetSection.sectionType === SECTION_TYPE.ESSAY
+              ? "Phần này chỉ thêm được câu hỏi tự luận."
+              : "Phần này chỉ thêm được câu hỏi trắc nghiệm / đúng sai / điền khuyết.",
+            "error",
+          );
+          return;
+        }
+
+        nextSectionId = targetSection?.id || null;
+      }
     } else {
       nextSectionId = singleModeSectionId;
     }
@@ -1087,6 +1169,13 @@ const ManualAssignmentCreatorPage = () => {
           formatMode === FORMAT_MODE.ESSAY
             ? SECTION_TYPE.ESSAY
             : SECTION_TYPE.OBJECTIVE,
+      };
+    }
+
+    if (isBankMode) {
+      return {
+        sectionId: null,
+        sectionType: SECTION_TYPE.MIXED,
       };
     }
 
@@ -1232,9 +1321,7 @@ const ManualAssignmentCreatorPage = () => {
 
     if (isAssignmentUpdateMode && removedRelationId) {
       setRemovedAssignmentQuestionIds((prev) =>
-        prev.includes(removedRelationId)
-          ? prev
-          : [...prev, removedRelationId],
+        prev.includes(removedRelationId) ? prev : [...prev, removedRelationId],
       );
     }
 
@@ -1259,6 +1346,16 @@ const ManualAssignmentCreatorPage = () => {
     const nw = [...q.options];
     nw[oIdx] = { ...nw[oIdx], text };
     updateQ(qId, { options: nw });
+  };
+
+  const updateFillOption = (qId, text) => {
+    const q = qs.find((x) => x.id === qId);
+    if (!q) return;
+
+    const currentOption = q.options?.[0] || makeOption();
+    updateQ(qId, {
+      options: [{ ...currentOption, text }],
+    });
   };
 
   const focusQuestionCard = (qId) => {
@@ -1346,6 +1443,9 @@ const ManualAssignmentCreatorPage = () => {
         { content: "Đúng", correct: q.correct === true },
         { content: "Sai", correct: q.correct === false },
       ];
+    } else if (q.type === "FILL_IN_BLANK") {
+      const fillAnswer = String(q.options?.[0]?.text || "").trim();
+      options = fillAnswer ? [{ content: fillAnswer, correct: true }] : null;
     }
 
     return {
@@ -1354,7 +1454,8 @@ const ManualAssignmentCreatorPage = () => {
       questionType: API_TYPE_MAP[q.type],
       cognitiveLevel: API_COG_MAP[q.cogLevel] || "APPLYING",
       defaultPoints: Number.isFinite(Number(q.points)) ? Number(q.points) : 1,
-      sampleAnswer: String(q.answer || "").trim() || null,
+      sampleAnswer:
+        q.type === "ESSAY" ? String(q.answer || "").trim() || null : null,
       options,
       sectionId: resolveSectionIdForQuestion(q),
       orderIndex:
@@ -1474,8 +1575,7 @@ const ManualAssignmentCreatorPage = () => {
           const points = Number(q.points);
           const payload = {
             id: relationId,
-            points:
-              Number.isFinite(points) && points > 0 ? points : 1,
+            points: Number.isFinite(points) && points > 0 ? points : 1,
           };
 
           if (questionId) {
@@ -1534,7 +1634,7 @@ const ManualAssignmentCreatorPage = () => {
   const handlePublish = async () => {
     if (publishing) return;
 
-    if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
+    if (!isBankMode && (!Number.isFinite(assignmentId) || assignmentId <= 0)) {
       showToast(
         isAssignmentUpdateMode
           ? "Thiếu assignmentId để cập nhật bài tập."
@@ -1544,7 +1644,10 @@ const ManualAssignmentCreatorPage = () => {
       return;
     }
 
-    if (!isAssignmentUpdateMode && (!Number.isFinite(sessionId) || sessionId <= 0)) {
+    if (
+      !isAssignmentUpdateMode &&
+      (!Number.isFinite(sessionId) || sessionId <= 0)
+    ) {
       showToast("Chưa khởi tạo được phiên nháp. Vui lòng thử lại.", "error");
       return;
     }
@@ -1557,7 +1660,8 @@ const ManualAssignmentCreatorPage = () => {
           clearTimeout(saveTimer.current);
         }
 
-        const questionsNeedDraft = collectQuestionsNeedDraftForAssignmentUpdate();
+        const questionsNeedDraft =
+          collectQuestionsNeedDraftForAssignmentUpdate();
         if (questionsNeedDraft.length > 0) {
           if (!Number.isFinite(sessionId) || sessionId <= 0) {
             throw new Error("MISSING_DRAFT_SESSION_FOR_UPDATE");
@@ -1575,7 +1679,8 @@ const ManualAssignmentCreatorPage = () => {
 
         let currentMeta = assignmentMeta;
         if (!String(currentMeta?.title || "").trim()) {
-          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          const assignmentResp =
+            await assignmentApi.getAssignment(assignmentId);
           currentMeta = {
             title: String(assignmentResp?.result?.title || "").trim(),
             description: String(assignmentResp?.result?.description || ""),
@@ -1584,7 +1689,8 @@ const ManualAssignmentCreatorPage = () => {
           hydrateAssignmentMeta(assignmentResp?.result || null);
         }
 
-        const { sectionsPayload, invalidQuestions } = buildUpdateSectionsPayload();
+        const { sectionsPayload, invalidQuestions } =
+          buildUpdateSectionsPayload();
         if (invalidQuestions.length > 0) {
           throw new Error("INVALID_UPDATE_QUESTION_REFERENCE");
         }
@@ -1610,34 +1716,46 @@ const ManualAssignmentCreatorPage = () => {
           throw new Error("NO_SELECTED_QUESTION_IDS");
         }
 
-        await assignmentApi.confirmAndPublishAssignment(assignmentId, {
-          sessionId,
-          bankId: scope.bankId ?? null,
-          selectedQuestionIds,
-        });
+        if (isBankMode) {
+          await assignmentApi.confirmDraftSession(
+            sessionId,
+            selectedQuestionIds,
+            scope,
+          );
+        } else {
+          await assignmentApi.confirmAndPublishAssignment(assignmentId, {
+            sessionId,
+            bankId: scope.bankId ?? null,
+            selectedQuestionIds,
+          });
+        }
 
         setSessionId(null);
         itemIdMapRef.current = {};
 
-        showToast("Bài tập đã được xuất bản!");
-        navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
+        if (isBankMode) {
+          showToast("Đã lưu câu hỏi vào ngân hàng đề!");
+          navigate(PATH_TEACHER.questionBankDetail(scope.bankId));
+        } else {
+          showToast("Bài tập đã được xuất bản!");
+          navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
+        }
       }
     } catch (error) {
       const apiMessage = error?.response?.data?.message;
-      const fallbackMessage = isAssignmentUpdateMode
-        ? error?.message === "MISSING_DRAFT_SESSION_FOR_UPDATE"
-          ? "Không thể khởi tạo phiên nháp để cập nhật câu hỏi. Vui lòng thử lại."
-          : error?.message === "SAVE_DRAFT_FOR_UPDATE_FAILED"
-            ? "Không thể lưu tạm câu hỏi đã chỉnh sửa trước khi cập nhật."
-            : error?.message === "INVALID_UPDATE_QUESTION_REFERENCE"
-              ? "Có câu hỏi chưa hợp lệ để cập nhật. Vui lòng kiểm tra lại nội dung câu hỏi mới."
-              : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
-        : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
+      const fallbackMessage = isBankMode
+        ? "Bạn không thể lưu ngân hàng vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau"
+        : isAssignmentUpdateMode
+          ? error?.message === "MISSING_DRAFT_SESSION_FOR_UPDATE"
+            ? "Không thể khởi tạo phiên nháp để cập nhật câu hỏi. Vui lòng thử lại."
+            : error?.message === "SAVE_DRAFT_FOR_UPDATE_FAILED"
+              ? "Không thể lưu tạm câu hỏi đã chỉnh sửa trước khi cập nhật."
+              : error?.message === "INVALID_UPDATE_QUESTION_REFERENCE"
+                ? "Có câu hỏi chưa hợp lệ để cập nhật. Vui lòng kiểm tra lại nội dung câu hỏi mới."
+                : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
+          : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
 
-      showToast(
-        apiMessage || fallbackMessage,
-        "error",
-      );
+      showToast(apiMessage || fallbackMessage, "error");
     } finally {
       setPublishing(false);
     }
@@ -1668,7 +1786,10 @@ const ManualAssignmentCreatorPage = () => {
 
     if (!initPromiseRef.current) {
       initPromiseRef.current = (async () => {
-        const initResp = await assignmentApi.initManualDraftSession(scope);
+        const initResp = await assignmentApi.initManualDraftSession(
+          scope,
+          SESSION_TYPE.MANUAL_CREATION,
+        );
         const result = initResp?.result;
         const sid = result?.sessionId || result;
         const hasPending =
@@ -1680,19 +1801,47 @@ const ManualAssignmentCreatorPage = () => {
               ? normalizedSid
               : null,
           hasPending,
+          sessionType: normalizeSessionType(result?.sessionType),
         };
       })();
     }
 
     initPromiseRef.current
-      .then(({ sid, hasPending }) => {
+      .then(({ sid, hasPending, sessionType }) => {
         if (!cancelled && sid) {
+          if (
+            !sourceModeFromStatusQuery &&
+            hasPending &&
+            sessionType &&
+            sessionType !== SESSION_TYPE.MANUAL_CREATION
+          ) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.set("sessionId", String(sid));
+
+            if (sessionType === SESSION_TYPE.AI_GENERATION) {
+              navigate(
+                `${PATH_TEACHER.assignmentCreateAi}?${nextParams.toString()}`,
+              );
+              return;
+            }
+
+            if (sessionType === SESSION_TYPE.EXCEL_IMPORT) {
+              navigate(
+                `${PATH_TEACHER.assignmentCreateImport}?${nextParams.toString()}`,
+              );
+              return;
+            }
+          }
+
+          const isManualCreationSession =
+            !sessionType || sessionType === SESSION_TYPE.MANUAL_CREATION;
+
           const shouldUseWorkspace =
             sourceModeFromStatusQuery === "workspace"
               ? true
               : sourceModeFromStatusQuery === "assignment"
                 ? false
-                : hasPending;
+                : isManualCreationSession;
 
           setSessionId(sid);
           setShouldLoadDraft(shouldUseWorkspace);
@@ -1714,7 +1863,7 @@ const ManualAssignmentCreatorPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [scope, sourceModeFromStatusQuery]);
+  }, [navigate, scope, searchParams, sourceModeFromStatusQuery]);
 
   useEffect(() => {
     const preferWorkspace = sourceModeFromStatusQuery === "workspace";
@@ -1735,7 +1884,8 @@ const ManualAssignmentCreatorPage = () => {
             ? resp.result.sections
             : [];
         } else if (Number.isFinite(assignmentId) && assignmentId > 0) {
-          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          const assignmentResp =
+            await assignmentApi.getAssignment(assignmentId);
           hydrateAssignmentMeta(assignmentResp?.result || null);
           sections = Array.isArray(assignmentResp?.result?.sections)
             ? assignmentResp.result.sections
@@ -1758,7 +1908,9 @@ const ManualAssignmentCreatorPage = () => {
 
             if (matchedSection) {
               setSingleModeSectionMeta({
-                id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+                id: toPositiveId(
+                  matchedSection?.id || matchedSection?.sectionId,
+                ),
                 title: String(matchedSection?.title || "").trim(),
                 sectionType: normalizeSectionType(matchedSection?.sectionType),
               });
@@ -1830,9 +1982,12 @@ const ManualAssignmentCreatorPage = () => {
           Number.isFinite(assignmentId) &&
           assignmentId > 0
         ) {
-          const assignmentResp = await assignmentApi.getAssignment(assignmentId);
+          const assignmentResp =
+            await assignmentApi.getAssignment(assignmentId);
           hydrateAssignmentMeta(assignmentResp?.result || null);
-          const assignmentSections = Array.isArray(assignmentResp?.result?.sections)
+          const assignmentSections = Array.isArray(
+            assignmentResp?.result?.sections,
+          )
             ? assignmentResp.result.sections
             : [];
 
@@ -1852,15 +2007,22 @@ const ManualAssignmentCreatorPage = () => {
 
               if (matchedSection) {
                 setSingleModeSectionMeta({
-                  id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+                  id: toPositiveId(
+                    matchedSection?.id || matchedSection?.sectionId,
+                  ),
                   title: String(matchedSection?.title || "").trim(),
-                  sectionType: normalizeSectionType(matchedSection?.sectionType),
+                  sectionType: normalizeSectionType(
+                    matchedSection?.sectionType,
+                  ),
                 });
               }
             }
           }
 
-          if (formatMode === FORMAT_MODE.MIXED && assignmentSections.length > 0) {
+          if (
+            formatMode === FORMAT_MODE.MIXED &&
+            assignmentSections.length > 0
+          ) {
             const nextSections = assignmentSections
               .map((section, index) => {
                 const normalizedSectionType = normalizeSectionType(
@@ -2209,12 +2371,29 @@ const ManualAssignmentCreatorPage = () => {
                           makeOption(),
                         ];
                         upd.correct = [];
+                      } else if (t === "FILL_IN_BLANK") {
+                        upd.options = [
+                          {
+                            ...makeOption(),
+                            text: String(
+                              q.options?.[0]?.text || q.answer || "",
+                            ),
+                          },
+                        ];
+                        upd.correct = undefined;
+                        upd.answer = "";
                       } else {
                         upd.options = [];
                       }
                       if (t === "TRUE_FALSE") upd.correct = null;
-                      if (t === "ESSAY" || t === "FILL_IN_BLANK")
-                        upd.answer = q.answer || "";
+                      if (t === "ESSAY") {
+                        upd.answer =
+                          String(q.answer || "") ||
+                          String(q.options?.[0]?.text || "");
+                      }
+                      if (t !== "ESSAY" && t !== "FILL_IN_BLANK") {
+                        upd.answer = "";
+                      }
                       updateQ(q.id, upd);
                     }}
                   >
@@ -2325,14 +2504,18 @@ const ManualAssignmentCreatorPage = () => {
 
             {q.type === "FILL_IN_BLANK" && (
               <div className="fg">
-                <label className="fl">Đáp án</label>
-                <input
-                  className="f-input"
-                  style={{ minHeight: "auto" }}
-                  placeholder="Nhập đáp án đúng..."
-                  value={q.answer}
-                  onChange={(e) => updateQ(q.id, { answer: e.target.value })}
-                />
+                <label className="fl">Option đáp án đúng</label>
+                <div className="opts">
+                  <div className="opt-row">
+                    <div className="opt-letter">A</div>
+                    <input
+                      className="opt-input"
+                      placeholder="Nhập đáp án đúng cho ô trống..."
+                      value={q.options?.[0]?.text || ""}
+                      onChange={(e) => updateFillOption(q.id, e.target.value)}
+                    />
+                  </div>
+                </div>
                 <div className="fb-hint">
                   Dùng dấu ___ trong câu hỏi để đánh dấu chỗ trống
                 </div>
@@ -2461,7 +2644,7 @@ const ManualAssignmentCreatorPage = () => {
         </div>
 
         <div className="scroll">
-          {formatMode === FORMAT_MODE.MIXED && (
+          {formatMode === FORMAT_MODE.MIXED && !isBankMode && (
             <div className="section-wrap">
               <div className="section-hdr">
                 <div className="section-title">

@@ -307,11 +307,27 @@ const SchedulePage = () => {
             </>
           )}
           {viewMode === VIEW_MODES.WEEK && (
-            <>
-              <button className="nav-button" onClick={() => navigate(-7, 'day')}><ChevronLeft size={20} /> Tuần trước</button>
+            <div className="schedule-week-nav">
+              <button
+                type="button"
+                className="nav-icon-button"
+                onClick={() => navigate(-7, 'day')}
+                aria-label="Tuần trước"
+                title="Tuần trước"
+              >
+                <ChevronLeft size={18} />
+              </button>
               <div className="current-date">{(() => { const w = getWeekDays(currentDate); return formatDateRange(w[0], w[6]); })()}</div>
-              <button className="nav-button" onClick={() => navigate(7, 'day')}>Tuần sau <ChevronRight size={20} /></button>
-            </>
+              <button
+                type="button"
+                className="nav-icon-button"
+                onClick={() => navigate(7, 'day')}
+                aria-label="Tuần sau"
+                title="Tuần sau"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           )}
         </div>
 
@@ -399,11 +415,6 @@ const SchedulePage = () => {
                           <div className="week-board-day-name-row">
                             <span className="week-board-day-name">{WEEKDAYS[day.getDay()]}</span>
                           </div>
-                          {isDayToday && (
-                            <div className="week-board-day-subrow">
-                              <span className="week-board-today-badge">Hôm nay</span>
-                            </div>
-                          )}
                           <div className="week-board-day-date">
                             {String(day.getDate()).padStart(2, '0')}/{String(day.getMonth() + 1).padStart(2, '0')}
                           </div>
@@ -436,8 +447,8 @@ const SchedulePage = () => {
                               <span className="week-board-event-type-icon">{renderSessionBadge(s)}</span>
                               <span className="week-board-event-type-text">{s.type === SESSION_TYPE.ONLINE ? 'Trực tuyến' : (s.location || 'Tại lớp')}</span>
                             </div>
-                            {s.type === SESSION_TYPE.ONLINE && s.meetingLink && (
-                              <div className="week-board-event-actions">
+                            <div className={`week-board-event-actions ${s.type === SESSION_TYPE.ONLINE && s.meetingLink ? '' : 'is-placeholder'}`}>
+                              {s.type === SESSION_TYPE.ONLINE && s.meetingLink ? (
                                 <button
                                   type="button"
                                   className="week-board-join-btn"
@@ -447,8 +458,10 @@ const SchedulePage = () => {
                                 >
                                   Tham gia
                                 </button>
-                              </div>
-                            )}
+                              ) : (
+                                <span className="week-board-join-placeholder" aria-hidden="true" />
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

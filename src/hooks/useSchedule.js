@@ -36,7 +36,7 @@ const useSchedule = (classroomId) => {
    */
   const createSession = async (data) => {
     const response = await scheduleApi.createSession(classroomId, data);
-    setSessions((prev) => [...prev, response.result]);
+    await fetchSessions();
     return response;
   };
 
@@ -47,9 +47,7 @@ const useSchedule = (classroomId) => {
    */
   const updateSession = async (sessionId, data) => {
     const response = await scheduleApi.updateSession(classroomId, sessionId, data);
-    setSessions((prev) =>
-      prev.map((s) => (s.id === sessionId ? response.result : s))
-    );
+    await fetchSessions();
     return response;
   };
 
@@ -59,7 +57,7 @@ const useSchedule = (classroomId) => {
    */
   const deleteSession = async (sessionId) => {
     await scheduleApi.deleteSession(classroomId, sessionId);
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    await fetchSessions();
   };
 
   return {

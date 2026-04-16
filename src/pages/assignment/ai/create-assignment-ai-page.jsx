@@ -42,6 +42,80 @@ const UI_QT_MAP = {
   ESSAY: "ESSAY",
 };
 
+const API_COGNITIVE_ALIAS_MAP = {
+  REMEMBER: "REMEMBERING",
+  REMEMBERING: "REMEMBERING",
+  UNDERSTAND: "UNDERSTANDING",
+  UNDERSTANDING: "UNDERSTANDING",
+  APPLY: "APPLYING",
+  APPLYING: "APPLYING",
+  ANALYZE: "ANALYZING",
+  ANALYZING: "ANALYZING",
+  EVALUATE: "EVALUATING",
+  EVALUATING: "EVALUATING",
+  CREATE: "CREATING",
+  CREATING: "CREATING",
+};
+
+const COGNITIVE_LEVEL_UI = {
+  REMEMBERING: {
+    label: "Nhớ",
+    bg: "#ECFDF5",
+    border: "#86EFAC",
+    text: "#047857",
+  },
+  UNDERSTANDING: {
+    label: "Hiểu",
+    bg: "#ECFEFF",
+    border: "#67E8F9",
+    text: "#0E7490",
+  },
+  APPLYING: {
+    label: "Vận dụng",
+    bg: "#EFF6FF",
+    border: "#93C5FD",
+    text: "#1D4ED8",
+  },
+  ANALYZING: {
+    label: "Phân tích",
+    bg: "#F5F3FF",
+    border: "#C4B5FD",
+    text: "#6D28D9",
+  },
+  EVALUATING: {
+    label: "Đánh giá",
+    bg: "#FFFBEB",
+    border: "#FCD34D",
+    text: "#B45309",
+  },
+  CREATING: {
+    label: "Sáng tạo",
+    bg: "#FEF2F2",
+    border: "#FCA5A5",
+    text: "#B91C1C",
+  },
+};
+
+const normalizeCognitiveLevelFromApi = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  return API_COGNITIVE_ALIAS_MAP[normalized] || "";
+};
+
+const getCognitiveLevelUi = (value) => {
+  const normalized = normalizeCognitiveLevelFromApi(value);
+  return (
+    COGNITIVE_LEVEL_UI[normalized] || {
+      label: "Chưa xác định",
+      bg: "#F8FAFC",
+      border: "#CBD5E1",
+      text: "#475569",
+    }
+  );
+};
+
 const SECTION_TYPE = {
   OBJECTIVE: "OBJECTIVE",
   ESSAY: "ESSAY",
@@ -194,8 +268,12 @@ const applyQuestionDropToSections = (
     };
   }
 
-  const sourceSection = sections.find((section) => section.id === safeSourceSectionId);
-  const targetSection = sections.find((section) => section.id === safeTargetSectionId);
+  const sourceSection = sections.find(
+    (section) => section.id === safeSourceSectionId,
+  );
+  const targetSection = sections.find(
+    (section) => section.id === safeTargetSectionId,
+  );
 
   if (!sourceSection || !targetSection) {
     return {
@@ -241,7 +319,10 @@ const applyQuestionDropToSections = (
   });
 
   const nextSections = sections.map((section) => {
-    if (section.id === safeSourceSectionId && section.id === safeTargetSectionId) {
+    if (
+      section.id === safeSourceSectionId &&
+      section.id === safeTargetSectionId
+    ) {
       return {
         ...section,
         questions: sourceQuestions.map((question, index) => ({
@@ -327,6 +408,9 @@ const toQuestionFromDraft = (item, index) => {
     ? questionData.options
     : [];
   const sectionId = toPositiveId(item?.sectionId);
+  const cognitiveLevel = normalizeCognitiveLevelFromApi(
+    questionData?.cognitiveLevel ?? item?.cognitiveLevel,
+  );
   const sampleAnswer = normalizeRichText(
     questionData?.sampleAnswer ?? item?.sampleAnswer ?? "",
   );
@@ -357,6 +441,7 @@ const toQuestionFromDraft = (item, index) => {
       opts: options,
       cor: correctIndex >= 0 ? correctIndex : 0,
       sampleAnswer,
+      cognitiveLevel,
       sectionId,
       orderIndex,
       status: String(item?.status || "").toUpperCase(),
@@ -380,6 +465,7 @@ const toQuestionFromDraft = (item, index) => {
       prompt: normalizeRichText(questionData?.content || ""),
       cor: isTrue,
       sampleAnswer,
+      cognitiveLevel,
       sectionId,
       orderIndex,
       status: String(item?.status || "").toUpperCase(),
@@ -398,6 +484,7 @@ const toQuestionFromDraft = (item, index) => {
         answerOption?.content ?? questionData?.sampleAnswer ?? "",
       ),
       sampleAnswer,
+      cognitiveLevel,
       sectionId,
       orderIndex,
       status: String(item?.status || "").toUpperCase(),
@@ -410,6 +497,7 @@ const toQuestionFromDraft = (item, index) => {
     type: "ESSAY",
     prompt: normalizeRichText(questionData?.content || ""),
     sampleAnswer,
+    cognitiveLevel,
     sectionId,
     orderIndex,
     status: String(item?.status || "").toUpperCase(),
@@ -686,6 +774,7 @@ const CreateAssignmentAiPage = () => {
 
   const bankId = toPositiveId(searchParams.get("bankId"));
   const assignmentId = toPositiveId(searchParams.get("assignmentId"));
+  const isBankMode = Boolean(bankId) && !assignmentId;
   const initialFormat = String(searchParams.get("format") || "")
     .trim()
     .toUpperCase();
@@ -796,9 +885,7 @@ const CreateAssignmentAiPage = () => {
 
   useEffect(() => {
     const validQuestionIdSet = new Set(
-      qs
-        .map((question) => toPositiveId(question?.id))
-        .filter(Boolean),
+      qs.map((question) => toPositiveId(question?.id)).filter(Boolean),
     );
 
     setSelectedQuestionIds((prev) => {
@@ -1141,7 +1228,10 @@ const CreateAssignmentAiPage = () => {
       ...buildRequirementConfig(typeRequirements?.[type]),
     }));
 
-  const buildApiRequirementsFromSectionConfig = (sectionConfig, allowedTypes) => {
+  const buildApiRequirementsFromSectionConfig = (
+    sectionConfig,
+    allowedTypes,
+  ) => {
     const configuredTypes = Array.isArray(sectionConfig?.qts)
       ? sectionConfig.qts
           .map((type) => String(type || "").trim())
@@ -1164,7 +1254,9 @@ const CreateAssignmentAiPage = () => {
 
     return configuredTypes
       .map((type) => {
-        const requirement = buildRequirementConfig(normalizedRequirements[type]);
+        const requirement = buildRequirementConfig(
+          normalizedRequirements[type],
+        );
         return {
           type: API_QT_MAP[type] || type,
           quantity: clampRequirementQuantity(requirement.quantity),
@@ -1187,7 +1279,8 @@ const CreateAssignmentAiPage = () => {
             const sectionId = toPositiveId(section?.id);
             if (!sectionId) return null;
 
-            const sectionConfig = sectionConfigs[toSectionConfigKey(sectionId)] || {};
+            const sectionConfig =
+              sectionConfigs[toSectionConfigKey(sectionId)] || {};
             const allowedTypes = getAllowedQuestionTypesBySectionType(
               normalizeSectionType(section?.sectionType),
             );
@@ -1448,11 +1541,11 @@ const CreateAssignmentAiPage = () => {
     const previousSections = workspaceSections;
     const { didReorder, nextSections, affectedSectionIds } =
       applyQuestionDropToSections(
-      previousSections,
-      safeSourceSectionId,
-      safeTargetSectionId,
-      sourceQuestionId,
-      targetQuestionId,
+        previousSections,
+        safeSourceSectionId,
+        safeTargetSectionId,
+        sourceQuestionId,
+        targetQuestionId,
       );
 
     if (!didReorder) return;
@@ -1633,20 +1726,26 @@ const CreateAssignmentAiPage = () => {
     if (publishing) return;
 
     const safeAssignmentId = toPositiveId(assignmentId);
-    if (!safeAssignmentId) {
+    if (!isBankMode && !safeAssignmentId) {
       setRequestError("Thiếu assignmentId để xuất bản bài tập.");
       return;
     }
 
     const safeSessionId = toPositiveId(draftSessionId);
     if (!safeSessionId) {
-      setRequestError("Chưa có phiên nháp để xuất bản. Vui lòng tạo câu hỏi trước.");
+      setRequestError(
+        "Chưa có phiên nháp để xuất bản. Vui lòng tạo câu hỏi trước.",
+      );
       return;
     }
 
     const selectedIds = collectConfirmQuestionIds();
     if (!selectedIds.length) {
-      setRequestError("Không có câu hỏi hợp lệ để xuất bản.");
+      setRequestError(
+        isBankMode
+          ? "Không có câu hỏi hợp lệ để lưu vào ngân hàng đề."
+          : "Không có câu hỏi hợp lệ để xuất bản.",
+      );
       return;
     }
 
@@ -1654,26 +1753,40 @@ const CreateAssignmentAiPage = () => {
     setRequestError("");
 
     try {
-      await assignmentApi.confirmAndPublishAssignment(safeAssignmentId, {
-        sessionId: safeSessionId,
-        bankId: bankId || null,
-        selectedQuestionIds: selectedIds,
-      });
+      if (isBankMode) {
+        await assignmentApi.confirmDraftSession(safeSessionId, selectedIds, {
+          bankId,
+        });
+      } else {
+        await assignmentApi.confirmAndPublishAssignment(safeAssignmentId, {
+          sessionId: safeSessionId,
+          bankId: bankId || null,
+          selectedQuestionIds: selectedIds,
+        });
+      }
 
       setMsgs((prev) => [
         ...prev,
         {
           role: "bot",
-          text: "Xuất bản bài tập thành công. Đang chuyển sang màn hình gán lớp học.",
+          text: isBankMode
+            ? "Đã lưu câu hỏi vào ngân hàng đề thành công. Đang chuyển về chi tiết ngân hàng."
+            : "Xuất bản bài tập thành công. Đang chuyển sang màn hình gán lớp học.",
           time: "Vừa xong",
         },
       ]);
 
-      navigate(PATH_TEACHER.assignmentAssignClasses(safeAssignmentId));
+      if (isBankMode) {
+        navigate(PATH_TEACHER.questionBankDetail(bankId));
+      } else {
+        navigate(PATH_TEACHER.assignmentAssignClasses(safeAssignmentId));
+      }
     } catch (error) {
       const message =
         error?.response?.data?.message ||
-        "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại.";
+        (isBankMode
+          ? "Bạn không thể lưu ngân hàng vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại."
+          : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại.");
       setRequestError(message);
       setMsgs((prev) => [
         ...prev,
@@ -1725,6 +1838,7 @@ const CreateAssignmentAiPage = () => {
     const isQuestionSelected = safeQuestionId
       ? selectedQuestionIdSet.has(safeQuestionId)
       : false;
+    const cognitiveUi = getCognitiveLevelUi(d?.cognitiveLevel);
     const isDragging = Boolean(dragOptions?.isDragging);
     const isDropTarget = Boolean(dragOptions?.isDropTarget);
     const isDraggable = Boolean(dragOptions?.draggable);
@@ -1776,7 +1890,31 @@ const CreateAssignmentAiPage = () => {
               <div className="qc-n">{num}</div>
             </div>
             <div className="qc-body">
-              <span className={`qc-tb ${TC[d.type]}`}>{TL[d.type]}</span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  marginBottom: 4,
+                }}
+              >
+                <span className={`qc-tb ${TC[d.type]}`}>{TL[d.type]}</span>
+                <span
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 10,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    background: cognitiveUi.bg,
+                    border: `1px solid ${cognitiveUi.border}`,
+                    color: cognitiveUi.text,
+                    letterSpacing: ".02em",
+                  }}
+                >
+                  Mức độ: {cognitiveUi.label}
+                </span>
+              </div>
               {isEd ? (
                 <textarea
                   className="ed-prompt"
@@ -1938,7 +2076,13 @@ const CreateAssignmentAiPage = () => {
             <button
               type="button"
               className="bk"
-              onClick={() => navigate(PATH_TEACHER.assignmentCreateMethod)}
+              onClick={() =>
+                navigate(
+                  isBankMode
+                    ? PATH_TEACHER.questionBankMethod(bankId)
+                    : PATH_TEACHER.assignmentCreateMethod,
+                )
+              }
             >
               <I.ArrowL /> Quay lại
             </button>
@@ -1963,7 +2107,14 @@ const CreateAssignmentAiPage = () => {
                   onClick={handlePublish}
                   disabled={publishing}
                 >
-                  <I.Save /> {publishing ? "Đang xuất bản..." : "Xuất bản"}
+                  <I.Save />
+                  {publishing
+                    ? isBankMode
+                      ? "Đang lưu..."
+                      : "Đang xuất bản..."
+                    : isBankMode
+                      ? "Lưu ngân hàng"
+                      : "Xuất bản"}
                 </button>
               </>
             )}
@@ -2456,7 +2607,10 @@ const CreateAssignmentAiPage = () => {
                           {section.questions.map((question, questionIndex) =>
                             renderQuestionCard(
                               question,
-                              getGlobalQuestionNumber(sectionIndex, questionIndex),
+                              getGlobalQuestionNumber(
+                                sectionIndex,
+                                questionIndex,
+                              ),
                               `section-${section.id}-${question.id}-${questionIndex}`,
                               questionIndex,
                               {

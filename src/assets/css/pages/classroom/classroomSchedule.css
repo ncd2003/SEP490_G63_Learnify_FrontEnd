@@ -3,8 +3,8 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 .classroom-schedule-page {
-  padding: 2rem;
-  max-width: 1400px;
+  padding: 0.45rem 2.25rem 2rem;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -19,31 +19,35 @@
 
 .schedule-tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 2px solid #e5e7eb;
+  gap: 0;
+  margin-bottom: 0.7rem;
+  width: fit-content;
+  border: 1px solid #cfd7e6;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f6fb;
 }
 
 .schedule-tab {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #6b7280;
+  min-width: 120px;
+  padding: 0.62rem 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
   background: transparent;
   border: none;
-  border-bottom: 3px solid transparent;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .schedule-tab:hover {
-  color: #3b82f6;
-  background: #f3f4f6;
+  color: #1d4ed8;
+  background: #e8eef9;
 }
 
 .schedule-tab.active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
+  color: #ffffff;
+  background: #1e4fa8;
 }
 
 /* ─── Navigation ──────────────────────────────────────────────────────────────── */
@@ -52,24 +56,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: #ffffff;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.7rem;
+  padding: 0.2rem 0;
+  background: transparent;
 }
 
 .nav-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  padding: 0.7rem 1.15rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: #374151;
   background: #f9fafb;
   border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
+  border-radius: 0.6rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -79,10 +81,38 @@
   border-color: #9ca3af;
 }
 
-.current-date {
-  font-size: 1.25rem;
-  font-weight: 600;
+.schedule-week-nav {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.nav-icon-button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.nav-icon-button:hover {
+  background: #e2e8f0;
   color: #1f2937;
+}
+
+.current-date {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.01em;
 }
 
 /* ─── Loading / Error Placeholder ─────────────────────────────────────────────── */
@@ -91,11 +121,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  min-height: 460px;
   padding: 2rem;
   background: #ffffff;
   border: 2px dashed #d1d5db;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
 }
 
 .view-placeholder p {
@@ -109,8 +139,8 @@
 
 .calendar-container {
   background: #ffffff;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   overflow: hidden;
 }
 
@@ -122,9 +152,9 @@
 }
 
 .calendar-header-cell {
-  padding: 1rem;
+  padding: 1.15rem 1rem;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #374151;
 }
@@ -137,8 +167,8 @@
 }
 
 .calendar-day {
-  min-height: 120px;
-  padding: 0.5rem;
+  min-height: 160px;
+  padding: 0.7rem;
   background: #ffffff;
   position: relative;
   transition: background 0.2s;
@@ -165,10 +195,10 @@
 }
 
 .day-number {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
 }
 
 .calendar-day.today .day-number {
@@ -185,19 +215,19 @@
 .day-events {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.4rem;
 }
 
 .event-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.375rem 0.5rem;
+  padding: 0.55rem 0.65rem;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-left: 3px solid #3b82f6;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
+  border-radius: 0.7rem;
+  font-size: 0.82rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transition: all 0.2s;
@@ -225,7 +255,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.6875rem;
+  font-size: 0.78rem;
 }
 
 .event-title {
@@ -243,8 +273,8 @@
 }
 
 .more-events-btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
   color: #3b82f6;
   background: transparent;
   border: none;
@@ -277,28 +307,40 @@
 
 .week-board-container {
   background: #ffffff;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-x: auto;
+  border-radius: 0.55rem;
+  border: 1px solid #d6dce8;
+  box-shadow: none;
+  overflow-x: hidden;
 }
 
 .week-board-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(150px, 1fr));
-  min-width: 1040px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
+  width: 100%;
   border-top: 1px solid #d9e0ea;
   border-left: 1px solid #d9e0ea;
 }
 
 .week-board-day {
-  min-height: 380px;
+  min-height: 430px;
   border-right: 1px solid #d9e0ea;
   border-bottom: 1px solid #d9e0ea;
   background: #ffffff;
 }
 
 .week-board-day.today {
-  background: #fbfdff;
+  background: #f8fbff;
+  box-shadow: inset 0 0 0 2px #bfdbfe;
+}
+
+.week-board-day.today .week-board-header {
+  background: #eff6ff;
+}
+
+.week-board-day.today .week-board-day-name,
+.week-board-day.today .week-board-day-date {
+  color: #1d4ed8;
 }
 
 .week-board-day.past {
@@ -311,8 +353,8 @@
 }
 
 .week-board-header {
-  height: 78px;
-  padding: 0.625rem 0.7rem;
+  min-height: 88px;
+  padding: 0.6rem 0.65rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -333,9 +375,9 @@
 .week-board-day-name {
   display: inline-block;
   color: #111827;
-  font-size: 0.9rem;
+  font-size: 0.81rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.1;
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
@@ -347,9 +389,9 @@
 
 .week-board-day-date {
   color: #111827;
-  font-size: 1.25rem;
+  font-size: 1.32rem;
   font-weight: 700;
-  margin-top: 0.1rem;
+  margin-top: 0.2rem;
 }
 
 .week-board-today-badge {
@@ -367,15 +409,15 @@
 }
 
 .week-board-add-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 50%;
   background: #2f3640;
   color: #ffffff;
   font-size: 1rem;
   font-weight: 700;
-  line-height: 26px;
+  line-height: 28px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -389,7 +431,7 @@
 }
 
 .week-board-body {
-  padding: 0.625rem;
+  padding: 0.6rem;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -399,18 +441,21 @@
   color: #4b5563;
   font-size: 0.9rem;
   font-weight: 500;
-  margin-top: 0.75rem;
+  margin-top: 0.35rem;
   text-align: center;
 }
 
 .week-board-event {
   border: 1px solid #d8e5ff;
   border-left: 3px solid #3b82f6;
-  border-radius: 0.55rem;
+  border-radius: 0.68rem;
   background: #fbfdff;
-  padding: 0.5rem 0.6rem;
+  padding: 0.46rem 0.52rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 102px;
 }
 
 .week-board-event:hover {
@@ -419,16 +464,16 @@
 }
 
 .week-board-event-time {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #516079;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.22rem;
 }
 
 .week-board-event-title {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   color: #111827;
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.22rem;
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
@@ -438,7 +483,7 @@
 .week-board-event-meta {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.34rem;
   color: #4b5563;
   font-size: 0.78rem;
 }
@@ -457,16 +502,24 @@
 }
 
 .week-board-event-actions {
-  margin-top: 0.45rem;
+  margin-top: auto;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+.week-board-event-actions.is-placeholder {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .week-board-join-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 28px;
-  padding: 0 0.7rem;
-  border-radius: 0.4rem;
+  height: 25px;
+  padding: 0 0.68rem;
+  border-radius: 0.5rem;
   background: #2a85d8;
   color: #ffffff;
   font-size: 0.78rem;
@@ -978,11 +1031,15 @@
 
 @media (max-width: 768px) {
   .classroom-schedule-page {
-    padding: 1rem;
+    padding: 0.75rem 1rem 1rem;
   }
 
   .schedule-title {
     font-size: 1.5rem;
+  }
+
+  .schedule-tabs {
+    margin-bottom: 1rem;
   }
 
   .schedule-tab {
@@ -990,27 +1047,36 @@
     font-size: 0.875rem;
   }
 
+  .schedule-navigation {
+    padding: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .current-date {
+    font-size: 1.05rem;
+  }
+
   .calendar-day {
-    min-height: 80px;
-    padding: 0.25rem;
+    min-height: 100px;
+    padding: 0.35rem;
   }
 
   .day-number {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
   }
 
   .event-item {
-    padding: 0.25rem;
+    padding: 0.4rem 0.45rem;
   }
 
   .event-time,
   .event-title {
-    font-size: 0.625rem;
+    font-size: 0.7rem;
   }
 
   .floating-create-btn {
-    width: 50px;
-    height: 50px;
+    width: 54px;
+    height: 54px;
     bottom: 1rem;
     right: 1rem;
   }
@@ -1028,17 +1094,18 @@
   }
 
   .week-board-grid {
-    min-width: 910px;
-    grid-template-columns: repeat(7, minmax(130px, 1fr));
+    min-width: 0;
+    width: 100%;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
   .week-board-header {
-    min-height: 74px;
-    padding: 0.5rem 0.55rem;
+    min-height: 82px;
+    padding: 0.65rem 0.6rem;
   }
 
   .week-board-day-name {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
   }
 
   .week-board-day-subrow {
@@ -1052,10 +1119,10 @@
   }
 
   .week-board-day-date {
-    font-size: 1.05rem;
+    font-size: 0.98rem;
   }
 
   .week-board-empty {
-    font-size: 0.8rem;
+    font-size: 0.88rem;
   }
 }
