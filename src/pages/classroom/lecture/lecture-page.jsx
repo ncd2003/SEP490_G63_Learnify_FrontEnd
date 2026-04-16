@@ -317,7 +317,7 @@ const ClassroomLecturePage = () => {
     };
 
     const scheduleAutoStopRecording = (jitsiApi) => {
-      if (!isTeacherRole(user?.role) || !selectedSessionEndTimeMs) return;
+      if (!isTeacherRole(user?.role) || !selectedSessionEndTimeMs || !selectedSession?.allowRecording) return;
 
       clearAutoStopTimer();
 
@@ -335,6 +335,7 @@ const ClassroomLecturePage = () => {
 
     const startRecordingIfTeacher = (jitsiApi) => {
       if (!isTeacherRole(user?.role) || autoRecordingStartedRef.current) return;
+      if (!selectedSession?.allowRecording) return;
 
       try {
         jitsiApi.executeCommand("startRecording", {
