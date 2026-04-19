@@ -277,19 +277,9 @@ const DashboardLayout = () => {
       path: PATH_TEACHER.schedule,
     },
     {
-      icon: Users,
-      label: "Học sinh",
-      path: PATH_TEACHER.students,
-    },
-    {
       icon: FileText,
       label: "Bài tập",
       path: PATH_TEACHER.assignments,
-    },
-    {
-      icon: FileText,
-      label: "Tài liệu",
-      path: PATH_TEACHER.documents,
     },
     {
       icon: Database,

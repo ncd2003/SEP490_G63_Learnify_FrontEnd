@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, MapPin, Video } from 'lucide-react';
+import { toast } from 'sonner';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
 import EventDetailModal from '@/components/EventDetailModal';
@@ -161,7 +162,7 @@ const SchedulePage = () => {
     try {
       await deleteSession(sessionId);
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Có lỗi xảy ra khi xóa buổi học');
+      toast.error(err.response?.data?.message ?? 'Có lỗi xảy ra khi xóa buổi học');
     }
   };
 
@@ -187,7 +188,7 @@ const SchedulePage = () => {
       setIsModalOpen(false);
     } catch (err) {
       const msg = err.response?.data?.message ?? 'Có lỗi xảy ra. Vui lòng thử lại.';
-      alert(msg);
+      toast.error(msg);
     }
   };
 
@@ -255,12 +256,12 @@ const SchedulePage = () => {
 
     const disabledReason = getJoinDisabledReason(session);
     if (disabledReason) {
-      alert(disabledReason);
+      toast.error(disabledReason);
       return;
     }
 
     if (!session?.meetingLink || !session?.id) {
-      alert('Không tìm thấy thông tin phòng họp hợp lệ.');
+      toast.error('Không tìm thấy thông tin phòng họp hợp lệ.');
       return;
     }
 

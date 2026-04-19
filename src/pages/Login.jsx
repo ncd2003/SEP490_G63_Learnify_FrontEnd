@@ -174,36 +174,30 @@ const LoginPage = () => {
               </div>
               <h1 className="brand-name">Learnify</h1>
             </div>
-            <p className="tagline">Nơi tri thức không có giới hạn</p>
+            <p className="tagline">Học tập thông minh — Tiến bộ mỗi ngày</p>
+            <p className="brand-desc">Nền tảng quản lý lớp học trực tuyến: tạo lớp, lên lịch, giao bài và theo dõi tiến độ học tập cho giáo viên và học sinh.</p>
 
             <div className="feature-list">
               <div className="feature-item">
                 <div className="feature-dot"></div>
-                <span>Học tập tương tác</span>
+                <span>Học trực tuyến & tương tác</span>
               </div>
               <div className="feature-item">
                 <div className="feature-dot"></div>
-                <span>Theo dõi tiến độ</span>
+                <span>Theo dõi tiến độ & báo cáo</span>
               </div>
               <div className="feature-item">
                 <div className="feature-dot"></div>
-                <span>Kết nối cộng đồng</span>
+                <span>Quản lý lớp & tài liệu</span>
+              </div>
+              <div className="feature-item">
+                <div className="feature-dot"></div>
+                <span>Lịch học & điểm danh</span>
               </div>
             </div>
 
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-number">12K+</div>
-                <div className="stat-label">Học viên</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-number">500+</div>
-                <div className="stat-label">Giáo viên</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-number">1000+</div>
-                <div className="stat-label">Khóa học</div>
-              </div>
+            <div style={{ marginTop: 28 }}>
+              <Link to="/register" className="brand-cta">Đăng ký miễn phí</Link>
             </div>
           </div>
         </div>
@@ -480,6 +474,25 @@ const LoginPage = () => {
           z-index: 1;
           color: white;
         }
+
+        .brand-desc {
+          max-width: 420px;
+          font-size: 14px;
+          opacity: 0.95;
+          margin-bottom: 18px;
+          color: rgba(255,255,255,0.92);
+        }
+
+        .brand-cta {
+          display: inline-block;
+          padding: 10px 16px;
+          background: rgba(255,255,255,0.12);
+          color: white;
+          border-radius: 10px;
+          text-decoration: none;
+          font-weight: 700;
+        }
+        .brand-cta:hover { background: rgba(255,255,255,0.18); }
 
         .logo-wrapper {
           display: flex;

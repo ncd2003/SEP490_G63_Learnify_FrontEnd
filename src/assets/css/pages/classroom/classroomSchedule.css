@@ -3,15 +3,28 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 .classroom-schedule-page {
-  padding: 0.45rem 2.25rem 2rem;
-  max-width: 1600px;
-  margin: 0 auto;
+  padding: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+:root {
+  --schedule-blue-50: #eff6ff;
+  --schedule-blue-100: #dbeafe;
+  --schedule-blue-200: #bfdbfe;
+  --schedule-blue-300: #93c5fd;
+  --schedule-blue-500: #3b82f6;
+  --schedule-blue-600: #2563eb;
+  --schedule-blue-700: #1d4ed8;
+  --schedule-blue-800: #1e40af;
+  --schedule-slate-700: #334155;
 }
 
 .schedule-title {
   font-size: 1.55rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--schedule-blue-800);
   margin-bottom: 1.5rem;
 }
 
@@ -22,10 +35,10 @@
   gap: 0;
   margin-bottom: 0.7rem;
   width: fit-content;
-  border: 1px solid #cfd7e6;
+  border: 1px solid var(--schedule-blue-200);
   border-radius: 12px;
   overflow: hidden;
-  background: #f3f6fb;
+  background: var(--schedule-blue-50);
 }
 
 .schedule-tab {
@@ -33,7 +46,7 @@
   padding: 0.62rem 0.9rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--schedule-slate-700);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -41,13 +54,13 @@
 }
 
 .schedule-tab:hover {
-  color: #1d4ed8;
-  background: #e8eef9;
+  color: var(--schedule-blue-700);
+  background: #e4eeff;
 }
 
 .schedule-tab.active {
   color: #ffffff;
-  background: #1e4fa8;
+  background: linear-gradient(135deg, var(--schedule-blue-700), var(--schedule-blue-600));
 }
 
 /* ─── Navigation ──────────────────────────────────────────────────────────────── */
@@ -57,8 +70,10 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.7rem;
-  padding: 0.2rem 0;
-  background: transparent;
+  padding: 0.35rem 0.45rem;
+  background: #f8fbff;
+  border: 1px solid var(--schedule-blue-100);
+  border-radius: 0.8rem;
 }
 
 .nav-button {
@@ -68,17 +83,17 @@
   padding: 0.7rem 1.15rem;
   font-size: 0.95rem;
   font-weight: 500;
-  color: #374151;
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
+  color: var(--schedule-blue-800);
+  background: #edf4ff;
+  border: 1px solid var(--schedule-blue-200);
   border-radius: 0.6rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .nav-button:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  background: #dbeafe;
+  border-color: var(--schedule-blue-300);
 }
 
 .schedule-week-nav {
@@ -92,10 +107,10 @@
 .nav-icon-button {
   width: 30px;
   height: 30px;
-  border: none;
+  border: 1px solid var(--schedule-blue-200);
   border-radius: 50%;
-  background: transparent;
-  color: #475569;
+  background: #edf4ff;
+  color: var(--schedule-blue-700);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -104,14 +119,14 @@
 }
 
 .nav-icon-button:hover {
-  background: #e2e8f0;
-  color: #1f2937;
+  background: #dbeafe;
+  color: var(--schedule-blue-800);
 }
 
 .current-date {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--schedule-blue-800);
   letter-spacing: 0.01em;
 }
 
@@ -123,8 +138,8 @@
   justify-content: center;
   min-height: 460px;
   padding: 2rem;
-  background: #ffffff;
-  border: 2px dashed #d1d5db;
+  background: #f8fbff;
+  border: 2px dashed var(--schedule-blue-200);
   border-radius: 0.75rem;
 }
 
@@ -140,15 +155,16 @@
 .calendar-container {
   background: #ffffff;
   border-radius: 0.9rem;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--schedule-blue-100);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
   overflow: hidden;
 }
 
 .calendar-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #f3f4f6;
-  border-bottom: 1px solid #e5e7eb;
+  background: #eef5ff;
+  border-bottom: 1px solid var(--schedule-blue-100);
 }
 
 .calendar-header-cell {
@@ -156,14 +172,14 @@
   text-align: center;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--schedule-blue-800);
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px;
-  background: #e5e7eb;
+  background: #d7e8ff;
 }
 
 .calendar-day {
@@ -191,7 +207,7 @@
 }
 
 .calendar-day:hover:not(.empty) {
-  background: #f9fafb;
+  background: #f5f9ff;
 }
 
 .day-number {
@@ -275,7 +291,7 @@
 .more-events-btn {
   padding: 0.35rem 0.55rem;
   font-size: 0.82rem;
-  color: #3b82f6;
+  color: var(--schedule-blue-700);
   background: transparent;
   border: none;
   border-radius: 0.25rem;
@@ -285,7 +301,7 @@
 }
 
 .more-events-btn:hover {
-  background: #dbeafe;
+  background: #e6f0ff;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
@@ -295,7 +311,8 @@
 .week-view-container {
   background: #ffffff;
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--schedule-blue-100);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
   overflow-x: auto;
   overflow-y: auto;
   max-height: 600px;
@@ -308,7 +325,7 @@
 .week-board-container {
   background: #ffffff;
   border-radius: 0.55rem;
-  border: 1px solid #d6dce8;
+  border: 1px solid var(--schedule-blue-100);
   box-shadow: none;
   overflow-x: hidden;
 }
@@ -413,7 +430,7 @@
   height: 28px;
   border: none;
   border-radius: 50%;
-  background: #2f3640;
+  background: linear-gradient(135deg, var(--schedule-blue-700), var(--schedule-blue-600));
   color: #ffffff;
   font-size: 1rem;
   font-weight: 700;
@@ -427,7 +444,7 @@
 
 .week-board-add-btn:hover {
   transform: scale(1.07);
-  background: #111827;
+  background: linear-gradient(135deg, var(--schedule-blue-800), var(--schedule-blue-700));
 }
 
 .week-board-body {
@@ -520,7 +537,7 @@
   height: 25px;
   padding: 0 0.68rem;
   border-radius: 0.5rem;
-  background: #2a85d8;
+  background: linear-gradient(135deg, var(--schedule-blue-600), #1f6fd6);
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 600;
@@ -531,7 +548,7 @@
 }
 
 .week-board-join-btn:hover {
-  background: #1f6fb8;
+  background: linear-gradient(135deg, var(--schedule-blue-700), var(--schedule-blue-600));
 }
 
 .week-board-join-btn:disabled,
@@ -690,7 +707,8 @@
 .day-view-container {
   background: #ffffff;
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--schedule-blue-100);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
   overflow-y: auto;
   max-height: 600px;
 }
@@ -841,20 +859,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #3b82f6;
+  background: linear-gradient(135deg, var(--schedule-blue-600), var(--schedule-blue-500));
   color: #ffffff;
   border: none;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
   cursor: pointer;
   transition: all 0.3s;
   z-index: 100;
 }
 
 .floating-create-btn:hover {
-  background: #2563eb;
+  background: linear-gradient(135deg, var(--schedule-blue-700), var(--schedule-blue-600));
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.45);
 }
 
 .floating-create-btn:active {
@@ -894,8 +912,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--schedule-blue-100);
+  background: #f4f8ff;
 }
 
 .day-detail-header h3 {
@@ -915,8 +933,8 @@
 }
 
 .close-modal-btn:hover {
-  background: #e5e7eb;
-  color: #1f2937;
+  background: #dbeafe;
+  color: var(--schedule-blue-800);
 }
 
 .day-detail-content {
@@ -1031,7 +1049,7 @@
 
 @media (max-width: 768px) {
   .classroom-schedule-page {
-    padding: 0.75rem 1rem 1rem;
+    padding: 0;
   }
 
   .schedule-title {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, MapPin, Video } from "lucide-react";
+import { toast } from "sonner";
 import scheduleApi from "@/apis/schedule.api";
 import EventDetailModal from "@/components/EventDetailModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -157,12 +158,12 @@ const TeacherSchedulePage = () => {
 
     const disabledReason = getJoinDisabledReason(session);
     if (disabledReason) {
-      alert(disabledReason);
+      toast.error(disabledReason);
       return;
     }
 
     if (!session?.meetingLink || !session?.id || !session?.classroomId) {
-      alert("Không tìm thấy thông tin phòng họp hợp lệ.");
+      toast.error("Không tìm thấy thông tin phòng họp hợp lệ.");
       return;
     }
 
