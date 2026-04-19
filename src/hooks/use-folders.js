@@ -121,7 +121,7 @@ const useFolders = (classroomId) => {
 
     setError(null);
     try {
-      await folderApi.deleteFolder(folderId);
+      await folderApi.deleteFolder(folderId, Number(classroomId));
       await fetchFolders();
       return { success: true };
     } catch (err) {

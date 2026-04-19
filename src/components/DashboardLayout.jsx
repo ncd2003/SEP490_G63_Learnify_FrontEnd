@@ -268,7 +268,7 @@ const DashboardLayout = () => {
     },
     {
       icon: Users,
-      label: "Quản lý lớp học",
+      label: "Lớp học",
       path: PATH_TEACHER.classroom.root,
     },
     {
@@ -307,7 +307,7 @@ const DashboardLayout = () => {
     },
     {
       icon: BookOpen,
-      label: "Lớp học của tôi",
+      label: "Lớp học",
       path: PATH_STUDENT.classroom.root,
     },
     {

@@ -36,6 +36,7 @@ export const folderApi = {
 
   /**
    * @param {number} id
+   * @param {number} classroomId
    */
-  deleteFolder: (id) => apiRequest.delete(`${BASE}/${id}`),
+  deleteFolder: (id, classroomId) => apiRequest.delete(`${BASE}/${id}`, { params: { classroomId } }),
 };

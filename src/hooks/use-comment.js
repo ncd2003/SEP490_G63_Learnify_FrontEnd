@@ -7,8 +7,9 @@ import { commentApi } from "@/apis/comment.api";
  * 
  * @param {number} postId
  * @param {Function} setComments - State setter from useComments
+ * @param {number} classroomId
  */
-const useCommentMutations = (postId, setComments) => {
+const useCommentMutations = (postId, setComments, classroomId) => {
   const [submitting, setSubmitting] = useState(false);
 
   const sortByCreatedDesc = (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
@@ -16,7 +17,8 @@ const useCommentMutations = (postId, setComments) => {
   const createComment = async (data) => {
     setSubmitting(true);
     try {
-      const newComment = await commentApi.createComment({ postId, ...data });
+      const payload = { postId, classroomId, ...data };
+      const newComment = await commentApi.createComment(payload);
       const created = newComment?.result ?? newComment;
 
       // Transform to match UI format
@@ -61,7 +63,8 @@ const useCommentMutations = (postId, setComments) => {
   const updateComment = async (commentId, data) => {
     setSubmitting(true);
     try {
-      const updated = await commentApi.updateComment(commentId, { postId, ...data });
+      const payload = { postId, classroomId, ...data };
+      const updated = await commentApi.updateComment(commentId, payload);
       const updatedComment = updated?.result ?? updated;
       
       setComments((prev) =>

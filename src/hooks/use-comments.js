@@ -6,8 +6,9 @@ import { commentApi } from "@/apis/comment.api";
  * For create/update/delete use `useCommentMutations`.
  * 
  * @param {number} postId
+ * @param {number} classroomId
  */
-const useComments = (postId) => {
+const useComments = (postId, classroomId) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,11 +26,11 @@ const useComments = (postId) => {
   };
 
   const fetchComments = useCallback(async () => {
-    if (!postId) return;
+    if (!postId || classroomId == null) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await commentApi.getCommentsByPost(postId);
+      const data = await commentApi.getCommentsByPost(postId, classroomId);
       const list = data?.result ?? data ?? [];
       const transformed = Array.isArray(list) ? list.map(transformComment).sort(sortByCreatedDesc) : [];
       setComments(transformed);

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ImagePlus, X, Paperclip, Pin } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { PostSchema } from "@/schema/post.schema";
 
@@ -31,6 +32,27 @@ const isAllowedFile = (file) => {
   const ext = file.name?.split(".").pop()?.toLowerCase();
   if (!ext) return false;
   return ALLOWED_FILE_EXTENSIONS.includes(ext);
+};
+
+const LIMITS = {
+  image: 5 * 1024 * 1024,
+  document: 100 * 1024 * 1024,
+  video: 500 * 1024 * 1024,
+};
+
+const getFileCategory = (file) => {
+  if (file?.type) {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("video/")) return "video";
+  }
+
+  const ext = file.name?.split(".").pop()?.toLowerCase() ?? "";
+  const imageExts = ["jpg", "jpeg", "png", "gif"];
+  const videoExts = ["mp4", "mov", "avi"];
+
+  if (imageExts.includes(ext)) return "image";
+  if (videoExts.includes(ext)) return "video";
+  return "document";
 };
 
 /**
@@ -81,17 +103,31 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
     const selected = Array.from(e.target.files ?? []);
     const validFiles = [];
     const invalidFiles = [];
+    const oversizedFiles = [];
 
     selected.forEach((file) => {
-      if (isAllowedFile(file)) {
-        validFiles.push(file);
-      } else {
+      if (!isAllowedFile(file)) {
         invalidFiles.push(file.name);
+        return;
       }
+
+      const category = getFileCategory(file);
+      const maxSize = LIMITS[category] ?? LIMITS.document;
+
+      if (file.size > maxSize) {
+        oversizedFiles.push(file.name);
+        return;
+      }
+
+      validFiles.push(file);
     });
 
     if (invalidFiles.length > 0) {
       setError(`Các tệp không được hỗ trợ: ${invalidFiles.join(", ")} (Chỉ chấp nhận: ${ALLOWED_FILE_LABEL})`);
+    }
+
+    if (oversizedFiles.length > 0) {
+      toast.error("Kích thước tệp vượt quá giới hạn cho phép (ảnh tối đa 5MB, video tối đa 500MB, tài liệu tối đa 100MB)");
     }
 
     if (validFiles.length > 0) {
@@ -120,6 +156,20 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
 
     if (submitLockRef.current || submitting) {
       return;
+    }
+
+    // Final guard: if any selected file exceeds configured limits, block submit and show toast
+    if (files.length > 0) {
+      const hasOversized = files.some((f) => {
+        const category = getFileCategory(f);
+        const max = LIMITS[category] ?? LIMITS.document;
+        return (f?.size ?? 0) > max;
+      });
+
+      if (hasOversized) {
+        toast.error("Kích thước tệp vượt quá giới hạn cho phép (ảnh tối đa 5MB, video tối đa 500MB, tài liệu tối đa 100MB)");
+        return;
+      }
     }
 
     submitLockRef.current = true;

@@ -450,7 +450,7 @@ const FoldersPage = () => {
     moveMaterial,
     renameMaterial,
     deleteMaterial,
-  } = useMaterials(selectedId);
+  } = useMaterials(selectedId, Number(classroomId));
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState([]);
 
