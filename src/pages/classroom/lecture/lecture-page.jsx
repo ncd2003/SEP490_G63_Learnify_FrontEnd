@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Loader2, Users, Video } from "lucide-react";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { attendanceApi } from "@/apis/attendance.api";
 import useSchedule from "@/hooks/useSchedule";
 import scheduleApi from "@/apis/schedule.api";
 import { PATH_STUDENT, PATH_TEACHER } from "@/routes/paths";
@@ -148,6 +149,7 @@ const ClassroomLecturePage = () => {
   const jitsiApiRef = useRef(null);
   const autoStopRecordingTimerRef = useRef(null);
   const autoRecordingStartedRef = useRef(false);
+  const autoAttendanceMarkedRef = useRef(false);
 
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [joinConfig, setJoinConfig] = useState(null);
@@ -219,6 +221,7 @@ const ClassroomLecturePage = () => {
   useEffect(() => {
     setParticipantCount(0);
     autoRecordingStartedRef.current = false;
+    autoAttendanceMarkedRef.current = false;
     if (autoStopRecordingTimerRef.current) {
       clearTimeout(autoStopRecordingTimerRef.current);
       autoStopRecordingTimerRef.current = null;
@@ -400,6 +403,15 @@ const ClassroomLecturePage = () => {
           syncParticipantCount();
           startRecordingIfTeacher(jitsiApi);
           scheduleAutoStopRecording(jitsiApi);
+
+          if (!isTeacherRole(user?.role) && selectedSession?.id && !autoAttendanceMarkedRef.current) {
+            autoAttendanceMarkedRef.current = true;
+
+            attendanceApi.autoMarkAttendance(selectedSession.id).catch((err) => {
+              autoAttendanceMarkedRef.current = false;
+              console.warn("Không thể auto mark attendance.", err?.response?.data?.message || err);
+            });
+          }
         };
         const handleParticipantJoined = () => {
           setParticipantCount((prev) => prev + 1);

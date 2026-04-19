@@ -167,7 +167,7 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
 
   return (
     <div className="event-modal-overlay" onClick={handleClose}>
-      <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="event-modal-content session-modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="event-modal-header">
           <h2>{session ? 'Chỉnh Sửa Buổi Học' : 'Tạo Buổi Học Mới'}</h2>
@@ -177,7 +177,7 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="event-modal-form">
+        <form onSubmit={handleSubmit} className="event-modal-form session-modal-form">
           <div className="form-section">
             <h3>Chi Tiết Buổi Học</h3>
 

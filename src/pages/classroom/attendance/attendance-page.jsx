@@ -5,6 +5,7 @@ import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import useSchedule from "@/hooks/useSchedule";
 import useAttendance, { STATUS } from "@/hooks/use-attendance";
 import { classroomMemberApi } from "@/apis/classroom-member.api";
+import { attendanceApi } from "@/apis/attendance.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PATH_TEACHER } from "@/routes/paths";
 import "@/assets/css/pages/classroom/attendancePage.css";
@@ -62,6 +63,9 @@ const extractRoster = (classroom) => {
 
   const mapped = rawList
     .map((item) => {
+      const status = item?.status ?? null;
+      if (status === "REJECTED") return null;
+
       const student = item?.student ?? item?.user ?? item;
       const id = student?.id ?? item?.studentId ?? item?.memberId ?? null;
       if (!id) return null;
@@ -135,8 +139,19 @@ const AttendancePage = () => {
       try {
         setClassroomLoading(true);
         setClassroomError("");
-        const response = await classroomMemberApi.getAcceptedMembers(classroomId);
-        setClassroom({ acceptedMembers: response?.result ?? [] });
+
+        // Ưu tiên API attendance theo class (mới) để đồng bộ dữ liệu điểm danh.
+        const attendanceResponse = await attendanceApi.getAttendanceByClass(classroomId, 1, 500);
+        const attendanceContent = attendanceResponse?.result?.content ?? [];
+
+        if (attendanceContent.length > 0) {
+          setClassroom({ members: attendanceContent });
+          return;
+        }
+
+        // Fallback: nếu lớp chưa có lịch sử điểm danh thì lấy roster từ classroom members.
+        const membersResponse = await classroomMemberApi.getClassroomMembers(classroomId);
+        setClassroom({ members: membersResponse?.result ?? [] });
       } catch (err) {
         setClassroomError(err?.response?.data?.message ?? "Không thể tải danh sách thành viên lớp học.");
       } finally {

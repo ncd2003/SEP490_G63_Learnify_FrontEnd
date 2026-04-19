@@ -186,6 +186,9 @@ const ClassroomDetailLayout = ({
 
   const normalizedRole = normalizeRole(user?.role);
   const isTeacher = normalizedRole === "TEACHER";
+  const visibleMenuItems = MENU_ITEMS.filter(
+    (item) => !(normalizedRole === "STUDENT" && item.key === "attendance"),
+  );
 
   const roleLabel = (() => {
     if (normalizedRole === "TEACHER") return "Giáo viên";
@@ -344,7 +347,7 @@ const ClassroomDetailLayout = ({
         )}
 
         <nav className="classroom-nav">
-          {MENU_ITEMS.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeKey === item.key;
             return (

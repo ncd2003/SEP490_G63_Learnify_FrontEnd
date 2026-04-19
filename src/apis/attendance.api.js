@@ -15,6 +15,23 @@ export const attendanceApi = {
     apiRequest.get(`/sessions/${sessionId}/attendance`),
 
   /**
+   * @param {number} classId
+   * @param {number} page
+   * @param {number} size
+   */
+  getAttendanceByClass: (classId, page = 1, size = 100) =>
+    apiRequest.get(`/classrooms/${classId}/attendance`, {
+      params: { page, size },
+    }),
+
+  /**
+   * Auto mark the authenticated student as PRESENT when joining a lesson.
+   * @param {number} sessionId
+   */
+  autoMarkAttendance: (sessionId) =>
+    apiRequest.post(`/sessions/${sessionId}/attendance/auto-mark`),
+
+  /**
    * @param {number} sessionId
    * @param {number} attendanceId
    * @param {{ studentId: number, status: 'PRESENT'|'ABSENT'|'LATE'|'EXCUSED' }} data
