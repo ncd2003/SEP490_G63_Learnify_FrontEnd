@@ -51,9 +51,16 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   const isOptimisticPost = Boolean(post?.isOptimistic);
   const commentsPostId = isOptimisticPost ? null : post.id;
 
+  // Determine classroomId from post if available
+  const commentsClassroomId = post?.classroomId ?? post?.classroom?.id ?? null;
+
   // Comment hooks
-  const { comments, setComments, loading: loadingComments, refetch } = useComments(commentsPostId);
-  const { createComment, updateComment, deleteComment, submitting } = useCommentMutations(commentsPostId, setComments);
+  const { comments, setComments, loading: loadingComments, refetch } = useComments(commentsPostId, commentsClassroomId);
+  const { createComment, updateComment, deleteComment, submitting } = useCommentMutations(
+    commentsPostId,
+    setComments,
+    commentsClassroomId
+  );
 
   // Count total comments including all nested replies
   const countTotalComments = (commentsList) => {
@@ -93,7 +100,8 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   );
 
   const handleCommentSubmit = async (data) => {
-    const result = await createComment(data);
+    const payload = { ...data, classroomId: commentsClassroomId };
+    const result = await createComment(payload);
     // If it's a reply, ensure list stays updated without losing scroll. No refetch needed now.
     if (result?.success && !data.parentId) {
       // Make sure the freshly added top-level comment is visible
@@ -103,7 +111,7 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   };
 
   const handleCommentUpdate = async (commentId, content) => {
-    const data = { content, postId: post.id };
+    const data = { content, postId: post.id, classroomId: commentsClassroomId };
     const result = await updateComment(commentId, data);
     if (result?.success) await refetch(); // Always refetch to be safe with nested
     return result;

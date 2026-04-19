@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Download, Search, Video, X } from "lucide-react";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
@@ -39,6 +39,53 @@ const formatDuration = (session) => {
   return `${hours}:${minutes}:${seconds}`;
 };
 
+const endsWithAny = (value, suffixes) =>
+  suffixes.some((suffix) => value.endsWith(suffix));
+
+const resolveRecordingPreviewType = (url) => {
+  const normalizedUrl = String(url ?? "").trim().toLowerCase();
+
+  if (!normalizedUrl) return "other";
+
+  if (
+    endsWithAny(normalizedUrl, [
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".webp",
+      ".svg",
+      ".bmp",
+    ])
+  ) {
+    return "image";
+  }
+
+  if (endsWithAny(normalizedUrl, [".mp4", ".mov", ".avi", ".mkv", ".webm", ".m3u8", ".ogg"])) {
+    return "video";
+  }
+
+  if (normalizedUrl.includes(".pdf")) {
+    return "pdf";
+  }
+
+  if (
+    endsWithAny(normalizedUrl, [
+      ".txt",
+      ".md",
+      ".csv",
+      ".json",
+      ".xml",
+      ".html",
+      ".htm",
+    ])
+  ) {
+    return "text";
+  }
+
+  return "iframe";
+};
+
 const ClassroomRecordingPage = () => {
   const { id: classroomId } = useParams();
   const { user } = useAuth();
@@ -48,6 +95,7 @@ const ClassroomRecordingPage = () => {
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedRecordingId, setSelectedRecordingId] = useState(null);
 
   const recordingSessions = useMemo(() => {
     return sessions.filter((session) => Boolean(session.recordingLink));
@@ -71,6 +119,34 @@ const ClassroomRecordingPage = () => {
       return matchTitle && matchType && matchStartDate && matchEndDate;
     });
   }, [recordingSessions, titleKeyword, typeFilter, startDate, endDate]);
+
+  useEffect(() => {
+    if (!filteredSessions.length) {
+      setSelectedRecordingId(null);
+      return;
+    }
+
+    const selectedStillExists = filteredSessions.some(
+      (session) => session.id === selectedRecordingId,
+    );
+
+    if (!selectedStillExists) {
+      setSelectedRecordingId(null);
+    }
+  }, [filteredSessions, selectedRecordingId]);
+
+  const selectedRecording = useMemo(() => {
+    if (!filteredSessions.length || !selectedRecordingId) return null;
+    return (
+      filteredSessions.find((session) => session.id === selectedRecordingId) ||
+      null
+    );
+  }, [filteredSessions, selectedRecordingId]);
+
+  const selectedPreviewType = useMemo(
+    () => resolveRecordingPreviewType(selectedRecording?.recordingLink),
+    [selectedRecording],
+  );
 
   const handleReset = () => {
     setTitleKeyword("");
@@ -174,6 +250,60 @@ const ClassroomRecordingPage = () => {
               <span>{filteredSessions.length} bản ghi</span>
             </div>
 
+            {selectedRecording ? (
+              <div className="recording-preview-panel">
+                <div className="recording-preview-head">
+                  <h3>{selectedRecording.title || "Buổi học"}</h3>
+                  <span>{formatDate(selectedRecording.sessionDate)} - {formatTimeRange(selectedRecording)}</span>
+                </div>
+                <div className="recording-preview-body">
+                  {selectedPreviewType === "image" ? (
+                    <img
+                      key={selectedRecording.id}
+                      src={selectedRecording.recordingLink}
+                      alt={selectedRecording.title || "Recording"}
+                      className="recording-preview-image"
+                    />
+                  ) : selectedPreviewType === "video" ? (
+                    <video
+                      key={selectedRecording.id}
+                      controls
+                      preload="metadata"
+                      className="recording-preview-video"
+                      src={selectedRecording.recordingLink}
+                    />
+                  ) : selectedPreviewType === "pdf" || selectedPreviewType === "text" || selectedPreviewType === "iframe" ? (
+                    <iframe
+                      key={selectedRecording.id}
+                      src={selectedRecording.recordingLink}
+                      title={`Recording ${selectedRecording.title || selectedRecording.id}`}
+                      className="recording-preview-iframe"
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="recording-preview-unsupported">
+                      Định dạng này chưa hỗ trợ xem trực tiếp. Vui lòng tải xuống để xem.
+                    </div>
+                  )}
+                </div>
+                <div className="recording-preview-actions">
+                  <a
+                    className="recording-action-btn recording-action-btn--ghost"
+                    href={selectedRecording.recordingLink}
+                    download
+                  >
+                    <Download size={14} />
+                    Tải xuống
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="recording-preview-placeholder">
+                Chọn một bản ghi trong danh sách và bấm <strong>Bật xem</strong> để phát video trực tiếp.
+              </div>
+            )}
+
             {filteredSessions.length === 0 ? (
               <div className="recording-empty">Không tìm thấy bản ghi phù hợp với bộ lọc.</div>
             ) : (
@@ -213,12 +343,14 @@ const ClassroomRecordingPage = () => {
                       <td>
                         <div className="recording-actions">
                           <a
-                            className="recording-action-btn"
-                            href={session.recordingLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            className={`recording-action-btn ${selectedRecordingId === session.id ? "recording-action-btn--active" : ""}`}
+                            href="#"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              setSelectedRecordingId(session.id);
+                            }}
                           >
-                            Xem
+                            Bật xem
                           </a>
                           <a
                             className="recording-action-btn recording-action-btn--ghost"

@@ -4,6 +4,15 @@ export const SESSION_TYPE = {
   OFFLINE: "OFFLINE",
 };
 
+// ─── RECURRENCE PATTERN ENUM ───────────────────────────────────────────────────
+export const RECURRENCE_PATTERN = {
+  NONE: "NONE",
+  DAILY: "DAILY",
+  WEEKLY: "WEEKLY",
+  MONTHLY: "MONTHLY",
+  YEARLY: "YEARLY",
+};
+
 // ─── ATTENDANCE STATUS ENUM ────────────────────────────────────────────────────
 export const ATTENDANCE_STATUS = {
   PRESENT: "PRESENT",
@@ -25,6 +34,10 @@ export const classSessionResponseSchema = {
   type: "",             // SessionType → "ONLINE" | "OFFLINE"
   location: "",         // String → string | null (max 200)
   meetingLink: "",      // String → string | null (max 500)
+  recordingLink: "",    // String → string | null (max 1000)
+  recordingStatus: "",  // String → "SCHEDULED" | "RECORDING" | "COMPLETED" | null
+  recordingCompletedAt: "", // Instant → "yyyy-MM-dd HH:mm:ss" or null
+  allowRecording: true, // boolean - cho phép ghi âm
   attendanceTaken: false, // boolean
   createdAt: "",        // Instant → "yyyy-MM-dd HH:mm:ss"
   updatedAt: "",        // Instant → "yyyy-MM-dd HH:mm:ss"
@@ -40,6 +53,9 @@ export const createSessionRequestSchema = {
   type: SESSION_TYPE.OFFLINE, // @NotNull, ONLINE | OFFLINE
   location: "",         // @Length(max=200), optional
   meetingLink: "",      // @Length(max=500), optional
+  recurrencePattern: RECURRENCE_PATTERN.NONE, // Mô hình lặp lại
+  recurrenceCount: null, // Số lần lặp lại (nếu có)
+  allowRecording: true, // Cho phép ghi âm hay không
 };
 
 // ─── AttendanceRecordResponseDTO shape ─────────────────────────────────────────
@@ -99,6 +115,16 @@ export const sessionValidationRules = {
     required: false,
     maxLength: 500,
     message: "Link meeting không được vượt quá 500 ký tự",
+  },
+  recurrencePattern: {
+    required: false,
+    message: "Mô hình lặp lại không hợp lệ",
+  },
+  recurrenceCount: {
+    required: false,
+    min: 1,
+    max: 365,
+    message: "Số lần lặp lại phải từ 1 đến 365",
   },
 };
 
@@ -181,6 +207,16 @@ export const validateSessionForm = (data) => {
   const linkLen = data.meetingLink?.trim().length ?? 0;
   if (linkLen > 500) {
     errors.meetingLink = sessionValidationRules.meetingLink.message;
+  }
+
+  // Recurrence count validation (only if pattern is not NONE)
+  if (data.recurrencePattern && data.recurrencePattern !== RECURRENCE_PATTERN.NONE) {
+    const count = data.recurrenceCount;
+    if (count === null || count === undefined || count === "") {
+      errors.recurrenceCount = "Số lần lặp lại không được để trống";
+    } else if (Number(count) < 1 || Number(count) > 365) {
+      errors.recurrenceCount = sessionValidationRules.recurrenceCount.message;
+    }
   }
 
   return {

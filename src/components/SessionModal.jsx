@@ -1,46 +1,46 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { SESSION_TYPE, validateSessionForm } from '@/schema/scheduleSchema';
+import { SESSION_TYPE, RECURRENCE_PATTERN, validateSessionForm } from '@/schema/scheduleSchema';
 import '@/assets/css/components/eventModal.css';
 
-const roundToNextQuarterHour = (date) => {
-  const rounded = new Date(date);
-  rounded.setSeconds(0, 0);
-  const minutes = rounded.getMinutes();
-  const remainder = minutes % 15;
-  const addMinutes = remainder === 0 ? 15 : 15 - remainder;
-  rounded.setMinutes(minutes + addMinutes);
-  return rounded;
-};
-
-const toTimeInput = (date) => {
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
-};
-
-const toDateInput = (date) => {
+const toYmd = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-const createDefaultFormData = (defaultDate = '') => {
-  const now = new Date();
-  const start = roundToNextQuarterHour(now);
-  const end = new Date(start);
-  end.setHours(end.getHours() + 1);
+const toDisplayDate = (dateStr) => {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-');
+  if (!year || !month || !day) return dateStr;
+  return `${day}/${month}/${year}`;
+};
 
+const fromDisplayDate = (displayDate) => {
+  if (!displayDate) return '';
+  const normalized = displayDate.trim().replace(/\s+/g, '');
+  const parts = normalized.split('/');
+  if (parts.length !== 3) return '';
+
+  const [day, month, year] = parts;
+  if (!day || !month || !year) return '';
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+};
+
+const createDefaultFormData = (defaultDate = '') => {
   return {
     title: '',
     description: '',
-    sessionDate: defaultDate || toDateInput(start),
-    startTime: toTimeInput(start),
-    endTime: toTimeInput(end),
+    sessionDate: defaultDate || '',
+    startTime: '',
+    endTime: '',
     type: SESSION_TYPE.OFFLINE,
     location: '',
     meetingLink: '',
+    recurrencePattern: RECURRENCE_PATTERN.NONE,
+    recurrenceCount: null,
+    allowRecording: true,
   };
 };
 
@@ -61,30 +61,43 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
     type: SESSION_TYPE.OFFLINE,
     location: '',
     meetingLink: '',
+    recurrencePattern: RECURRENCE_PATTERN.NONE,
+    recurrenceCount: null,
+    allowRecording: true,
   });
+  const [displaySessionDate, setDisplaySessionDate] = useState('');
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (session) {
+      const sessionDate = session.sessionDate ?? '';
       setFormData({
         title: session.title ?? '',
         description: session.description ?? '',
-        sessionDate: session.sessionDate ?? '',
+        sessionDate,
         startTime: session.startTime ?? '',
         endTime: session.endTime ?? '',
         type: session.type ?? SESSION_TYPE.OFFLINE,
         location: session.location ?? '',
         meetingLink: session.meetingLink ?? '',
+        recurrencePattern: RECURRENCE_PATTERN.NONE,
+        recurrenceCount: null,
+        allowRecording: session.allowRecording ?? true,
       });
+      setDisplaySessionDate(toDisplayDate(sessionDate));
     } else {
-      resetForm(presetDate);
+      const initialDate = presetDate || '';
+      setFormData(createDefaultFormData(initialDate));
+      setDisplaySessionDate(toDisplayDate(initialDate));
+      setErrors({});
     }
   }, [session, isOpen, presetDate]);
 
   const resetForm = (defaultDate = '') => {
     setFormData(createDefaultFormData(defaultDate));
+    setDisplaySessionDate(toDisplayDate(defaultDate));
     setErrors({});
   };
 
@@ -98,6 +111,18 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
     });
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleDisplayDateChange = (e) => {
+    const nextDisplayDate = e.target.value;
+    setDisplaySessionDate(nextDisplayDate);
+
+    const nextSessionDate = fromDisplayDate(nextDisplayDate);
+    setFormData((prev) => ({ ...prev, sessionDate: nextSessionDate }));
+
+    if (errors.sessionDate) {
+      setErrors((prev) => ({ ...prev, sessionDate: '' }));
     }
   };
 
@@ -121,6 +146,9 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
         type: formData.type,                     // "ONLINE" | "OFFLINE"
         location: formData.type === SESSION_TYPE.OFFLINE ? formData.location.trim() || null : null,
         meetingLink: formData.type === SESSION_TYPE.ONLINE ? formData.meetingLink.trim() || null : null,
+        recurrencePattern: session ? RECURRENCE_PATTERN.NONE : formData.recurrencePattern,
+        recurrenceCount: session ? null : (formData.recurrencePattern !== RECURRENCE_PATTERN.NONE ? Number(formData.recurrenceCount) : null),
+        allowRecording: formData.allowRecording,
       };
 
       await onSubmit(payload, session?.id);
@@ -139,7 +167,7 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
 
   return (
     <div className="event-modal-overlay" onClick={handleClose}>
-      <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="event-modal-content session-modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="event-modal-header">
           <h2>{session ? 'Chỉnh Sửa Buổi Học' : 'Tạo Buổi Học Mới'}</h2>
@@ -149,7 +177,7 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="event-modal-form">
+        <form onSubmit={handleSubmit} className="event-modal-form session-modal-form">
           <div className="form-section">
             <h3>Chi Tiết Buổi Học</h3>
 
@@ -178,10 +206,12 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
                   Ngày học <span className="required">*</span>
                 </label>
                 <input
-                  type="date"
-                  name="sessionDate"
-                  value={formData.sessionDate}
-                  onChange={handleChange}
+                  type="text"
+                  name="sessionDateDisplay"
+                  value={displaySessionDate}
+                  onChange={handleDisplayDateChange}
+                  placeholder="dd/mm/yyyy"
+                  inputMode="numeric"
                   className={errors.sessionDate ? 'error' : ''}
                 />
                 {errors.sessionDate && <span className="error-message">{errors.sessionDate}</span>}
@@ -246,6 +276,62 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
                 </label>
               </div>
               {errors.type && <span className="error-message">{errors.type}</span>}
+            </div>
+
+            {!session && (
+              <div className="form-group">
+                <label>Lặp lại lịch học</label>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Tần suất lặp lại</label>
+                    <select
+                      name="recurrencePattern"
+                      value={formData.recurrencePattern}
+                      onChange={handleChange}
+                      className={errors.recurrencePattern ? 'error' : ''}
+                    >
+                      <option value={RECURRENCE_PATTERN.NONE}>Không lặp lại</option>
+                      <option value={RECURRENCE_PATTERN.DAILY}>Hàng ngày</option>
+                      <option value={RECURRENCE_PATTERN.WEEKLY}>Hàng tuần</option>
+                      <option value={RECURRENCE_PATTERN.MONTHLY}>Hàng tháng</option>
+                      <option value={RECURRENCE_PATTERN.YEARLY}>Hàng năm</option>
+                    </select>
+                    {errors.recurrencePattern && <span className="error-message">{errors.recurrencePattern}</span>}
+                  </div>
+
+                  {formData.recurrencePattern !== RECURRENCE_PATTERN.NONE && (
+                    <div className="form-group">
+                      <label>
+                        Số lần lặp lại <span className="required">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="recurrenceCount"
+                        value={formData.recurrenceCount ?? ''}
+                        onChange={handleChange}
+                        placeholder="Vd: 5"
+                        min="1"
+                        max="365"
+                        className={errors.recurrenceCount ? 'error' : ''}
+                      />
+                      {errors.recurrenceCount && <span className="error-message">{errors.recurrenceCount}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Allow Recording → allowRecording */}
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="allowRecording"
+                  checked={formData.allowRecording}
+                  onChange={handleChange}
+                />
+                <span>Cho phép ghi hình buổi học này</span>
+              </label>
             </div>
 
             {/* Description → description */}
