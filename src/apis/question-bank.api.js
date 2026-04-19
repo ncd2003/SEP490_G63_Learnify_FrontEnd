@@ -95,10 +95,15 @@ const normalizeQuestionListParams = (params = {}) => {
     normalized.type = trimmed || undefined;
   }
 
-  if (normalized.difficulty !== undefined) {
+  if (normalized.cognitiveLevel !== undefined) {
+    const trimmed = String(normalized.cognitiveLevel).trim();
+    normalized.cognitiveLevel = trimmed || undefined;
+  } else if (normalized.difficulty !== undefined) {
     const trimmed = String(normalized.difficulty).trim();
-    normalized.difficulty = trimmed || undefined;
+    normalized.cognitiveLevel = trimmed || undefined;
   }
+
+  delete normalized.difficulty;
 
   return normalized;
 };
@@ -194,7 +199,7 @@ const getQuestionBanks = (params) => {
 const getQuestions = (bankId, params) => {
   const safeBankId = normalizeBankId(bankId);
   const normalizedParams = normalizeQuestionListParams(params);
-  return apiRequest.get(`${BASE}/${safeBankId}/questions`, {
+  return apiRequest.get(`${LIST_BANK_BASE}/${safeBankId}/questions`, {
     params: normalizedParams,
   });
 };
@@ -496,6 +501,178 @@ const deleteQuestion = (bankId, questionId) => {
   return apiRequest.delete(`${BASE}/${safeBankId}/questions/${safeQuestionId}`);
 };
 
+/**
+ * Khởi tạo phiên tạo câu hỏi
+ * Nếu đã có phiên nháp dở thì trả về thông tin phiên đó, nếu chưa có thì tạo mới
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @param {"MANUAL_CREATION"|"AI_GENERATION"|"EXCEL_IMPORT"} sessionType
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<{
+ *   sessionId: number,
+ *   hasPending: boolean,
+ *   itemCount: number,
+ *   lastSavedAt: string,
+ *   targetId: number,
+ *   targetName: string,
+ *   targetType: string,
+ *   sessionType: string,
+ * }>>}
+ */
+const initSession = (bankId, assignmentId, sessionType = "MANUAL_CREATION") => {
+  const params = {};
+  if (bankId !== undefined && bankId !== null) {
+    params.bankId = normalizeBankId(bankId);
+  }
+  if (assignmentId !== undefined && assignmentId !== null) {
+    params.assignmentId = normalizeBankId(assignmentId);
+  }
+  params.sessionType = sessionType;
+  return apiRequest.post("/draft-sessions/manual/init", null, { params });
+};
+
+/**
+ * Khởi tạo phiên tạo câu hỏi thủ công
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<any>>}
+ */
+const initManualSession = (bankId, assignmentId) => {
+  return initSession(bankId, assignmentId, "MANUAL_CREATION");
+};
+
+/**
+ * Khởi tạo phiên tạo câu hỏi với AI
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<any>>}
+ */
+const initAiSession = (bankId, assignmentId) => {
+  return initSession(bankId, assignmentId, "AI_GENERATION");
+};
+
+/**
+ * Tạo câu hỏi với AI (dành cho draft session)
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @param {{
+ *   content?: string,
+ *   questionType?: string,
+ *   cognitiveLevel?: string,
+ *   defaultPoints?: number,
+ *   sampleAnswer?: string,
+ *   options?: Array<{ content: string, correct: boolean }>,
+ *   additionalPrompt?: string,
+ * }} request
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<{
+ *   sessionId: number,
+ *   questions: Array<any>,
+ *   warnings: string[],
+ *   currentPage: number,
+ *   pageSize: number,
+ *   totalPages: number,
+ *   totalItems: number,
+ * }>>}
+ */
+const generateAiDraft = (bankId, assignmentId, request) => {
+  const params = {};
+  if (bankId !== undefined && bankId !== null) {
+    params.bankId = normalizeBankId(bankId);
+  }
+  if (assignmentId !== undefined && assignmentId !== null) {
+    params.assignmentId = normalizeBankId(assignmentId);
+  }
+  const formData = new FormData();
+  if (request) {
+    Object.keys(request).forEach((key) => {
+      const value = request[key];
+      if (value !== undefined && value !== null) {
+        if (Array.isArray(value)) {
+          value.forEach((item) => formData.append(key, JSON.stringify(item)));
+        } else if (typeof value === "object" && !(value instanceof File)) {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, value);
+        }
+      }
+    });
+  }
+  return apiRequest.post("/draft-sessions/ai/generate", formData, { params });
+};
+
+/**
+ * Tinh chỉnh câu hỏi với AI (dành cho draft session)
+ * @param {number|string} sessionId
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @param {{
+ *   prompt: string,
+ *   sectionId?: number,
+ *   selectQuestionIds?: number[],
+ * }} request
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<{
+ *   sessionId: number,
+ *   questions: Array<any>,
+ *   warnings: string[],
+ * }>>}
+ */
+const refineAiDraft = (sessionId, bankId, assignmentId, request) => {
+  const safeSessionId = normalizeBankId(sessionId);
+  const params = {};
+  if (bankId !== undefined && bankId !== null) {
+    params.bankId = normalizeBankId(bankId);
+  }
+  if (assignmentId !== undefined && assignmentId !== null) {
+    params.assignmentId = normalizeBankId(assignmentId);
+  }
+  return apiRequest.post(`/draft-sessions/${safeSessionId}/refine`, request, {
+    params,
+  });
+};
+
+/**
+ * Lấy dữ liệu bản nháp để hiển thị lại
+ * @param {number|string} sessionId
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @param {{
+ *   page?: number,
+ *   size?: number,
+ *   keyword?: string,
+ *   type?: string,
+ *   cognitive?: string,
+ *   status?: string,
+ * }} [params]
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<{
+ *   sessionId: number,
+ *   questions: Array<any>,
+ *   warnings: string[],
+ *   currentPage: number,
+ *   pageSize: number,
+ *   totalPages: number,
+ *   totalItems: number,
+ * }>>}
+ */
+const getDraftSession = (sessionId, bankId, assignmentId, params = {}) => {
+  const safeSessionId = normalizeBankId(sessionId);
+  const queryParams = {
+    page: params.page || 1,
+    size: params.size || 10,
+  };
+  if (bankId !== undefined && bankId !== null) {
+    queryParams.bankId = normalizeBankId(bankId);
+  }
+  if (assignmentId !== undefined && assignmentId !== null) {
+    queryParams.assignmentId = normalizeBankId(assignmentId);
+  }
+  if (params.keyword) queryParams.keyword = params.keyword;
+  if (params.type) queryParams.type = params.type;
+  if (params.cognitive) queryParams.cognitive = params.cognitive;
+  if (params.status) queryParams.status = params.status;
+  return apiRequest.get(`/draft-sessions/${safeSessionId}`, {
+    params: queryParams,
+  });
+};
+
 export const questionBankApi = {
   getQuestionBanks,
   getQuestions,
@@ -513,4 +690,10 @@ export const questionBankApi = {
   cancelAiSession,
   updateQuestion,
   deleteQuestion,
+  initSession,
+  initManualSession,
+  initAiSession,
+  generateAiDraft,
+  refineAiDraft,
+  getDraftSession,
 };

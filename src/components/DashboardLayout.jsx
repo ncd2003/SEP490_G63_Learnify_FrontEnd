@@ -293,7 +293,7 @@ const DashboardLayout = () => {
     },
     {
       icon: Database,
-      label: "Ngân hàng đề",
+      label: "Ngân hàng câu hỏi",
       path: PATH_TEACHER.questionBank,
     },
   ];
@@ -623,9 +623,13 @@ const DashboardLayout = () => {
 
                   <div className="notification-list">
                     {isNotificationLoading ? (
-                      <div className="notification-empty">Đang tải thông báo...</div>
+                      <div className="notification-empty">
+                        Đang tải thông báo...
+                      </div>
                     ) : notifications.length === 0 ? (
-                      <div className="notification-empty">Bạn chưa có thông báo nào</div>
+                      <div className="notification-empty">
+                        Bạn chưa có thông báo nào
+                      </div>
                     ) : (
                       notifications.slice(0, 8).map((notification) => (
                         <button

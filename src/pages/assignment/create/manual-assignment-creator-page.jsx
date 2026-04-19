@@ -345,7 +345,9 @@ const mapAssignmentSectionsToEditorQuestions = (sections = []) =>
   (Array.isArray(sections) ? sections : []).flatMap((section) => {
     const questions = Array.isArray(section?.questions)
       ? section.questions
-      : [];
+      : Array.isArray(section?.draftQuestions)
+        ? section.draftQuestions
+        : [];
 
     const sortedQuestions = [...questions].sort((left, right) => {
       const leftOrder = Number(left?.orderIndex);
@@ -363,9 +365,18 @@ const mapAssignmentSectionsToEditorQuestions = (sections = []) =>
 
     const sectionId = section?.id || section?.sectionId || null;
 
-    return sortedQuestions.map((questionItem) =>
-      mapAssignmentQuestionToEditorQuestion(questionItem, sectionId),
-    );
+    return sortedQuestions.map((questionItem) => {
+      if (
+        questionItem &&
+        typeof questionItem === "object" &&
+        questionItem.question &&
+        typeof questionItem.question === "object"
+      ) {
+        return mapAssignmentQuestionToEditorQuestion(questionItem, sectionId);
+      }
+
+      return mapBackendQuestion(questionItem, sectionId);
+    });
   });
 
 const normalizeAssignmentSettingForUpdate = (setting = {}) => ({
@@ -613,11 +624,25 @@ const Ic = {
       <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   ),
+  Edit: () => (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  ),
 };
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-:root{--p:#2563EB;--pd:#1D4ED8;--pl:#EFF6FF;--plr:#F8FAFF;--pg:rgba(37,99,235,.10);--ps:rgba(37,99,235,.22);--gr:linear-gradient(135deg,#3B82F6,#2563EB 50%,#1D4ED8);--bg:#F7F8FC;--card:#FFF;--inp:#F5F7FB;--hov:#EDF2FF;--t:#1E293B;--t2:#475569;--t3:#94A3B8;--inv:#FFF;--gn:#10B981;--gnl:#ECFDF5;--or:#F59E0B;--rd:#EF4444;--rdl:#FEF2F2;--pu:#8B5CF6;--b:#E2E8F0;--bl:#F1F5F9;--ss:0 1px 3px rgba(30,41,59,.04);--sm:0 4px 14px rgba(30,41,59,.07);--sl:0 12px 40px rgba(30,41,59,.11);--rs:10px;--rm:12px;--rl:16px;--rxl:20px;--f:'Be Vietnam Pro',sans-serif;--fd:'Lora',serif;--fm:'JetBrains Mono',monospace;--e:cubic-bezier(.4,0,.2,1)}
+:root{--p:#2563EB;--pd:#1D4ED8;--pl:#EFF6FF;--plr:#F8FAFF;--pg:rgba(37,99,235,.10);--ps:rgba(37,99,235,.22);--gr:linear-gradient(135deg,#3B82F6,#2563EB 50%,#1D4ED8);--bg:#F7F8FC;--card:#FFF;--inp:#F5F7FB;--hov:#EDF2FF;--t:#1E293B;--t2:#475569;--t3:#94A3B8;--inv:#FFF;--gn:#10B981;--gnl:#ECFDF5;--or:#F59E0B;--rd:#EF4444;--rdl:#FEF2F2;--pu:#8B5CF6;--b:#E2E8F0;--bl:#F1F5F9;--ss:0 1px 3px rgba(30,41,59,.04);--sm:0 4px 14px rgba(30,41,59,.07);--sl:0 12px 40px rgba(30,41,59,.11);--rs:10px;--rm:12px;--rl:16px;--rxl:20px;--f:'Be Vietnam Pro',sans-serif;--fd:'Be Vietnam Pro',sans-serif;--fm:'JetBrains Mono',monospace;--e:cubic-bezier(.4,0,.2,1)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased}
 .page{display:flex;height:100vh;overflow:hidden}
@@ -662,11 +687,18 @@ body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoot
 .section-wrap{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);margin-bottom:14px;overflow:hidden;box-shadow:var(--ss)}
 .section-hdr{padding:12px 16px;border-bottom:1px solid var(--bl);display:flex;align-items:center;justify-content:space-between;background:var(--plr)}
 .section-title{font-size:13px;font-weight:800;color:var(--t)}
+.section-hdr-right{display:flex;align-items:center;gap:8px}
 .section-sub{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em}
+.section-actions{display:flex;align-items:center;gap:4px}
+.section-action-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--b);background:var(--card);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s var(--e)}
+.section-action-btn:hover{border-color:var(--p);color:var(--p);background:var(--hov)}
+.section-action-btn.dng:hover{border-color:var(--rd);color:var(--rd);background:var(--rdl)}
 .section-body{padding:14px 16px}
 .qc{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);margin-bottom:14px;transition:all .25s var(--e);overflow:hidden}
 .qc:hover{box-shadow:var(--sm)}
 .qc.active{border-color:var(--p);box-shadow:0 0 0 3px var(--pg),var(--sm)}
+.qc.publish-err{border-color:var(--rd);box-shadow:0 0 0 3px rgba(239,68,68,.12),var(--sm)}
+.qc.publish-err .qc-hdr{background:var(--rdl)}
 .qc.dragging{opacity:.68}
 .qc.drag-over{border-color:var(--pd);box-shadow:0 0 0 3px rgba(29,78,216,.14),var(--sm)}
 .qc-hdr{display:flex;align-items:flex-start;gap:10px;padding:14px 18px;border-bottom:1px solid var(--bl);background:var(--plr);cursor:pointer;transition:background .15s var(--e);min-width:0}
@@ -716,6 +748,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 .tf-btn:hover{border-color:var(--gn)}
 .tf-btn.on{border-color:var(--gn);background:var(--gnl);color:var(--gn);box-shadow:0 2px 8px rgba(16,185,129,.12)}
 .fb-hint{font-size:10px;color:var(--t3);font-style:italic;margin-top:4px}
+.qc-err{margin:0 20px 18px;padding:10px 12px;border-radius:var(--rm);border:1px solid rgba(239,68,68,.3);background:var(--rdl);color:var(--rd);font-size:12px;font-weight:600;line-height:1.5}
 .add-type-bar{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);padding:16px 20px;margin-top:18px;box-shadow:var(--ss)}
 .add-type-title{font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .add-type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -724,7 +757,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 .add-type-ic{width:36px;height:36px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--t3);transition:all .15s var(--e)}
 .add-type-btn:hover .add-type-ic{background:var(--p);color:var(--inv)}
 .add-type-label{font-size:11px;font-weight:700;color:var(--t2)}
-.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--rm);font-size:12px;font-weight:600;font-family:var(--f);box-shadow:var(--sl);z-index:2000;display:flex;align-items:center;gap:7px;background:var(--gn);color:var(--inv)}
+.toast{position:fixed;top:20px;right:20px;max-width:min(420px,calc(100vw - 40px));padding:12px 20px;border-radius:var(--rm);font-size:12px;font-weight:600;font-family:var(--f);box-shadow:var(--sl);z-index:2000;display:flex;align-items:center;gap:7px;background:var(--gn);color:var(--inv)}
 .toast.error{background:var(--rd)}
 .modal-ov{position:fixed;inset:0;background:rgba(30,41,59,.45);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:1000}
 .modal-box{background:var(--card);border-radius:var(--rxl);padding:32px;max-width:420px;width:92%;box-shadow:var(--sl);text-align:center}
@@ -800,6 +833,14 @@ const ManualAssignmentCreatorPage = () => {
   const [newSectionType, setNewSectionType] = useState(SECTION_TYPE.OBJECTIVE);
   const [creatingSection, setCreatingSection] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [publishQuestionErrors, setPublishQuestionErrors] = useState({});
+  const [sectionDeleteModal, setSectionDeleteModal] = useState(null);
+  const [sectionEditModal, setSectionEditModal] = useState(null);
+  const [sectionFormTitle, setSectionFormTitle] = useState("");
+  const [sectionFormType, setSectionFormType] = useState(
+    SECTION_TYPE.OBJECTIVE,
+  );
+  const [sectionActionLoading, setSectionActionLoading] = useState(false);
 
   const toastTimer = useRef(null);
   const saveTimer = useRef(null);
@@ -846,6 +887,8 @@ const ManualAssignmentCreatorPage = () => {
   );
 
   const isBankMode = Boolean(scope.bankId) && !scope.assignmentId;
+  const canManageSections =
+    !isBankMode && Number.isFinite(assignmentId) && assignmentId > 0;
 
   const setupPagePath = useMemo(() => {
     if (isBankMode) {
@@ -953,9 +996,11 @@ const ManualAssignmentCreatorPage = () => {
       return [
         {
           key: "mc",
-          sectionId: singleModeSectionId,
+          sectionId: singleModeSectionId || singleModeSectionMeta?.id || null,
           sectionType: SECTION_TYPE.OBJECTIVE,
-          title: "Phần: Trắc nghiệm",
+          title:
+            String(singleModeSectionMeta?.title || "").trim() ||
+            "Phần: Trắc nghiệm",
           subtitle: "MC / TF / Điền khuyết",
           sectionLabel: "Trắc nghiệm",
           emptyMessage: "Chưa có câu hỏi trắc nghiệm.",
@@ -968,9 +1013,11 @@ const ManualAssignmentCreatorPage = () => {
       return [
         {
           key: "essay",
-          sectionId: singleModeSectionId,
+          sectionId: singleModeSectionId || singleModeSectionMeta?.id || null,
           sectionType: SECTION_TYPE.ESSAY,
-          title: "Phần: Tự luận",
+          title:
+            String(singleModeSectionMeta?.title || "").trim() ||
+            "Phần: Tự luận",
           subtitle: "Essay",
           sectionLabel: "Tự luận",
           emptyMessage: "Chưa có câu hỏi tự luận.",
@@ -1053,7 +1100,84 @@ const ManualAssignmentCreatorPage = () => {
         }),
       };
     });
-  }, [formatMode, isBankMode, mixedSections, qs, singleModeSectionId]);
+  }, [
+    formatMode,
+    isBankMode,
+    mixedSections,
+    qs,
+    singleModeSectionId,
+    singleModeSectionMeta,
+  ]);
+
+  const applyAssignmentSectionsToEditor = (sectionsInput = []) => {
+    const sections = Array.isArray(sectionsInput) ? sectionsInput : [];
+
+    if (formatMode === FORMAT_MODE.MIXED) {
+      const nextSections = sections
+        .map((section, index) => {
+          const normalizedSectionType = normalizeSectionType(
+            section?.sectionType,
+          );
+
+          if (!normalizedSectionType) return null;
+
+          return {
+            id: section?.id || section?.sectionId || `loaded-${index}`,
+            title: String(
+              section?.title || section?.sectionTitle || `Phần ${index + 1}`,
+            ),
+            sectionType: normalizedSectionType,
+          };
+        })
+        .filter(Boolean);
+
+      setMixedSections(nextSections);
+    } else {
+      const resolvedSectionId = resolveSingleModeSectionId(
+        sections,
+        formatMode,
+      );
+
+      if (resolvedSectionId) {
+        setSingleModeSectionId(resolvedSectionId);
+
+        const matchedSection = sections.find(
+          (section) =>
+            toPositiveId(section?.id || section?.sectionId) ===
+            toPositiveId(resolvedSectionId),
+        );
+
+        if (matchedSection) {
+          setSingleModeSectionMeta({
+            id: toPositiveId(matchedSection?.id || matchedSection?.sectionId),
+            title: String(matchedSection?.title || "").trim(),
+            sectionType: normalizeSectionType(matchedSection?.sectionType),
+          });
+        }
+      } else {
+        setSingleModeSectionId(null);
+        setSingleModeSectionMeta(null);
+      }
+    }
+
+    const mappedQuestions = mapAssignmentSectionsToEditorQuestions(sections);
+    const normalizedQuestions = mappedQuestions.length
+      ? sanitizeQuestionsByFormat(mappedQuestions, formatMode)
+      : buildInitialQuestions(formatMode);
+
+    itemIdMapRef.current = {};
+    normalizedQuestions.forEach((question) => {
+      if (question.backendItemId) {
+        itemIdMapRef.current[question.id] = question.backendItemId;
+      }
+    });
+
+    setQs(normalizedQuestions);
+    setActiveId(normalizedQuestions[0]?.id || null);
+    prevQuestionSnapshotsRef.current = buildSnapshotMap(normalizedQuestions);
+    prevOrderSignatureRef.current = buildOrderSignature(normalizedQuestions);
+    isDraftHydratedRef.current = true;
+  };
 
   const createMixedSection = async () => {
     if (formatMode !== FORMAT_MODE.MIXED) return;
@@ -1108,8 +1232,21 @@ const ManualAssignmentCreatorPage = () => {
   const filled = qs.filter((q) => q.prompt.trim()).length;
   const totalPts = qs.reduce((s, q) => s + (Number(q.points) || 0), 0);
 
-  const updateQ = (id, updates) =>
+  const clearPublishQuestionError = (qId) => {
+    const key = String(qId);
+    setPublishQuestionErrors((prev) => {
+      if (!prev[key]) return prev;
+
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const updateQ = (id, updates) => {
+    clearPublishQuestionError(id);
     setQs((prev) => prev.map((q) => (q.id === id ? { ...q, ...updates } : q)));
+  };
 
   const addQ = (type, targetSectionId = null) => {
     if (
@@ -1359,6 +1496,9 @@ const ManualAssignmentCreatorPage = () => {
   };
 
   const focusQuestionCard = (qId) => {
+    setQs((prev) =>
+      prev.map((q) => (q.id === qId ? { ...q, collapsed: false } : q)),
+    );
     setActiveId(qId);
 
     const node = questionElementRefs.current[String(qId)];
@@ -1532,11 +1672,172 @@ const ManualAssignmentCreatorPage = () => {
     }
   };
 
+  const handleSaveAndBackToAssignments = async () => {
+    if (publishing) return;
+
+    const saved = await saveAllToDraftByBatch();
+    if (!saved) return;
+
+    if (isBankMode) {
+      navigate(PATH_TEACHER.questionBankDetail(scope.bankId));
+      return;
+    }
+
+    navigate(PATH_TEACHER.assignments);
+  };
+
   const collectSelectedQuestionIds = () => {
     const ids = qs
       .map((q) => Number(itemIdMapRef.current[q.id]))
       .filter((id) => Number.isFinite(id) && id > 0);
     return [...new Set(ids)];
+  };
+
+  const openEditSectionModal = (group) => {
+    const safeSectionId = toPositiveId(group?.sectionId);
+    if (!safeSectionId) {
+      showToast("Không tìm thấy section để cập nhật.", "error");
+      return;
+    }
+
+    setSectionEditModal({
+      key: group?.key,
+      sectionId: safeSectionId,
+      title: String(group?.title || "").trim(),
+    });
+    setSectionFormTitle(String(group?.title || "").trim());
+    setSectionFormType(
+      normalizeSectionType(group?.sectionType) || SECTION_TYPE.OBJECTIVE,
+    );
+  };
+
+  const handleUpdateSection = async () => {
+    if (!sectionEditModal || sectionActionLoading) return;
+
+    const safeAssignmentId = toPositiveId(assignmentId);
+    const safeSectionId = toPositiveId(sectionEditModal?.sectionId);
+    const safeTitle = String(sectionFormTitle || "").trim();
+
+    if (!safeAssignmentId || !safeSectionId) {
+      showToast("Thiếu assignmentId hoặc sectionId.", "error");
+      return;
+    }
+
+    if (!safeTitle) {
+      showToast("Vui lòng nhập tiêu đề section.", "error");
+      return;
+    }
+
+    const targetGroup = groupedQuestions.find(
+      (group) => String(group.key) === String(sectionEditModal.key),
+    );
+
+    if (!targetGroup) {
+      showToast("Không tìm thấy section để cập nhật.", "error");
+      return;
+    }
+
+    setSectionActionLoading(true);
+    try {
+      const response = await assignmentApi.updateSection(
+        safeAssignmentId,
+        safeSectionId,
+        {
+          title: safeTitle,
+          sectionType: sectionFormType,
+          questions: [],
+        },
+      );
+
+      const safeSessionId = toPositiveId(sessionId);
+
+      if (safeSessionId) {
+        const workspaceResp =
+          await assignmentApi.getDraftWorkspace(safeSessionId);
+        applyAssignmentSectionsToEditor(workspaceResp?.result?.sections || []);
+      } else {
+        applyAssignmentSectionsToEditor(response?.result?.sections || []);
+      }
+
+      setSectionEditModal(null);
+      showToast(response?.message || "Cập nhật phần bài tập thành công.");
+    } catch (error) {
+      showToast(
+        error?.response?.data?.message || "Không thể cập nhật section.",
+        "error",
+      );
+    } finally {
+      setSectionActionLoading(false);
+    }
+  };
+
+  const handleDeleteSection = async () => {
+    if (!sectionDeleteModal || sectionActionLoading) return;
+
+    const safeAssignmentId = toPositiveId(assignmentId);
+    const safeSectionId = toPositiveId(sectionDeleteModal?.sectionId);
+
+    if (!safeAssignmentId || !safeSectionId) {
+      showToast("Thiếu assignmentId hoặc sectionId.", "error");
+      return;
+    }
+
+    setSectionActionLoading(true);
+    try {
+      const response = await assignmentApi.deleteSection(
+        safeAssignmentId,
+        safeSectionId,
+      );
+
+      const isWorkspaceMode = sourceModeFromStatusQuery === "workspace";
+      const safeSessionId = toPositiveId(sessionId);
+
+      if (isWorkspaceMode && safeSessionId) {
+        const workspaceResp =
+          await assignmentApi.getDraftWorkspace(safeSessionId);
+        applyAssignmentSectionsToEditor(workspaceResp?.result?.sections || []);
+      } else {
+        const assignmentResp =
+          await assignmentApi.getAssignment(safeAssignmentId);
+        applyAssignmentSectionsToEditor(assignmentResp?.result?.sections || []);
+      }
+
+      setSectionDeleteModal(null);
+      showToast(response?.message || "Xóa phần thành công.");
+    } catch (error) {
+      showToast(
+        error?.response?.data?.message || "Không thể xóa section.",
+        "error",
+      );
+    } finally {
+      setSectionActionLoading(false);
+    }
+  };
+
+  const normalizePublishReasons = (reasons) => {
+    if (Array.isArray(reasons)) {
+      return reasons
+        .map((reason) => String(reason || "").trim())
+        .filter(Boolean);
+    }
+
+    const singleReason = String(reasons || "").trim();
+    return singleReason ? [singleReason] : [];
+  };
+
+  const resolveQuestionIdByDraftItemId = (draftItemId) => {
+    const safeDraftItemId = toPositiveId(draftItemId);
+    if (!safeDraftItemId) return null;
+
+    const matchedQuestion = qs.find((question) => {
+      const mappedDraftItemId = toPositiveId(
+        itemIdMapRef.current[question.id] || question.backendItemId,
+      );
+
+      return mappedDraftItemId === safeDraftItemId;
+    });
+
+    return matchedQuestion?.id ?? null;
   };
 
   const buildUpdateSectionsPayload = () => {
@@ -1633,6 +1934,8 @@ const ManualAssignmentCreatorPage = () => {
 
   const handlePublish = async () => {
     if (publishing) return;
+
+    setPublishQuestionErrors({});
 
     if (!isBankMode && (!Number.isFinite(assignmentId) || assignmentId <= 0)) {
       showToast(
@@ -1737,12 +2040,27 @@ const ManualAssignmentCreatorPage = () => {
           showToast("Đã lưu câu hỏi vào ngân hàng đề!");
           navigate(PATH_TEACHER.questionBankDetail(scope.bankId));
         } else {
-          showToast("Bài tập đã được xuất bản!");
-          navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
+          showToast("Bài tập đã được xuất bản thành công.");
+          window.setTimeout(() => {
+            navigate(PATH_TEACHER.assignmentAssignClasses(assignmentId));
+          }, 900);
         }
       }
     } catch (error) {
       const apiMessage = error?.response?.data?.message;
+      const apiResult = error?.response?.data?.result || {};
+      const reasonMessages = normalizePublishReasons(apiResult?.reasons);
+      const draftItemId = toPositiveId(apiResult?.draftItemId);
+      const questionIdFromDraftItem =
+        resolveQuestionIdByDraftItemId(draftItemId);
+
+      if (questionIdFromDraftItem && reasonMessages.length > 0) {
+        setPublishQuestionErrors({
+          [String(questionIdFromDraftItem)]: reasonMessages,
+        });
+        focusQuestionCard(questionIdFromDraftItem);
+      }
+
       const fallbackMessage = isBankMode
         ? "Bạn không thể lưu ngân hàng vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau"
         : isAssignmentUpdateMode
@@ -1755,7 +2073,7 @@ const ManualAssignmentCreatorPage = () => {
                 : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
           : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
 
-      showToast(apiMessage || fallbackMessage, "error");
+      showToast(reasonMessages[0] || apiMessage || fallbackMessage, "error");
     } finally {
       setPublishing(false);
     }
@@ -2220,13 +2538,15 @@ const ManualAssignmentCreatorPage = () => {
     sectionKey,
   ) => {
     const isActive = q.id === activeSafe;
+    const questionErrorMessages = publishQuestionErrors[String(q.id)] || [];
+    const hasQuestionError = questionErrorMessages.length > 0;
     const num = idx + 1;
     const mcCorrectIndexes = getMcCorrectIndexes(q.correct);
 
     return (
       <div
         key={q.id}
-        className={`qc${isActive ? " active" : ""}${draggingQuestionId === q.id ? " dragging" : ""}${dragOverQuestionId === q.id ? " drag-over" : ""}`}
+        className={`qc${isActive ? " active" : ""}${hasQuestionError ? " publish-err" : ""}${draggingQuestionId === q.id ? " dragging" : ""}${dragOverQuestionId === q.id ? " drag-over" : ""}`}
         onDragOver={(event) => handleQuestionDragOver(event, q.id, sectionKey)}
         onDrop={(event) => handleQuestionDrop(event, q.id, sectionKey)}
         ref={(node) => {
@@ -2533,6 +2853,24 @@ const ManualAssignmentCreatorPage = () => {
                 />
               </div>
             )}
+
+            {hasQuestionError && (
+              <div className="qc-err" role="alert" aria-live="polite">
+                {questionErrorMessages.map((message, index) => (
+                  <div key={`${q.id}-publish-error-${index}`}>{message}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {q.collapsed && hasQuestionError && (
+          <div className="qc-err" role="alert" aria-live="polite">
+            {questionErrorMessages.map((message, index) => (
+              <div key={`${q.id}-publish-error-collapsed-${index}`}>
+                {message}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -2627,7 +2965,7 @@ const ManualAssignmentCreatorPage = () => {
           <div className="top-r">
             <button
               className="btn btn-g"
-              onClick={saveAllToDraftByBatch}
+              onClick={handleSaveAndBackToAssignments}
               disabled={publishing}
             >
               <Ic.Eye /> Lưu
@@ -2697,7 +3035,36 @@ const ManualAssignmentCreatorPage = () => {
             <div key={group.key} className="section-wrap">
               <div className="section-hdr">
                 <div className="section-title">{group.title}</div>
-                <div className="section-sub">{group.subtitle}</div>
+                <div className="section-hdr-right">
+                  <div className="section-sub">{group.subtitle}</div>
+                  {canManageSections && toPositiveId(group.sectionId) ? (
+                    <div className="section-actions">
+                      <button
+                        type="button"
+                        className="section-action-btn"
+                        title="Cập nhật section"
+                        onClick={() => openEditSectionModal(group)}
+                        disabled={sectionActionLoading}
+                      >
+                        <Ic.Edit />
+                      </button>
+                      <button
+                        type="button"
+                        className="section-action-btn dng"
+                        title="Xóa section"
+                        onClick={() =>
+                          setSectionDeleteModal({
+                            sectionId: group.sectionId,
+                            title: group.title,
+                          })
+                        }
+                        disabled={sectionActionLoading}
+                      >
+                        <Ic.Trash />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div className="section-body">
                 {group.items.length > 0 ? (
@@ -2778,6 +3145,109 @@ const ManualAssignmentCreatorPage = () => {
                 onClick={confirmDel}
               >
                 <Ic.Trash /> Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sectionDeleteModal && (
+        <div
+          className="modal-ov"
+          onClick={() =>
+            sectionActionLoading ? null : setSectionDeleteModal(null)
+          }
+        >
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="modal-ic"
+              style={{ background: "var(--rdl)", color: "var(--rd)" }}
+            >
+              <Ic.Trash />
+            </div>
+            <div className="modal-t">Xóa section?</div>
+            <div className="modal-tx">
+              Bạn có chắc muốn xóa "{sectionDeleteModal.title}"? Dữ liệu câu hỏi
+              trong phần này sẽ bị ảnh hưởng.
+            </div>
+            <div className="modal-btns">
+              <button
+                className="btn btn-g"
+                onClick={() => setSectionDeleteModal(null)}
+                disabled={sectionActionLoading}
+              >
+                Hủy
+              </button>
+              <button
+                className="btn"
+                style={{
+                  background: "var(--rd)",
+                  color: "var(--inv)",
+                  boxShadow: "0 3px 12px rgba(239,68,68,.25)",
+                }}
+                onClick={handleDeleteSection}
+                disabled={sectionActionLoading}
+              >
+                <Ic.Trash /> {sectionActionLoading ? "Đang xóa..." : "Xóa"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sectionEditModal && (
+        <div
+          className="modal-ov"
+          onClick={() =>
+            sectionActionLoading ? null : setSectionEditModal(null)
+          }
+        >
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="modal-ic"
+              style={{ background: "var(--pl)", color: "var(--p)" }}
+            >
+              <Ic.Edit />
+            </div>
+            <div className="modal-t">Cập nhật section</div>
+            <div style={{ textAlign: "left", marginBottom: 14 }}>
+              <label className="fl">Tiêu đề section</label>
+              <input
+                className="f-input"
+                value={sectionFormTitle}
+                onChange={(e) => setSectionFormTitle(e.target.value)}
+                placeholder="Nhập tiêu đề section"
+                disabled={sectionActionLoading}
+              />
+            </div>
+            <div style={{ textAlign: "left", marginBottom: 20 }}>
+              <label className="fl">Loại section</label>
+              <select
+                className="meta-select"
+                value={sectionFormType}
+                onChange={(e) => setSectionFormType(e.target.value)}
+                disabled={sectionActionLoading}
+              >
+                <option value={SECTION_TYPE.OBJECTIVE}>OBJECTIVE</option>
+                <option value={SECTION_TYPE.ESSAY}>ESSAY</option>
+                <option value={SECTION_TYPE.MIXED}>MIXED</option>
+              </select>
+            </div>
+            <div className="modal-btns">
+              <button
+                className="btn btn-g"
+                onClick={() => setSectionEditModal(null)}
+                disabled={sectionActionLoading}
+              >
+                Hủy
+              </button>
+              <button
+                className="btn btn-p"
+                onClick={handleUpdateSection}
+                disabled={sectionActionLoading}
+              >
+                <Ic.Edit />
+                {sectionActionLoading ? "Đang cập nhật..." : "Cập nhật"}
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
+import { useAuth } from "@/contexts/AuthContext";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const COG = [
@@ -122,6 +123,12 @@ const SECTION_TYPE = {
   MIXED: "MIXED",
 };
 
+const DRAFT_SESSION_TYPE = {
+  AI_GENERATION: "AI_GENERATION",
+  EXCEL_IMPORT: "EXCEL_IMPORT",
+  MANUAL_CREATION: "MANUAL_CREATION",
+};
+
 const normalizeSectionType = (value) => {
   const normalized = String(value || "")
     .trim()
@@ -166,6 +173,46 @@ const SECTION_TYPE_LABEL = {
   ESSAY: "Tự luận",
   MIXED: "Hỗn hợp",
 };
+
+const SECTION_TYPE_OPTIONS = [
+  { value: SECTION_TYPE.OBJECTIVE, label: "Phần trắc nghiệm" },
+  { value: SECTION_TYPE.ESSAY, label: "Phần tự luận" },
+  { value: SECTION_TYPE.MIXED, label: "Phần hỗn hợp" },
+];
+
+const normalizeFormat = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "MC") return "MULTIPLE_CHOICE";
+  if (
+    normalized === "MULTIPLE_CHOICE" ||
+    normalized === "ESSAY" ||
+    normalized === "MIXED"
+  ) {
+    return normalized;
+  }
+
+  return "MIXED";
+};
+
+const mapSectionSummaries = (sections = []) =>
+  (Array.isArray(sections) ? sections : [])
+    .map((section, index) => {
+      const id = toPositiveId(section?.id || section?.sectionId);
+      if (!id) return null;
+
+      return {
+        id,
+        title: String(section?.title || "").trim() || `Phần ${index + 1}`,
+        sectionType: normalizeSectionType(section?.sectionType),
+        orderIndex: Number(section?.orderIndex ?? index + 1),
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.orderIndex - right.orderIndex)
+    .map(({ id, title, sectionType }) => ({ id, title, sectionType }));
 
 const toSectionTypeLabel = (sectionType) =>
   SECTION_TYPE_LABEL[normalizeSectionType(sectionType)] || "Trắc nghiệm";
@@ -250,6 +297,78 @@ const flattenQuestionsBySections = (sections = []) =>
       Array.isArray(section?.questions) ? section.questions : [],
     ),
   );
+
+const buildAutoSaveOptionsFromQuestion = (question = {}) => {
+  if (question?.type === "MULTIPLE_CHOICE") {
+    const rawOptions = Array.isArray(question?.opts) ? question.opts : [];
+    if (!rawOptions.length) return undefined;
+
+    const correctIndex = Number(question?.cor);
+    const options = rawOptions.map((option, index) => ({
+      content: normalizeRichText(option || ""),
+      correct: correctIndex === index,
+    }));
+
+    if (options.some((option) => !String(option.content || "").trim())) {
+      return undefined;
+    }
+
+    return options;
+  }
+
+  if (question?.type === "TRUE_FALSE") {
+    const isTrue = Boolean(question?.cor);
+    return [
+      { content: "Đúng", correct: isTrue },
+      { content: "Sai", correct: !isTrue },
+    ];
+  }
+
+  if (question?.type === "FILL_IN_BLANK") {
+    const answer = normalizeRichText(question?.ans || "");
+    if (!answer) return undefined;
+
+    return [{ content: answer, correct: true }];
+  }
+
+  return undefined;
+};
+
+const buildAutoSaveItemPayload = (question = {}, fallback = {}) => {
+  const normalizedQuestionType =
+    API_QT_MAP[question?.type] || "MULTIPLE_CHOICE";
+  const normalizedCognitiveLevel =
+    normalizeCognitiveLevelFromApi(question?.cognitiveLevel) || "APPLYING";
+  const sectionId =
+    toPositiveId(question?.sectionId) || toPositiveId(fallback?.sectionId);
+  const orderIndex = toSafeOrderIndex(
+    question?.orderIndex ?? fallback?.orderIndex,
+    1,
+  );
+  const defaultPoints = Number(question?.defaultPoints);
+  const sampleAnswer = normalizeRichText(
+    question?.sampleAnswer ||
+      (question?.type === "FILL_IN_BLANK" ? question?.ans || "" : ""),
+  );
+
+  const payload = {
+    itemId: toPositiveId(question?.id) || null,
+    content: normalizeRichText(question?.prompt || ""),
+    questionType: normalizedQuestionType,
+    cognitiveLevel: normalizedCognitiveLevel,
+    defaultPoints: Number.isFinite(defaultPoints) ? defaultPoints : undefined,
+    sampleAnswer: sampleAnswer || undefined,
+    sectionId: sectionId || undefined,
+    orderIndex,
+  };
+
+  const options = buildAutoSaveOptionsFromQuestion(question);
+  if (Array.isArray(options) && options.length > 0) {
+    payload.options = options;
+  }
+
+  return payload;
+};
 
 const applyQuestionDropToSections = (
   sections = [],
@@ -751,7 +870,7 @@ const I = {
   ),
 };
 
-const CSS = `@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');:root{--p:#2563EB;--pd:#1D4ED8;--pl:#EFF6FF;--plr:#F8FAFF;--pg:rgba(37,99,235,.10);--ps:rgba(37,99,235,.22);--gr:linear-gradient(135deg,#3B82F6,#2563EB 50%,#1D4ED8);--bg:#F7F8FC;--card:#FFF;--inp:#F5F7FB;--hov:#EDF2FF;--t:#1E293B;--t2:#475569;--t3:#94A3B8;--inv:#FFF;--gn:#10B981;--gnl:#ECFDF5;--or:#F59E0B;--orl:#FFFBEB;--rd:#EF4444;--rdl:#FEF2F2;--pu:#8B5CF6;--pul:#F5F3FF;--b:#E2E8F0;--bl:#F1F5F9;--ss:0 1px 3px rgba(30,41,59,.04);--sm:0 4px 14px rgba(30,41,59,.07);--rs:10px;--rm:12px;--rl:16px;--rxl:20px;--f:'Be Vietnam Pro',sans-serif;--fd:'Lora',serif;--fm:'JetBrains Mono',monospace;--e:cubic-bezier(.4,0,.2,1)}*{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased}.app{display:flex;height:100vh;overflow:hidden}.left{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--b)}.right{width:380px;display:flex;flex-direction:column;background:var(--card);flex-shrink:0}.top{height:54px;background:var(--card);border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0}.top-l{display:flex;align-items:center;gap:12px}.bk{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--b);border-radius:var(--rs);background:var(--card);font-size:11px;font-weight:600;font-family:var(--f);color:var(--t2);cursor:pointer;transition:all .15s var(--e)}.bk:hover{border-color:var(--p);color:var(--p)}.top-t{font-family:var(--fd);font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px}.top-t svg{color:var(--p)}.top-r{display:flex;gap:6px}.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:var(--rm);font-size:11px;font-weight:700;font-family:var(--f);cursor:pointer;border:none;transition:all .2s var(--e)}.btn-p{background:var(--gr);color:var(--inv);box-shadow:0 2px 10px var(--ps)}.btn-p:hover{transform:translateY(-1px)}.btn-g{background:var(--card);color:var(--t2);border:1.5px solid var(--b)}.btn-g:hover{border-color:var(--p);color:var(--p);background:var(--hov)}.scroll{flex:1;overflow-y:auto;padding:22px;background:var(--bg)}.cfg{background:var(--card);border:1px solid var(--b);border-radius:var(--rxl);padding:24px;box-shadow:var(--ss);margin-bottom:18px;animation:fu .35s ease both}@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.cfg-t{font-family:var(--fd);font-size:17px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:7px}.cfg-d{font-size:12px;color:var(--t3);margin-bottom:18px;line-height:1.5}.fl{display:block;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px}.fl .rq{color:var(--rd)}.fg{margin-bottom:16px}.cg{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.cp{padding:10px 12px;border:1.5px solid var(--b);border-radius:var(--rm);cursor:pointer;transition:all .2s var(--e);background:var(--card);text-align:left}.cp:hover{border-color:var(--p);background:var(--hov)}.cp.on{border-color:var(--p);background:var(--pl);box-shadow:0 0 0 3px var(--pg)}.cp-n{font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:1px}.cp-dot{width:7px;height:7px;border-radius:50%}.cp-d{font-size:9px;color:var(--t3);font-weight:500}.qr{display:flex;align-items:center;gap:10px}.qb{width:34px;height:34px;border-radius:var(--rs);border:1.5px solid var(--b);background:var(--card);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;transition:all .15s var(--e)}.qb:hover{border-color:var(--p);color:var(--p)}.qv{font-size:22px;font-weight:800;font-family:var(--fm);min-width:36px;text-align:center}.qtg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.qtp{padding:9px;border:1.5px solid var(--b);border-radius:var(--rm);cursor:pointer;transition:all .2s var(--e);background:var(--card);text-align:center}.qtp:hover{border-color:var(--p);background:var(--hov)}.qtp.on{border-color:var(--p);background:var(--pl);box-shadow:0 0 0 3px var(--pg)}.qti{font-size:10px;font-weight:800;color:var(--t3);background:var(--bl);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 5px}.qtp.on .qti{background:var(--p);color:var(--inv)}.qtl{font-size:10px;font-weight:700;color:var(--t2)}.ta{width:100%;padding:9px 12px;border:1.5px solid var(--b);border-radius:var(--rm);font-size:12px;font-family:var(--f);color:var(--t);background:var(--inp);resize:vertical;min-height:60px;line-height:1.6;transition:all .2s var(--e)}.ta:focus{outline:none;border-color:var(--p);background:var(--card);box-shadow:0 0 0 3px var(--pg)}.uz{border:2px dashed var(--b);border-radius:var(--rm);padding:24px;text-align:center;cursor:pointer;transition:all .2s var(--e);background:var(--inp)}.uz:hover{border-color:var(--p);background:var(--hov)}.uz.has{border-color:var(--gn);background:var(--gnl);border-style:solid}.uz-fi{display:flex;align-items:center;gap:8px;justify-content:center}.uz-fn{font-size:13px;font-weight:600;color:var(--gn)}.uz-rm{background:none;border:none;color:var(--rd);cursor:pointer}.uz-t{font-size:11px;color:var(--t3);font-weight:500}.uz-t strong{color:var(--p);font-weight:700}.st{display:flex;margin-bottom:12px;background:var(--inp);border-radius:var(--rm);padding:3px;border:1px solid var(--b)}.stb{flex:1;padding:7px;border-radius:var(--rs);font-size:11px;font-weight:700;font-family:var(--f);color:var(--t3);cursor:pointer;border:none;background:none;text-align:center;transition:all .15s var(--e)}.stb.on{background:var(--card);color:var(--p);box-shadow:var(--ss)}.gbtn{width:100%;padding:13px;border:none;border-radius:var(--rm);background:var(--gr);color:var(--inv);font-size:13px;font-weight:700;font-family:var(--f);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .25s var(--e);box-shadow:0 4px 16px var(--ps);overflow:hidden;position:relative}.gbtn:hover{transform:translateY(-2px)}.gbtn:disabled{opacity:.5;cursor:not-allowed;transform:none}.gbtn .shim{position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);animation:sh 2s infinite}@keyframes sh{to{left:100%}}.qc{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);margin-bottom:12px;transition:all .2s var(--e);animation:fu .25s ease both;overflow:hidden}.qc:hover{border-color:var(--p);box-shadow:var(--sm)}.qc.editing{border-color:var(--or);box-shadow:0 0 0 3px rgba(245,158,11,.1),var(--sm)}.qc-main{padding:18px 20px}.qc-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}.qc-n{min-width:28px;height:28px;border-radius:50%;background:var(--p);color:var(--inv);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}.qc.editing .qc-n{background:var(--or)}.qc-body{flex:1}.qc-tb{padding:2px 7px;border-radius:10px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block;margin-bottom:4px}.qc-tb.mc{background:var(--pl);color:var(--p)}.qc-tb.tf{background:var(--gnl);color:var(--gn)}.qc-tb.fb{background:var(--orl);color:var(--or)}.qc-tb.es{background:var(--pul);color:var(--pu)}.qc-pr{font-size:13px;font-weight:600;line-height:1.65;white-space:pre-line}.qc-opts{margin-top:8px;display:flex;flex-direction:column;gap:5px;margin-left:38px}.qc-opt{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--bl);border-radius:var(--rs);font-size:12px;color:var(--t2);font-weight:500;transition:all .15s var(--e)}.qc-opt.ok{border-color:var(--gn);background:var(--gnl);color:var(--gn);font-weight:600}.qc-ol{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--b);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;color:var(--t3);flex-shrink:0}.qc-opt.ok .qc-ol{border-color:var(--gn);background:var(--gn);color:var(--inv)}.qc-tf{margin-top:8px;margin-left:38px;font-size:12px;font-weight:600}.ctag{color:var(--gn);background:var(--gnl);padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}.qc-fb{margin-top:6px;margin-left:38px;font-size:11px;color:var(--t3);font-weight:600}.qc-fb span{color:var(--p);font-weight:700;background:var(--pl);padding:1px 7px;border-radius:5px;margin-left:3px}.qc-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid var(--bl);background:var(--bg)}.qc-bar-l,.qc-bar-r{display:flex;gap:4px}.ab{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:var(--rs);border:none;background:none;font-size:10px;font-weight:600;font-family:var(--f);color:var(--t3);cursor:pointer;transition:all .15s var(--e)}.ab:hover{background:var(--hov);color:var(--p)}.ab.ed{color:var(--or)}.ab.ed:hover{background:var(--orl)}.ab.dng:hover{background:var(--rdl);color:var(--rd)}.ab.sv{color:var(--gn)}.ab.sv:hover{background:var(--gnl)}.ed-prompt{width:100%;padding:8px 12px;border:1.5px solid var(--or);border-radius:var(--rs);font-size:13px;font-family:var(--f);font-weight:600;color:var(--t);background:#FFFDF7;min-height:48px;resize:vertical;line-height:1.6}.ed-prompt:focus{outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.1)}.ed-opt-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}.ed-opt-input{flex:1;padding:7px 10px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:12px;font-family:var(--f);color:var(--t);background:var(--inp)}.ed-opt-input:focus{outline:none;border-color:var(--or)}.ed-opt-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--b);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s var(--e)}.ed-opt-radio.on{border-color:var(--gn);background:var(--gn);color:var(--inv)}.ed-opt-radio:hover{border-color:var(--gn)}.ed-lbl{font-size:10px;font-weight:700;color:var(--t3);margin:8px 0 5px 38px;text-transform:uppercase;letter-spacing:.04em}.ed-tf{display:flex;gap:8px;margin-left:38px}.ed-tfb{flex:1;padding:9px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:12px;font-weight:700;text-align:center;cursor:pointer;background:var(--card);color:var(--t3);font-family:var(--f);transition:all .15s var(--e)}.ed-tfb:hover{border-color:var(--gn)}.ed-tfb.on{border-color:var(--gn);background:var(--gnl);color:var(--gn)}.ed-ans{margin-left:38px;width:calc(100% - 38px);padding:7px 10px;border:1.5px solid var(--or);border-radius:var(--rs);font-size:12px;font-family:var(--fm);color:var(--t);background:#FFFDF7}.ed-ans:focus{outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.1)}.pag{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:14px}.pg{width:32px;height:32px;border-radius:var(--rs);border:1.5px solid var(--b);background:var(--card);font-size:11px;font-weight:700;font-family:var(--f);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s var(--e)}.pg:hover{border-color:var(--p);color:var(--p)}.pg.on{background:var(--p);color:var(--inv);border-color:var(--p);box-shadow:0 2px 8px var(--ps)}.pg:disabled{opacity:.3;cursor:not-allowed}.rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.rt{font-family:var(--fd);font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px}.rc{font-size:11px;font-weight:700;color:var(--p);background:var(--pl);padding:2px 9px;border-radius:16px}.skel{background:linear-gradient(90deg,var(--bl) 25%,var(--bg) 50%,var(--bl) 75%);background-size:200% 100%;animation:skl 1.5s infinite;border-radius:var(--rm);height:70px;margin-bottom:10px}@keyframes skl{to{background-position:-200% 0}}.ch-h{height:54px;border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 18px;gap:9px;flex-shrink:0;background:var(--plr)}.ch-ic{width:30px;height:30px;border-radius:50%;background:var(--gr);color:var(--inv);display:flex;align-items:center;justify-content:center}.ch-hi h3{font-size:13px;font-weight:700}.ch-hi p{font-size:9px;color:var(--t3)}.ch-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}.ch-m{display:flex;gap:8px;max-width:90%;animation:fu .2s ease both}.ch-m.usr{align-self:flex-end;flex-direction:row-reverse}.ch-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}.ch-av.bt{background:var(--gr);color:var(--inv)}.ch-av.hm{background:var(--b);color:var(--t2)}.ch-bb{padding:9px 12px;border-radius:var(--rm);font-size:12px;line-height:1.6;font-weight:500}.ch-m.bot .ch-bb{background:var(--card);border:1px solid var(--b);border-top-left-radius:3px}.ch-m.usr .ch-bb{background:var(--p);color:var(--inv);border-top-right-radius:3px}.ch-tm{font-size:8px;color:var(--t3);margin-top:3px}.ch-m.usr .ch-tm{text-align:right}.ch-sug{display:flex;flex-wrap:wrap;gap:5px;padding:0 16px 8px}.ch-sg{padding:5px 10px;border:1.5px solid var(--b);border-radius:16px;font-size:10px;font-weight:600;font-family:var(--f);color:var(--t2);cursor:pointer;background:var(--card);transition:all .15s var(--e)}.ch-sg:hover{border-color:var(--p);color:var(--p);background:var(--hov)}.ch-inp{padding:10px 14px;border-top:1px solid var(--b);background:var(--card);flex-shrink:0}.ch-ir{display:flex;gap:6px;align-items:flex-end}.ch-ta{flex:1;padding:8px 12px;border:1.5px solid var(--b);border-radius:var(--rm);font-size:12px;font-family:var(--f);color:var(--t);background:var(--inp);resize:none;min-height:36px;max-height:80px;line-height:1.5}.ch-ta:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--pg)}.ch-sd{width:36px;height:36px;border-radius:var(--rm);border:none;background:var(--gr);color:var(--inv);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px var(--ps);transition:all .2s var(--e)}.ch-sd:hover{transform:translateY(-1px)}.ch-sd:disabled{opacity:.4;cursor:not-allowed;transform:none}.ch-ht{font-size:9px;color:var(--t3);margin-top:4px;text-align:center}.typing{display:flex;gap:3px;padding:6px 12px}.td{width:5px;height:5px;border-radius:50%;background:var(--t3);animation:tb 1.4s infinite both}.td:nth-child(2){animation-delay:.15s}.td:nth-child(3){animation-delay:.3s}@keyframes tb{0%,80%,100%{transform:scale(0);opacity:.4}40%{transform:scale(1);opacity:1}}@media(max-width:900px){.right{display:none}.left{border:none}}`;
+const CSS = `@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');:root{--p:#2563EB;--pd:#1D4ED8;--pl:#EFF6FF;--plr:#F8FAFF;--pg:rgba(37,99,235,.10);--ps:rgba(37,99,235,.22);--gr:linear-gradient(135deg,#3B82F6,#2563EB 50%,#1D4ED8);--bg:#F7F8FC;--card:#FFF;--inp:#F5F7FB;--hov:#EDF2FF;--t:#1E293B;--t2:#475569;--t3:#94A3B8;--inv:#FFF;--gn:#10B981;--gnl:#ECFDF5;--or:#F59E0B;--orl:#FFFBEB;--rd:#EF4444;--rdl:#FEF2F2;--pu:#8B5CF6;--pul:#F5F3FF;--b:#E2E8F0;--bl:#F1F5F9;--ss:0 1px 3px rgba(30,41,59,.04);--sm:0 4px 14px rgba(30,41,59,.07);--rs:10px;--rm:12px;--rl:16px;--rxl:20px;--f:'Be Vietnam Pro',sans-serif;--fd:'Be Vietnam Pro',sans-serif;--fm:'JetBrains Mono',monospace;--e:cubic-bezier(.4,0,.2,1)}*{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased}.app{display:flex;height:100vh;overflow:hidden}.left{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--b)}.right{width:380px;display:flex;flex-direction:column;background:var(--card);flex-shrink:0}.top{height:54px;background:var(--card);border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0}.top-l{display:flex;align-items:center;gap:12px}.bk{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--b);border-radius:var(--rs);background:var(--card);font-size:11px;font-weight:600;font-family:var(--f);color:var(--t2);cursor:pointer;transition:all .15s var(--e)}.bk:hover{border-color:var(--p);color:var(--p)}.top-t{font-family:var(--fd);font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px}.top-t svg{color:var(--p)}.top-r{display:flex;gap:6px}.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:var(--rm);font-size:11px;font-weight:700;font-family:var(--f);cursor:pointer;border:none;transition:all .2s var(--e)}.btn-p{background:var(--gr);color:var(--inv);box-shadow:0 2px 10px var(--ps)}.btn-p:hover{transform:translateY(-1px)}.btn-g{background:var(--card);color:var(--t2);border:1.5px solid var(--b)}.btn-g:hover{border-color:var(--p);color:var(--p);background:var(--hov)}.scroll{flex:1;overflow-y:auto;padding:22px;background:var(--bg)}.cfg{background:var(--card);border:1px solid var(--b);border-radius:var(--rxl);padding:24px;box-shadow:var(--ss);margin-bottom:18px;animation:fu .35s ease both}@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.cfg-t{font-family:var(--fd);font-size:17px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:7px}.cfg-d{font-size:12px;color:var(--t3);margin-bottom:18px;line-height:1.5}.fl{display:block;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px}.fl .rq{color:var(--rd)}.fg{margin-bottom:16px}.cg{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.cp{padding:10px 12px;border:1.5px solid var(--b);border-radius:var(--rm);cursor:pointer;transition:all .2s var(--e);background:var(--card);text-align:left}.cp:hover{border-color:var(--p);background:var(--hov)}.cp.on{border-color:var(--p);background:var(--pl);box-shadow:0 0 0 3px var(--pg)}.cp-n{font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:1px}.cp-dot{width:7px;height:7px;border-radius:50%}.cp-d{font-size:9px;color:var(--t3);font-weight:500}.qr{display:flex;align-items:center;gap:10px}.qb{width:34px;height:34px;border-radius:var(--rs);border:1.5px solid var(--b);background:var(--card);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;transition:all .15s var(--e)}.qb:hover{border-color:var(--p);color:var(--p)}.qv{font-size:22px;font-weight:800;font-family:var(--fm);min-width:36px;text-align:center}.qtg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.qtp{padding:9px;border:1.5px solid var(--b);border-radius:var(--rm);cursor:pointer;transition:all .2s var(--e);background:var(--card);text-align:center}.qtp:hover{border-color:var(--p);background:var(--hov)}.qtp.on{border-color:var(--p);background:var(--pl);box-shadow:0 0 0 3px var(--pg)}.qti{font-size:10px;font-weight:800;color:var(--t3);background:var(--bl);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 5px}.qtp.on .qti{background:var(--p);color:var(--inv)}.qtl{font-size:10px;font-weight:700;color:var(--t2)}.ta{width:100%;padding:9px 12px;border:1.5px solid var(--b);border-radius:var(--rm);font-size:12px;font-family:var(--f);color:var(--t);background:var(--inp);resize:vertical;min-height:60px;line-height:1.6;transition:all .2s var(--e)}.ta:focus{outline:none;border-color:var(--p);background:var(--card);box-shadow:0 0 0 3px var(--pg)}.uz{border:2px dashed var(--b);border-radius:var(--rm);padding:24px;text-align:center;cursor:pointer;transition:all .2s var(--e);background:var(--inp)}.uz:hover{border-color:var(--p);background:var(--hov)}.uz.has{border-color:var(--gn);background:var(--gnl);border-style:solid}.uz-fi{display:flex;align-items:center;gap:8px;justify-content:center}.uz-fn{font-size:13px;font-weight:600;color:var(--gn)}.uz-rm{background:none;border:none;color:var(--rd);cursor:pointer}.uz-t{font-size:11px;color:var(--t3);font-weight:500}.uz-t strong{color:var(--p);font-weight:700}.st{display:flex;margin-bottom:12px;background:var(--inp);border-radius:var(--rm);padding:3px;border:1px solid var(--b)}.stb{flex:1;padding:7px;border-radius:var(--rs);font-size:11px;font-weight:700;font-family:var(--f);color:var(--t3);cursor:pointer;border:none;background:none;text-align:center;transition:all .15s var(--e)}.stb.on{background:var(--card);color:var(--p);box-shadow:var(--ss)}.gbtn{width:100%;padding:13px;border:none;border-radius:var(--rm);background:var(--gr);color:var(--inv);font-size:13px;font-weight:700;font-family:var(--f);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .25s var(--e);box-shadow:0 4px 16px var(--ps);overflow:hidden;position:relative}.gbtn:hover{transform:translateY(-2px)}.gbtn:disabled{opacity:.5;cursor:not-allowed;transform:none}.gbtn .shim{position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);animation:sh 2s infinite}@keyframes sh{to{left:100%}}.qc{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);margin-bottom:12px;transition:all .2s var(--e);animation:fu .25s ease both;overflow:hidden}.qc:hover{border-color:var(--p);box-shadow:var(--sm)}.qc.editing{border-color:var(--or);box-shadow:0 0 0 3px rgba(245,158,11,.1),var(--sm)}.qc-main{padding:18px 20px}.qc-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}.qc-n{min-width:28px;height:28px;border-radius:50%;background:var(--p);color:var(--inv);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}.qc.editing .qc-n{background:var(--or)}.qc-body{flex:1}.qc-tb{padding:2px 7px;border-radius:10px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block;margin-bottom:4px}.qc-tb.mc{background:var(--pl);color:var(--p)}.qc-tb.tf{background:var(--gnl);color:var(--gn)}.qc-tb.fb{background:var(--orl);color:var(--or)}.qc-tb.es{background:var(--pul);color:var(--pu)}.qc-pr{font-size:13px;font-weight:600;line-height:1.65;white-space:pre-line}.qc-opts{margin-top:8px;display:flex;flex-direction:column;gap:5px;margin-left:38px}.qc-opt{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--bl);border-radius:var(--rs);font-size:12px;color:var(--t2);font-weight:500;transition:all .15s var(--e)}.qc-opt.ok{border-color:var(--gn);background:var(--gnl);color:var(--gn);font-weight:600}.qc-ol{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--b);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;color:var(--t3);flex-shrink:0}.qc-opt.ok .qc-ol{border-color:var(--gn);background:var(--gn);color:var(--inv)}.qc-tf{margin-top:8px;margin-left:38px;font-size:12px;font-weight:600}.ctag{color:var(--gn);background:var(--gnl);padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}.qc-fb{margin-top:6px;margin-left:38px;font-size:11px;color:var(--t3);font-weight:600}.qc-fb span{color:var(--p);font-weight:700;background:var(--pl);padding:1px 7px;border-radius:5px;margin-left:3px}.qc-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid var(--bl);background:var(--bg)}.qc-bar-l,.qc-bar-r{display:flex;gap:4px}.ab{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:var(--rs);border:none;background:none;font-size:10px;font-weight:600;font-family:var(--f);color:var(--t3);cursor:pointer;transition:all .15s var(--e)}.ab:hover{background:var(--hov);color:var(--p)}.ab.ed{color:var(--or)}.ab.ed:hover{background:var(--orl)}.ab.dng:hover{background:var(--rdl);color:var(--rd)}.ab.sv{color:var(--gn)}.ab.sv:hover{background:var(--gnl)}.ed-prompt{width:100%;padding:8px 12px;border:1.5px solid var(--or);border-radius:var(--rs);font-size:13px;font-family:var(--f);font-weight:600;color:var(--t);background:#FFFDF7;min-height:48px;resize:vertical;line-height:1.6}.ed-prompt:focus{outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.1)}.ed-opt-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}.ed-opt-input{flex:1;padding:7px 10px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:12px;font-family:var(--f);color:var(--t);background:var(--inp)}.ed-opt-input:focus{outline:none;border-color:var(--or)}.ed-opt-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--b);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s var(--e)}.ed-opt-radio.on{border-color:var(--gn);background:var(--gn);color:var(--inv)}.ed-opt-radio:hover{border-color:var(--gn)}.ed-lbl{font-size:10px;font-weight:700;color:var(--t3);margin:8px 0 5px 38px;text-transform:uppercase;letter-spacing:.04em}.ed-tf{display:flex;gap:8px;margin-left:38px}.ed-tfb{flex:1;padding:9px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:12px;font-weight:700;text-align:center;cursor:pointer;background:var(--card);color:var(--t3);font-family:var(--f);transition:all .15s var(--e)}.ed-tfb:hover{border-color:var(--gn)}.ed-tfb.on{border-color:var(--gn);background:var(--gnl);color:var(--gn)}.ed-ans{margin-left:38px;width:calc(100% - 38px);padding:7px 10px;border:1.5px solid var(--or);border-radius:var(--rs);font-size:12px;font-family:var(--fm);color:var(--t);background:#FFFDF7}.ed-ans:focus{outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.1)}.pag{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:14px}.pg{width:32px;height:32px;border-radius:var(--rs);border:1.5px solid var(--b);background:var(--card);font-size:11px;font-weight:700;font-family:var(--f);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s var(--e)}.pg:hover{border-color:var(--p);color:var(--p)}.pg.on{background:var(--p);color:var(--inv);border-color:var(--p);box-shadow:0 2px 8px var(--ps)}.pg:disabled{opacity:.3;cursor:not-allowed}.rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.rt{font-family:var(--fd);font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px}.rc{font-size:11px;font-weight:700;color:var(--p);background:var(--pl);padding:2px 9px;border-radius:16px}.skel{background:linear-gradient(90deg,var(--bl) 25%,var(--bg) 50%,var(--bl) 75%);background-size:200% 100%;animation:skl 1.5s infinite;border-radius:var(--rm);height:70px;margin-bottom:10px}@keyframes skl{to{background-position:-200% 0}}.ch-h{height:54px;border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 18px;gap:9px;flex-shrink:0;background:var(--plr)}.ch-ic{width:30px;height:30px;border-radius:50%;background:var(--gr);color:var(--inv);display:flex;align-items:center;justify-content:center}.ch-hi h3{font-size:13px;font-weight:700}.ch-hi p{font-size:9px;color:var(--t3)}.ch-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}.ch-m{display:flex;gap:8px;max-width:90%;animation:fu .2s ease both}.ch-m.usr{align-self:flex-end;flex-direction:row-reverse}.ch-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}.ch-av.bt{background:var(--gr);color:var(--inv)}.ch-av.hm{background:var(--b);color:var(--t2)}.ch-bb{padding:9px 12px;border-radius:var(--rm);font-size:12px;line-height:1.6;font-weight:500}.ch-m.bot .ch-bb{background:var(--card);border:1px solid var(--b);border-top-left-radius:3px}.ch-m.usr .ch-bb{background:var(--p);color:var(--inv);border-top-right-radius:3px}.ch-tm{font-size:8px;color:var(--t3);margin-top:3px}.ch-m.usr .ch-tm{text-align:right}.ch-sug{display:flex;flex-wrap:wrap;gap:5px;padding:0 16px 8px}.ch-sg{padding:5px 10px;border:1.5px solid var(--b);border-radius:16px;font-size:10px;font-weight:600;font-family:var(--f);color:var(--t2);cursor:pointer;background:var(--card);transition:all .15s var(--e)}.ch-sg:hover{border-color:var(--p);color:var(--p);background:var(--hov)}.ch-inp{padding:10px 14px;border-top:1px solid var(--b);background:var(--card);flex-shrink:0}.ch-ir{display:flex;gap:6px;align-items:flex-end}.ch-ta{flex:1;padding:8px 12px;border:1.5px solid var(--b);border-radius:var(--rm);font-size:12px;font-family:var(--f);color:var(--t);background:var(--inp);resize:none;min-height:36px;max-height:80px;line-height:1.5}.ch-ta:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--pg)}.ch-sd{width:36px;height:36px;border-radius:var(--rm);border:none;background:var(--gr);color:var(--inv);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px var(--ps);transition:all .2s var(--e)}.ch-sd:hover{transform:translateY(-1px)}.ch-sd:disabled{opacity:.4;cursor:not-allowed;transform:none}.ch-ht{font-size:9px;color:var(--t3);margin-top:4px;text-align:center}.typing{display:flex;gap:3px;padding:6px 12px}.td{width:5px;height:5px;border-radius:50%;background:var(--t3);animation:tb 1.4s infinite both}.td:nth-child(2){animation-delay:.15s}.td:nth-child(3){animation-delay:.3s}@keyframes tb{0%,80%,100%{transform:scale(0);opacity:.4}40%{transform:scale(1);opacity:1}}@media(max-width:900px){.right{display:none}.left{border:none}}`;
 
 const PP = 5,
   LT = "ABCDEFGH",
@@ -771,6 +890,7 @@ const PP = 5,
 const CreateAssignmentAiPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { adjustAiRequestUsage } = useAuth();
 
   const bankId = toPositiveId(searchParams.get("bankId"));
   const assignmentId = toPositiveId(searchParams.get("assignmentId"));
@@ -823,6 +943,7 @@ const CreateAssignmentAiPage = () => {
   })();
 
   const [sectionConfigs, setSectionConfigs] = useState({});
+  const assignmentFormat = normalizeFormat(initialFormat);
   const [addP, setAddP] = useState("");
   const [srcT, setSrcT] = useState("file");
   const [aiF, setAiF] = useState(null);
@@ -849,6 +970,15 @@ const CreateAssignmentAiPage = () => {
   const [reorderSaving, setReorderSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
+  const [toast, setToast] = useState(null);
+  const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [newSectionType, setNewSectionType] = useState(SECTION_TYPE.OBJECTIVE);
+  const [editingSectionId, setEditingSectionId] = useState(null);
+  const [editingSectionTitle, setEditingSectionTitle] = useState("");
+  const [editingSectionType, setEditingSectionType] = useState(
+    SECTION_TYPE.OBJECTIVE,
+  );
+  const [sectionSaving, setSectionSaving] = useState(false);
   const [msgs, setMsgs] = useState([
     {
       role: "bot",
@@ -860,10 +990,30 @@ const CreateAssignmentAiPage = () => {
   const [typing, setTyping] = useState(false);
   const chatEnd = useRef(null);
   const fRef = useRef(null);
+  const toastTimerRef = useRef(null);
+  const publishNavigateTimerRef = useRef(null);
+  const editSaveTimerRef = useRef(null);
+  const editAutoSaveSnapshotRef = useRef("");
+
+  const showToast = (msg, type = "success") => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+
+    setToast({ msg, type });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+    }, 2400);
+  };
 
   const selectedSection = assignmentSections.find(
     (section) => toPositiveId(section?.id) === toPositiveId(selectedSectionId),
   );
+  const canManageSections = Boolean(assignmentId) && !isBankMode;
+  const requiresMixedSectionSetup =
+    canManageSections && assignmentFormat === "MIXED";
+  const sectionSetupReadyForConfig =
+    !requiresMixedSectionSetup || assignmentSections.length > 0;
   const allowedQuestionTypes = getAllowedQuestionTypesBySectionType(
     normalizeSectionType(selectedSection?.sectionType),
   );
@@ -882,6 +1032,20 @@ const CreateAssignmentAiPage = () => {
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, typing]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+      if (publishNavigateTimerRef.current) {
+        clearTimeout(publishNavigateTimerRef.current);
+      }
+      if (editSaveTimerRef.current) {
+        clearTimeout(editSaveTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const validQuestionIdSet = new Set(
@@ -947,6 +1111,77 @@ const CreateAssignmentAiPage = () => {
 
     window.sessionStorage.removeItem(assignmentSectionsStorageKey);
   }, [assignmentSections, assignmentSectionsStorageKey]);
+
+  const applyAssignmentSectionsState = (
+    sectionsInput = [],
+    preferredSectionId = null,
+  ) => {
+    const mappedSections = mapSectionSummaries(sectionsInput);
+    setAssignmentSections(mappedSections);
+    setSelectedSectionId((prev) => {
+      const safePreferred =
+        toPositiveId(preferredSectionId) ||
+        toPositiveId(prev) ||
+        toPositiveId(initialSectionId);
+
+      if (mappedSections.length === 0) return null;
+
+      const matched = mappedSections.find(
+        (section) => section.id === safePreferred,
+      );
+
+      return matched ? matched.id : mappedSections[0].id;
+    });
+
+    return mappedSections;
+  };
+
+  const refreshSectionsFromWorkspace = async (preferredSectionId = null) => {
+    const safeSessionId = toPositiveId(draftSessionId);
+    if (!safeSessionId) return [];
+
+    const response = await assignmentApi.getDraftWorkspace(safeSessionId);
+    const sections = Array.isArray(response?.result?.sections)
+      ? response.result.sections
+      : [];
+
+    return applyAssignmentSectionsState(sections, preferredSectionId);
+  };
+
+  useEffect(() => {
+    if (toPositiveId(draftSessionId) || isBankMode || !assignmentId) return;
+
+    let alive = true;
+
+    const loadPendingSession = async () => {
+      try {
+        const response = await assignmentApi.getPendingSession({
+          assignmentId,
+          bankId,
+          sessionType: DRAFT_SESSION_TYPE.AI_GENERATION,
+        });
+        if (!alive) return;
+
+        const safeSessionId = toPositiveId(
+          response?.result?.id ||
+            response?.result?.sessionId ||
+            response?.result,
+        );
+
+        if (safeSessionId) {
+          setDraftSessionId(safeSessionId);
+        }
+      } catch {
+        // Keep existing fallback data from sessionStorage/query when pending session is not found.
+      }
+    };
+
+    loadPendingSession();
+
+    return () => {
+      alive = false;
+    };
+  }, [draftSessionId, isBankMode, assignmentId, bankId]);
 
   useEffect(() => {
     if (workspaceSections.length > 0) return;
@@ -1093,29 +1328,34 @@ const CreateAssignmentAiPage = () => {
           .sort((a, b) => a.orderIndex - b.orderIndex);
 
         setWorkspaceSections(normalizedSections);
+        setAssignmentSections(
+          normalizedSections.map(({ id, title, sectionType }) => ({
+            id,
+            title,
+            sectionType,
+          })),
+        );
 
         if (normalizedSections.length > 0) {
-          const flatQuestions = flattenQuestionsBySections(normalizedSections);
-          setQs(flatQuestions);
-          setPg(1);
-          setAssignmentSections(
-            normalizedSections.map(({ id, title, sectionType }) => ({
-              id,
-              title,
-              sectionType,
-            })),
-          );
-
           setSelectedSectionId((prev) => {
             const safePrev =
               toPositiveId(prev) || toPositiveId(initialSectionId);
             const matched = normalizedSections.find(
               (section) => section.id === safePrev,
             );
+
             return matched ? matched.id : normalizedSections[0].id;
           });
+        }
 
+        if (normalizedSections.length > 0) {
+          const flatQuestions = flattenQuestionsBySections(normalizedSections);
+          setQs(flatQuestions);
+          setPg(1);
           setPhase("results");
+        } else {
+          setQs([]);
+          setSelectedQuestionIds([]);
         }
       } catch {
         if (alive) {
@@ -1228,6 +1468,195 @@ const CreateAssignmentAiPage = () => {
       ...buildRequirementConfig(typeRequirements?.[type]),
     }));
 
+  const startEditSection = (section) => {
+    const safeSectionId = toPositiveId(section?.id);
+    if (!safeSectionId) return;
+
+    setEditingSectionId(safeSectionId);
+    setEditingSectionTitle(String(section?.title || "").trim());
+    setEditingSectionType(
+      normalizeSectionType(section?.sectionType || SECTION_TYPE.OBJECTIVE),
+    );
+  };
+
+  const cancelEditSection = () => {
+    setEditingSectionId(null);
+    setEditingSectionTitle("");
+    setEditingSectionType(SECTION_TYPE.OBJECTIVE);
+  };
+
+  const handleCreateSection = async () => {
+    if (sectionSaving) return;
+
+    const safeAssignmentId = toPositiveId(assignmentId);
+    if (!safeAssignmentId) {
+      setRequestError("Thiếu assignmentId để tạo phần.");
+      return;
+    }
+
+    const safeTitle = String(newSectionTitle || "").trim();
+    if (!safeTitle) {
+      setRequestError("Vui lòng nhập tiêu đề phần.");
+      return;
+    }
+
+    setSectionSaving(true);
+    try {
+      const response = await assignmentApi.createSection(safeAssignmentId, {
+        title: safeTitle,
+        sectionType: newSectionType,
+      });
+
+      const createdSectionId = toPositiveId(
+        response?.result?.id || response?.result?.sectionId,
+      );
+
+      const safeSessionId = toPositiveId(draftSessionId);
+      if (safeSessionId) {
+        await refreshSectionsFromWorkspace(createdSectionId);
+        setWorkspaceRefreshTick((prev) => prev + 1);
+      } else {
+        const createdSection = mapSectionSummaries([response?.result])[0];
+        if (createdSection) {
+          setAssignmentSections((prev) => {
+            const current = Array.isArray(prev) ? prev : [];
+            const existingIndex = current.findIndex(
+              (section) => section.id === createdSection.id,
+            );
+
+            if (existingIndex >= 0) {
+              const next = [...current];
+              next[existingIndex] = createdSection;
+              return next;
+            }
+
+            return [...current, createdSection];
+          });
+          setSelectedSectionId(createdSection.id);
+        }
+      }
+
+      setNewSectionTitle("");
+      setNewSectionType(SECTION_TYPE.OBJECTIVE);
+      setRequestError("");
+      showToast(response?.message || "Đã tạo phần.");
+    } catch (error) {
+      setRequestError(
+        error?.response?.data?.message || "Không thể tạo phần lúc này.",
+      );
+    } finally {
+      setSectionSaving(false);
+    }
+  };
+
+  const handleSaveSectionEdit = async () => {
+    if (sectionSaving) return;
+
+    const safeAssignmentId = toPositiveId(assignmentId);
+    const safeSectionId = toPositiveId(editingSectionId);
+    const safeTitle = String(editingSectionTitle || "").trim();
+
+    if (!safeAssignmentId || !safeSectionId) {
+      setRequestError("Thiếu assignmentId hoặc mã phần để cập nhật.");
+      return;
+    }
+
+    if (!safeTitle) {
+      setRequestError("Vui lòng nhập tiêu đề phần.");
+      return;
+    }
+
+    setSectionSaving(true);
+    try {
+      const response = await assignmentApi.updateSection(
+        safeAssignmentId,
+        safeSectionId,
+        {
+          title: safeTitle,
+          sectionType: editingSectionType,
+          questions: [],
+        },
+      );
+
+      const safeSessionId = toPositiveId(draftSessionId);
+      if (safeSessionId) {
+        await refreshSectionsFromWorkspace(safeSectionId);
+        setWorkspaceRefreshTick((prev) => prev + 1);
+      } else {
+        const updatedSection = mapSectionSummaries([response?.result])[0];
+        if (updatedSection) {
+          setAssignmentSections((prev) =>
+            (Array.isArray(prev) ? prev : []).map((section) =>
+              section.id === updatedSection.id ? updatedSection : section,
+            ),
+          );
+          setSelectedSectionId(updatedSection.id);
+        }
+      }
+
+      cancelEditSection();
+      setRequestError("");
+      showToast(response?.message || "Đã cập nhật phần.");
+    } catch (error) {
+      setRequestError(
+        error?.response?.data?.message || "Không thể cập nhật phần.",
+      );
+    } finally {
+      setSectionSaving(false);
+    }
+  };
+
+  const handleDeleteSection = async (section) => {
+    if (sectionSaving) return;
+
+    const safeAssignmentId = toPositiveId(assignmentId);
+    const safeSectionId = toPositiveId(section?.id);
+    if (!safeAssignmentId || !safeSectionId) {
+      setRequestError("Thiếu assignmentId hoặc mã phần để xóa.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn xóa phần "${String(section?.title || "").trim() || `#${safeSectionId}`}"?`,
+    );
+
+    if (!confirmed) return;
+
+    setSectionSaving(true);
+    try {
+      const response = await assignmentApi.deleteSection(
+        safeAssignmentId,
+        safeSectionId,
+      );
+
+      if (toPositiveId(editingSectionId) === safeSectionId) {
+        cancelEditSection();
+      }
+
+      const safeSessionId = toPositiveId(draftSessionId);
+      if (safeSessionId) {
+        await refreshSectionsFromWorkspace();
+        setWorkspaceRefreshTick((prev) => prev + 1);
+      } else {
+        setAssignmentSections((prev) =>
+          (Array.isArray(prev) ? prev : []).filter(
+            (item) => toPositiveId(item?.id) !== safeSectionId,
+          ),
+        );
+        setSelectedSectionId((prev) =>
+          toPositiveId(prev) === safeSectionId ? null : prev,
+        );
+      }
+
+      setRequestError("");
+      showToast(response?.message || "Đã xóa phần.");
+    } catch (error) {
+      setRequestError(error?.response?.data?.message || "Không thể xóa phần.");
+    } finally {
+      setSectionSaving(false);
+    }
+  };
+
   const buildApiRequirementsFromSectionConfig = (
     sectionConfig,
     allowedTypes,
@@ -1336,6 +1765,7 @@ const CreateAssignmentAiPage = () => {
   );
 
   const canGen =
+    sectionSetupReadyForConfig &&
     configuredGenerationTargets.length > 0 &&
     totalConfiguredQuestions > 0 &&
     (aiF || raw.trim()) &&
@@ -1344,9 +1774,16 @@ const CreateAssignmentAiPage = () => {
   const doGen = async () => {
     if (phase === "loading") return;
 
+    if (requiresMixedSectionSetup && assignmentSections.length === 0) {
+      setRequestError(
+        "Vui lòng tạo ít nhất một phần cho đề hỗn hợp trước khi sinh câu hỏi.",
+      );
+      return;
+    }
+
     if (!configuredGenerationTargets.length) {
       setRequestError(
-        "Vui lòng cấu hình ít nhất một loại câu hỏi cho ít nhất một section.",
+        "Vui lòng cấu hình ít nhất một loại câu hỏi cho ít nhất một phần.",
       );
       return;
     }
@@ -1357,7 +1794,7 @@ const CreateAssignmentAiPage = () => {
     }
 
     if (assignmentSections.length > 0 && !toPositiveId(selectedSectionId)) {
-      setRequestError("Vui lòng chọn section để AI thêm câu hỏi vào.");
+      setRequestError("Vui lòng chọn phần để AI thêm câu hỏi vào.");
       return;
     }
 
@@ -1371,7 +1808,11 @@ const CreateAssignmentAiPage = () => {
       const warningMessages = [];
       const failedSections = [];
 
+      const isSingleGenerationTarget = configuredGenerationTargets.length === 1;
+
       for (const target of configuredGenerationTargets) {
+        adjustAiRequestUsage(1);
+
         try {
           const response = await assignmentApi.generateAiDraftSession(
             {
@@ -1409,19 +1850,23 @@ const CreateAssignmentAiPage = () => {
             warningMessages.push(...warnings);
           }
         } catch (error) {
+          adjustAiRequestUsage(-1);
+
           const sectionLabel =
             target.sectionTitle ||
-            `Section ${String(target.sectionId || "").trim() || "?"}`;
+            `Phần ${String(target.sectionId || "").trim() || "?"}`;
           const message =
             error?.response?.data?.message ||
-            "Không thể tạo câu hỏi cho section này.";
-          failedSections.push(`${sectionLabel}: ${message}`);
+            "Không thể tạo câu hỏi cho phần này.";
+          failedSections.push(
+            isSingleGenerationTarget ? message : `${sectionLabel}: ${message}`,
+          );
         }
       }
 
       if (successfulSections === 0) {
         const failMessage = failedSections.length
-          ? `Không thể tạo câu hỏi cho các section đã chọn: ${failedSections.join(" | ")}`
+          ? failedSections.join(" | ")
           : "Không thể tạo câu hỏi với AI. Vui lòng thử lại.";
 
         setRequestError(failMessage);
@@ -1456,15 +1901,13 @@ const CreateAssignmentAiPage = () => {
         ...p,
         {
           role: "bot",
-          text: `Đã xử lý tạo câu hỏi cho ${configuredGenerationTargets.length} section.${totalGenerated ? `\nSinh mới ${totalGenerated} câu hỏi.` : ""}${warningMessages.length ? `\nCảnh báo: ${warningMessages.join("; ")}` : ""}${failedSections.length ? `\nSection lỗi: ${failedSections.join(" | ")}` : ""}\nBạn có thể tiếp tục chọn format mới để tạo thêm.`,
+          text: `Đã xử lý tạo câu hỏi cho ${configuredGenerationTargets.length} phần.${totalGenerated ? `\nSinh mới ${totalGenerated} câu hỏi.` : ""}${warningMessages.length ? `\nCảnh báo: ${warningMessages.join("; ")}` : ""}${failedSections.length ? `\nPhần lỗi: ${failedSections.join(" | ")}` : ""}\nBạn có thể tiếp tục chọn format mới để tạo thêm.`,
           time: "Vừa xong",
         },
       ]);
 
       if (failedSections.length > 0) {
-        setRequestError(
-          `Một số section chưa tạo được: ${failedSections.join(" | ")}`,
-        );
+        setRequestError(failedSections.join(" | "));
       } else {
         setRequestError("");
       }
@@ -1485,30 +1928,241 @@ const CreateAssignmentAiPage = () => {
       ]);
     }
   };
-  const startEdit = (q) => {
-    setEditId(q.id);
-    setEditData({ ...q, opts: q.opts ? [...q.opts] : undefined });
-  };
-  const cancelEdit = () => {
-    setEditId(null);
-    setEditData(null);
-  };
-  const saveEdit = () => {
-    if (!editData) return;
-    const nextQuestion = { ...editData };
+  const getQuestionEditSnapshot = (question = {}) =>
+    JSON.stringify({
+      id: toPositiveId(question?.id) || null,
+      type: String(question?.type || ""),
+      prompt: String(question?.prompt || ""),
+      opts: Array.isArray(question?.opts)
+        ? question.opts.map((option) => String(option || ""))
+        : [],
+      cor:
+        question?.cor === true || question?.cor === false
+          ? question.cor
+          : Number.isFinite(Number(question?.cor))
+            ? Number(question.cor)
+            : null,
+      ans: String(question?.ans || ""),
+      sampleAnswer: String(question?.sampleAnswer || ""),
+      cognitiveLevel: String(question?.cognitiveLevel || ""),
+      sectionId: toPositiveId(question?.sectionId) || null,
+      defaultPoints: Number.isFinite(Number(question?.defaultPoints))
+        ? Number(question.defaultPoints)
+        : null,
+    });
 
-    setQs((p) => p.map((q) => (q.id === editId ? nextQuestion : q)));
+  const applyEditedQuestionToLocalState = (sourceQuestionId, nextQuestion) => {
+    const safeSourceId = toPositiveId(sourceQuestionId);
+    const safeNextId = toPositiveId(nextQuestion?.id);
+
+    const isMatchedQuestion = (question) => {
+      const safeQuestionId = toPositiveId(question?.id);
+      if (safeSourceId && safeQuestionId === safeSourceId) return true;
+      if (safeNextId && safeQuestionId === safeNextId) return true;
+      return false;
+    };
+
+    setQs((prev) =>
+      (Array.isArray(prev) ? prev : []).map((question) =>
+        isMatchedQuestion(question) ? nextQuestion : question,
+      ),
+    );
+
     setWorkspaceSections((prev) =>
-      prev.map((section) => ({
+      (Array.isArray(prev) ? prev : []).map((section) => ({
         ...section,
-        questions: section.questions.map((question) =>
-          question.id === editId ? nextQuestion : question,
+        questions: (Array.isArray(section?.questions)
+          ? section.questions
+          : []
+        ).map((question) =>
+          isMatchedQuestion(question) ? nextQuestion : question,
         ),
       })),
     );
+
+    if (safeSourceId && safeNextId && safeSourceId !== safeNextId) {
+      setSelectedQuestionIds((prev) =>
+        prev.map((id) => (id === safeSourceId ? safeNextId : id)),
+      );
+    }
+  };
+
+  const persistEditedQuestion = async (
+    questionInput,
+    { showErrorToast = true } = {},
+  ) => {
+    if (!questionInput) return false;
+
+    const safeSessionId = toPositiveId(draftSessionId);
+    const sourceQuestionId =
+      toPositiveId(editId) || toPositiveId(questionInput?.id);
+    const nextQuestion = {
+      ...questionInput,
+      opts: Array.isArray(questionInput?.opts)
+        ? [...questionInput.opts]
+        : questionInput?.opts,
+    };
+
+    if (safeSessionId) {
+      const location =
+        resolveQuestionLocation(sourceQuestionId || nextQuestion?.id) ||
+        resolveQuestionLocation(nextQuestion?.id);
+
+      try {
+        const response = await assignmentApi.autoSaveDraftItem(
+          safeSessionId,
+          buildAutoSaveItemPayload(nextQuestion, {
+            sectionId: location?.sectionId,
+            orderIndex: location?.orderIndex,
+          }),
+          {
+            bankId,
+            assignmentId,
+          },
+        );
+
+        const savedItemId = toPositiveId(response?.result);
+        if (!toPositiveId(nextQuestion?.id) && savedItemId) {
+          nextQuestion.id = savedItemId;
+        }
+      } catch (error) {
+        if (showErrorToast) {
+          showToast(
+            error?.response?.data?.message ||
+              "Không thể lưu tự động câu hỏi này.",
+            "error",
+          );
+        }
+        return false;
+      }
+    }
+
+    applyEditedQuestionToLocalState(sourceQuestionId, nextQuestion);
+
+    const safeNextId = toPositiveId(nextQuestion?.id);
+    if (safeNextId && safeNextId !== toPositiveId(editId)) {
+      setEditId(safeNextId);
+    }
+
+    setEditData(nextQuestion);
+    editAutoSaveSnapshotRef.current = getQuestionEditSnapshot(nextQuestion);
+
+    return true;
+  };
+
+  const startEdit = (q) => {
+    const nextEditData = { ...q, opts: q.opts ? [...q.opts] : undefined };
+
+    if (editSaveTimerRef.current) {
+      clearTimeout(editSaveTimerRef.current);
+      editSaveTimerRef.current = null;
+    }
+
+    setEditId(q.id);
+    setEditData(nextEditData);
+    editAutoSaveSnapshotRef.current = getQuestionEditSnapshot(nextEditData);
+  };
+
+  const resolveQuestionLocation = (questionId) => {
+    const safeQuestionId = toPositiveId(questionId);
+    if (!safeQuestionId) return null;
+
+    for (const section of workspaceSections) {
+      const questions = Array.isArray(section?.questions)
+        ? section.questions
+        : [];
+      const matchedIndex = questions.findIndex(
+        (question) => toPositiveId(question?.id) === safeQuestionId,
+      );
+
+      if (matchedIndex >= 0) {
+        return {
+          sectionId: toPositiveId(section?.id),
+          orderIndex: matchedIndex + 1,
+        };
+      }
+    }
+
+    return null;
+  };
+
+  const cancelEdit = () => {
+    if (editSaveTimerRef.current) {
+      clearTimeout(editSaveTimerRef.current);
+      editSaveTimerRef.current = null;
+    }
+
+    setEditId(null);
+    setEditData(null);
+    editAutoSaveSnapshotRef.current = "";
+  };
+
+  const saveEdit = async () => {
+    if (!editData) return;
+
+    if (editSaveTimerRef.current) {
+      clearTimeout(editSaveTimerRef.current);
+      editSaveTimerRef.current = null;
+    }
+
+    const saved = await persistEditedQuestion(editData, {
+      showErrorToast: true,
+    });
+
+    if (!saved) return;
+
     cancelEdit();
   };
-  const deleteQ = (id) => {
+
+  useEffect(() => {
+    const safeSessionId = toPositiveId(draftSessionId);
+    const safeEditId = toPositiveId(editId);
+
+    if (!safeSessionId || !safeEditId || !editData) return;
+
+    const currentSnapshot = getQuestionEditSnapshot(editData);
+    if (
+      !currentSnapshot ||
+      currentSnapshot === editAutoSaveSnapshotRef.current
+    ) {
+      return;
+    }
+
+    if (editSaveTimerRef.current) {
+      clearTimeout(editSaveTimerRef.current);
+    }
+
+    editSaveTimerRef.current = window.setTimeout(async () => {
+      await persistEditedQuestion(editData, {
+        showErrorToast: false,
+      });
+    }, 900);
+
+    return () => {
+      if (editSaveTimerRef.current) {
+        clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = null;
+      }
+    };
+  }, [editData, editId, draftSessionId]);
+
+  const deleteQ = async (id) => {
+    const safeSessionId = toPositiveId(draftSessionId);
+    const safeItemId = toPositiveId(id);
+
+    if (safeSessionId && safeItemId) {
+      try {
+        await assignmentApi.deleteDraftItem(safeSessionId, safeItemId);
+      } catch (error) {
+        showToast(
+          error?.response?.data?.message ||
+            "Không thể xóa câu hỏi nháp lúc này.",
+          "error",
+        );
+        return;
+      }
+    }
+
     setQs((p) => p.filter((q) => q.id !== id));
     setWorkspaceSections((prev) =>
       prev.map((section) => ({
@@ -1516,6 +2170,11 @@ const CreateAssignmentAiPage = () => {
         questions: section.questions.filter((question) => question.id !== id),
       })),
     );
+    if (safeItemId) {
+      setSelectedQuestionIds((prev) =>
+        prev.filter((itemId) => itemId !== safeItemId),
+      );
+    }
     if (editId === id) cancelEdit();
   };
 
@@ -1765,22 +2424,34 @@ const CreateAssignmentAiPage = () => {
         });
       }
 
+      const successMessage = isBankMode
+        ? "Đã lưu câu hỏi vào ngân hàng đề thành công."
+        : "Bài tập đã được xuất bản thành công.";
+
+      showToast(successMessage);
+
       setMsgs((prev) => [
         ...prev,
         {
           role: "bot",
           text: isBankMode
-            ? "Đã lưu câu hỏi vào ngân hàng đề thành công. Đang chuyển về chi tiết ngân hàng."
-            : "Xuất bản bài tập thành công. Đang chuyển sang màn hình gán lớp học.",
+            ? `${successMessage} Đang chuyển về chi tiết ngân hàng.`
+            : `${successMessage} Đang chuyển sang màn hình gán lớp học.`,
           time: "Vừa xong",
         },
       ]);
 
-      if (isBankMode) {
-        navigate(PATH_TEACHER.questionBankDetail(bankId));
-      } else {
-        navigate(PATH_TEACHER.assignmentAssignClasses(safeAssignmentId));
+      if (publishNavigateTimerRef.current) {
+        clearTimeout(publishNavigateTimerRef.current);
       }
+
+      publishNavigateTimerRef.current = window.setTimeout(() => {
+        if (isBankMode) {
+          navigate(PATH_TEACHER.questionBankDetail(bankId));
+        } else {
+          navigate(PATH_TEACHER.assignmentAssignClasses(safeAssignmentId));
+        }
+      }, 900);
     } catch (error) {
       const message =
         error?.response?.data?.message ||
@@ -2138,6 +2809,259 @@ const CreateAssignmentAiPage = () => {
               Thiết lập thông số để AI sinh câu hỏi phù hợp.
             </div>
 
+            {requiresMixedSectionSetup && (
+              <div
+                className="fg"
+                style={{
+                  border: "1px solid var(--b)",
+                  borderRadius: "var(--rm)",
+                  background: "var(--plr)",
+                  padding: 12,
+                }}
+              >
+                <label className="fl">
+                  Quản lý phần đề hỗn hợp <span className="rq">*</span>
+                </label>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  {assignmentSections.length === 0 ? (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--gn)",
+                        background: "var(--gnl)",
+                        border: "1px solid rgba(16,185,129,.28)",
+                        borderRadius: "var(--rs)",
+                        padding: "8px 10px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Bạn chưa có phần nào. Hãy tạo ít nhất một phần trước khi
+                      bấm "Tạo câu hỏi với AI".
+                    </div>
+                  ) : (
+                    assignmentSections.map((section) => {
+                      const isEditing =
+                        toPositiveId(editingSectionId) ===
+                        toPositiveId(section.id);
+
+                      return (
+                        <div
+                          key={`cfg-section-${section.id}`}
+                          style={{
+                            border: "1px solid var(--b)",
+                            borderRadius: "var(--rs)",
+                            background: "var(--card)",
+                            padding: 8,
+                          }}
+                        >
+                          {isEditing ? (
+                            <>
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns:
+                                    "minmax(0,1fr) minmax(140px,170px)",
+                                  gap: 8,
+                                }}
+                              >
+                                <input
+                                  className="ta"
+                                  style={{ minHeight: 36, resize: "none" }}
+                                  value={editingSectionTitle}
+                                  onChange={(event) =>
+                                    setEditingSectionTitle(event.target.value)
+                                  }
+                                  disabled={sectionSaving}
+                                  placeholder="Tên phần"
+                                />
+                                <select
+                                  className="ta"
+                                  style={{ minHeight: 36, resize: "none" }}
+                                  value={editingSectionType}
+                                  onChange={(event) =>
+                                    setEditingSectionType(
+                                      normalizeSectionType(event.target.value),
+                                    )
+                                  }
+                                  disabled={sectionSaving}
+                                >
+                                  {SECTION_TYPE_OPTIONS.map((option) => (
+                                    <option
+                                      key={`edit-${section.id}-${option.value}`}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "flex-end",
+                                  gap: 6,
+                                  marginTop: 8,
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="btn btn-g"
+                                  style={{ padding: "6px 12px" }}
+                                  onClick={cancelEditSection}
+                                  disabled={sectionSaving}
+                                >
+                                  Hủy
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-p"
+                                  style={{ padding: "6px 12px" }}
+                                  onClick={handleSaveSectionEdit}
+                                  disabled={sectionSaving}
+                                >
+                                  {sectionSaving ? "Đang lưu..." : "Lưu"}
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: 8,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    color: "var(--t)",
+                                  }}
+                                >
+                                  {section.title}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: "var(--t3)",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {toSectionTypeLabel(section.sectionType)}
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="btn btn-g"
+                                  style={{ padding: "6px 12px" }}
+                                  onClick={() => startEditSection(section)}
+                                  disabled={sectionSaving}
+                                >
+                                  Sửa
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-g"
+                                  style={{
+                                    padding: "6px 12px",
+                                    borderColor: "rgba(239,68,68,.45)",
+                                    color: "var(--rd)",
+                                  }}
+                                  onClick={() => handleDeleteSection(section)}
+                                  disabled={sectionSaving}
+                                >
+                                  Xóa
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(0,1fr) minmax(140px,170px) auto",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    className="ta"
+                    style={{ minHeight: 36, resize: "none" }}
+                    value={newSectionTitle}
+                    onChange={(event) => setNewSectionTitle(event.target.value)}
+                    placeholder="Nhập tiêu đề phần mới"
+                    disabled={sectionSaving}
+                  />
+                  <select
+                    className="ta"
+                    style={{ minHeight: 36, resize: "none" }}
+                    value={newSectionType}
+                    onChange={(event) =>
+                      setNewSectionType(
+                        normalizeSectionType(event.target.value),
+                      )
+                    }
+                    disabled={sectionSaving}
+                  >
+                    {SECTION_TYPE_OPTIONS.map((option) => (
+                      <option key={`new-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-p"
+                    style={{ padding: "6px 12px", justifyContent: "center" }}
+                    onClick={handleCreateSection}
+                    disabled={sectionSaving}
+                  >
+                    {sectionSaving ? "Đang xử lý..." : "+ Thêm phần"}
+                  </button>
+                </div>
+
+                <p
+                  style={{
+                    marginTop: 8,
+                    fontSize: 10,
+                    color: "var(--t3)",
+                    fontStyle: "italic",
+                    fontWeight: 500,
+                    lineHeight: 1.5,
+                    fontFamily: "var(--f)",
+                  }}
+                >
+                  Mỗi phần có cấu hình loại câu hỏi riêng. Chọn phần ở bên dưới
+                  để cấu hình trước khi sinh đề.
+                </p>
+              </div>
+            )}
+
             {assignmentSections.length > 0 && (
               <div className="fg">
                 <label className="fl">
@@ -2189,7 +3113,9 @@ const CreateAssignmentAiPage = () => {
               </label>
               <div className="qtg">
                 {QT.map((q) => {
-                  const disabled = !allowedQuestionTypes.includes(q.v);
+                  const disabled =
+                    !sectionSetupReadyForConfig ||
+                    !allowedQuestionTypes.includes(q.v);
 
                   return (
                     <div
@@ -2207,9 +3133,21 @@ const CreateAssignmentAiPage = () => {
                   );
                 })}
               </div>
+              {!sectionSetupReadyForConfig && (
+                <p
+                  style={{
+                    marginTop: 6,
+                    fontSize: 10,
+                    color: "var(--gn)",
+                    fontWeight: 600,
+                  }}
+                >
+                  Tạo phần trước để bật cấu hình loại câu hỏi.
+                </p>
+              )}
             </div>
 
-            {qts.length > 0 && (
+            {sectionSetupReadyForConfig && qts.length > 0 && (
               <div className="fg">
                 <label className="fl">
                   Cấu hình chi tiết theo loại <span className="rq">*</span>
@@ -2491,7 +3429,9 @@ const CreateAssignmentAiPage = () => {
                   textAlign: "center",
                 }}
               >
-                Chọn ít nhất 1 loại câu hỏi, cấu hình chi tiết và tài liệu
+                {requiresMixedSectionSetup && assignmentSections.length === 0
+                  ? "Bạn cần tạo phần cho đề hỗn hợp trước khi sinh câu hỏi."
+                  : "Chọn ít nhất 1 loại câu hỏi, cấu hình chi tiết và tài liệu"}
               </p>
             )}
             {requestError && (
@@ -2583,7 +3523,7 @@ const CreateAssignmentAiPage = () => {
                         }}
                       >
                         <div style={{ fontSize: 12, fontWeight: 700 }}>
-                          Section {sectionIndex + 1}: {section.title}
+                          Phần {sectionIndex + 1}: {section.title}
                         </div>
                         <div
                           style={{
@@ -2672,7 +3612,7 @@ const CreateAssignmentAiPage = () => {
                         </div>
                       ) : (
                         <div style={{ fontSize: 11, color: "var(--t3)" }}>
-                          Section này chưa có câu hỏi.
+                          Phần này chưa có câu hỏi.
                         </div>
                       )}
                     </div>
@@ -2795,7 +3735,7 @@ const CreateAssignmentAiPage = () => {
                   marginBottom: 6,
                 }}
               >
-                Section tinh chỉnh
+                Phần tinh chỉnh
               </label>
               <select
                 value={selectedSectionId || ""}
@@ -2854,6 +3794,33 @@ const CreateAssignmentAiPage = () => {
           <div className="ch-ht">Enter gửi · Shift+Enter xuống dòng</div>
         </div>
       </div>
+
+      {toast ? (
+        <div
+          style={{
+            position: "fixed",
+            top: 20,
+            right: 20,
+            maxWidth: "min(420px, calc(100vw - 40px))",
+            padding: "12px 20px",
+            borderRadius: 12,
+            fontSize: 12,
+            fontWeight: 600,
+            fontFamily: "var(--f)",
+            boxShadow: "0 12px 40px rgba(30,41,59,.11)",
+            zIndex: 2200,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: toast.type === "error" ? "#EF4444" : "#10B981",
+            color: "#FFFFFF",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          {toast.type === "error" ? <I.X /> : <I.Check />} {toast.msg}
+        </div>
+      ) : null}
     </div>
   );
 };

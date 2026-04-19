@@ -97,6 +97,12 @@ const AssignmentHubPage = Loadable(
 const AssignmentDetailPage = Loadable(
   lazy(() => import("@/pages/assignment/detail/assignment-detail-page")),
 );
+const AssignmentSubmissionListPage = Loadable(
+  lazy(
+    () =>
+      import("@/pages/assignment/submission/assignment-submission-list-page"),
+  ),
+);
 const CreateAssignmentMethodPage = Loadable(
   lazy(() => import("@/pages/assignment/method/create-assignment-method-page")),
 );
@@ -336,6 +342,10 @@ const AppRoutes = () =>
           element: <AssignmentDetailPage />,
         },
         {
+          path: PATH_TEACHER.assignmentSubmissions(":assignmentId"),
+          element: <AssignmentSubmissionListPage />,
+        },
+        {
           path: PATH_TEACHER.assignmentCreateMethod,
           element: <CreateAssignmentMethodPage />,
         },
@@ -513,11 +523,19 @@ const AppRoutes = () =>
     },
     {
       path: "classrooms/:id/lecture",
-      element: <AuthGuard><ClassroomLecturePage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <ClassroomLecturePage />
+        </AuthGuard>
+      ),
     },
     {
       path: "classrooms/:id/recordings",
-      element: <AuthGuard><ClassroomRecordingPage /></AuthGuard>,
+      element: (
+        <AuthGuard>
+          <ClassroomRecordingPage />
+        </AuthGuard>
+      ),
     },
     {
       path: "classrooms/:id/attendance/:sessionId",

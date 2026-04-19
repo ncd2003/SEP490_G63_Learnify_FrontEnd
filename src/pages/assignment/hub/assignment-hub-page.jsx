@@ -322,7 +322,7 @@ const Ic = {
 };
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
 
 :root {
   --primary: #2563EB;
@@ -360,7 +360,7 @@ const CSS = `
   --r-l: 16px;
   --r-xl: 20px;
   --font: 'Be Vietnam Pro', sans-serif;
-  --font-d: 'Lora', serif;
+  --font-d: 'Be Vietnam Pro', sans-serif;
   --ease: cubic-bezier(0.4,0,0.2,1);
 }
 
@@ -475,6 +475,11 @@ const CSS = `
 .toast.info{background:var(--primary);color:var(--inv)}
 .toast.error{background:var(--red);color:var(--inv)}
 .error-text{font-size:13px;color:var(--red);font-weight:600}
+.hub-pagination{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:10px}
+.hub-pagination-btn{min-width:92px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-m);background:var(--card);font-size:12px;font-weight:700;font-family:var(--font);color:var(--text2);cursor:pointer;transition:all .15s var(--ease)}
+.hub-pagination-btn:hover:not(:disabled){border-color:var(--primary);color:var(--primary);background:var(--hover)}
+.hub-pagination-btn:disabled{opacity:.55;cursor:not-allowed}
+.hub-pagination-info{font-size:12px;font-weight:700;color:var(--text2)}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){.stats-row{grid-template-columns:1fr}.cards-grid{grid-template-columns:1fr}.page{padding:16px 10px 40px}.toolbar{flex-direction:column}.page-title-row{flex-direction:column;align-items:flex-start}.tabs{overflow-x:auto}}
 `;
@@ -545,6 +550,13 @@ const DRAFT_MODE = {
   AI: "ai",
   MANUAL: "manual",
 };
+
+const DRAFT_SESSION_TYPE = {
+  AI_GENERATION: "AI_GENERATION",
+  MANUAL_CREATION: "MANUAL_CREATION",
+};
+
+const PAGE_SIZE = 8;
 
 const normalizeDraftMode = (value) => {
   const normalized = String(value || "")
@@ -660,6 +672,14 @@ const findPendingSessionByAssignmentId = (source, assignmentId) => {
 const extractAssignmentItems = (response) => {
   const result = response?.result;
 
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (Array.isArray(response)) {
+    return response;
+  }
+
   if (!result) {
     return [];
   }
@@ -679,10 +699,30 @@ const extractAssignmentItems = (response) => {
   return [];
 };
 
+const isUnassignedSubject = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) {
+    return true;
+  }
+
+  return ["chua phan mon", "chưa phân môn", "unassigned", "none"].includes(
+    normalized,
+  );
+};
+
+const toTimestamp = (value) => {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
 const toUiAssignment = (item) => ({
   id: item.id,
   title: item.title || `Bài tập #${item.id}`,
-  subject: item.subject || item.subjectName || "Chưa phân môn",
+  subject: String(item.subject || item.subjectName || "").trim(),
   category: normalizeCategory(item.category),
   format: normalizeFormat(item.format),
   apiCategory: normalizeApiCategory(item.category),
@@ -698,7 +738,7 @@ const toUiAssignment = (item) => ({
     item.durationMinutes ??
     item.duration ??
     null,
-  createdAt: item.updatedAt || item.createdAt,
+  createdAt: item.createdAt || item.updatedAt || null,
   assignedClasses:
     Array.isArray(item.classroomIds) && item.classroomIds.length > 0
       ? item.classroomIds.map((id) => String(id))
@@ -713,6 +753,7 @@ export default function AssignmentHubPage() {
   const navigate = useNavigate();
   const { pendingSessions } = usePendingSessions("ASSIGNMENT");
   const [tab, setTab] = useState("all");
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [formatFilter, setFormatFilter] = useState("");
@@ -743,7 +784,11 @@ export default function AssignmentHubPage() {
 
         const list = extractAssignmentItems(response);
 
-        setAssignments(list.map(toUiAssignment));
+        setAssignments(
+          list
+            .map(toUiAssignment)
+            .filter((item) => Number.isFinite(Number(item?.id)) && item.id > 0),
+        );
       } catch (err) {
         if (!mounted) return;
         setAssignments([]);
@@ -767,7 +812,11 @@ export default function AssignmentHubPage() {
 
   const subjects = useMemo(() => {
     const fromData = Array.from(
-      new Set(assignments.map((item) => item.subject).filter(Boolean)),
+      new Set(
+        assignments
+          .map((item) => item.subject)
+          .filter((subject) => !isUnassignedSubject(subject)),
+      ),
     );
     return fromData.length > 0 ? fromData : SUBJECTS;
   }, [assignments]);
@@ -855,8 +904,13 @@ export default function AssignmentHubPage() {
 
       if (!pendingSessionId || !draftMode) {
         try {
+          const sessionType =
+            draftMode === DRAFT_MODE.AI
+              ? DRAFT_SESSION_TYPE.AI_GENERATION
+              : DRAFT_SESSION_TYPE.MANUAL_CREATION;
           const pendingSessionResp = await assignmentApi.getPendingSession({
             assignmentId: safeAssignmentId,
+            sessionType,
           });
 
           const pendingResult = pendingSessionResp?.result || null;
@@ -933,22 +987,55 @@ export default function AssignmentHubPage() {
     }
   };
 
-  const filtered = assignments.filter((item) => {
-    if (tab === "published" && item.status !== "published") return false;
-    if (tab === "draft" && item.status !== "draft") return false;
-    if (tab === "archived" && item.status !== "archived") return false;
-    if (subjectFilter && item.subject !== subjectFilter) return false;
-    if (formatFilter && item.format !== formatFilter) return false;
-    if (
-      search &&
-      !String(item.title || "")
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    ) {
-      return false;
+  const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return assignments
+      .filter((item) => {
+        if (tab === "published" && item.status !== "published") return false;
+        if (tab === "draft" && item.status !== "draft") return false;
+        if (tab === "archived" && item.status !== "archived") return false;
+        if (subjectFilter && item.subject !== subjectFilter) return false;
+        if (formatFilter && item.format !== formatFilter) return false;
+
+        if (
+          normalizedSearch &&
+          !String(item.title || "")
+            .toLowerCase()
+            .includes(normalizedSearch) &&
+          !String(item.subject || "")
+            .toLowerCase()
+            .includes(normalizedSearch)
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const byTime = toTimestamp(b.createdAt) - toTimestamp(a.createdAt);
+        if (byTime !== 0) return byTime;
+
+        return Number(b.id || 0) - Number(a.id || 0);
+      });
+  }, [assignments, tab, subjectFilter, formatFilter, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab, search, subjectFilter, formatFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
     }
-    return true;
-  });
+  }, [page, totalPages]);
+
+  const pagedAssignments = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   const counts = {
     all: assignments.length,
@@ -1175,163 +1262,196 @@ export default function AssignmentHubPage() {
           </button>
         </div>
       ) : (
-        <div
-          className="cards-grid"
-          style={viewMode === "list" ? { gridTemplateColumns: "1fr" } : {}}
-        >
-          {filtered.map((assignment, index) => (
-            <div
-              key={assignment.id}
-              className="a-card"
-              style={{ animationDelay: `${index * 0.04}s` }}
-              onClick={() => handleOpenAssignment(assignment)}
-            >
-              <div className="a-card-top">
-                <div className="a-card-badge-row">
-                  <span
-                    className={`badge ${assignment.status === "published" ? "badge-pub" : assignment.status === "draft" ? "badge-draft" : "badge-arch"}`}
-                  >
-                    {statusLabel(assignment.status)}
-                  </span>
-                  <span
-                    className={`badge ${assignment.category === "test" ? "badge-test" : "badge-hw"}`}
-                  >
-                    {assignment.category === "test" ? "Kiểm tra" : "Bài tập"}
-                  </span>
-                  <span className="badge badge-subject">
-                    {assignment.subject}
-                  </span>
-                </div>
-
-                <div className="a-title">{assignment.title}</div>
-
-                <div className="a-meta">
-                  <span className="a-meta-item">
-                    <Ic.FileText /> {assignment.questionCount} câu
-                  </span>
-                  <span className="a-meta-item">
-                    <Ic.BarChart /> {formatLabel(assignment.format)}
-                  </span>
-                  {assignment.duration ? (
-                    <span className="a-meta-item">
-                      <Ic.Clock /> {assignment.duration} phút
+        <>
+          <div
+            className="cards-grid"
+            style={viewMode === "list" ? { gridTemplateColumns: "1fr" } : {}}
+          >
+            {pagedAssignments.map((assignment, index) => (
+              <div
+                key={assignment.id}
+                className="a-card"
+                style={{ animationDelay: `${index * 0.04}s` }}
+                onClick={() => handleOpenAssignment(assignment)}
+              >
+                <div className="a-card-top">
+                  <div className="a-card-badge-row">
+                    <span
+                      className={`badge ${assignment.status === "published" ? "badge-pub" : assignment.status === "draft" ? "badge-draft" : "badge-arch"}`}
+                    >
+                      {statusLabel(assignment.status)}
                     </span>
-                  ) : null}
-                  <span className="a-meta-item">
-                    <Ic.Calendar /> {toDisplayDate(assignment.createdAt)}
-                  </span>
-                </div>
-
-                {assignment.submissions > 0 ? (
-                  <div className="score-bar-wrap">
-                    <div className="score-bar-track">
-                      <div
-                        className="score-bar-fill"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            assignment.totalScore > 0
-                              ? (assignment.avgScore / assignment.totalScore) *
-                                  100
-                              : 0,
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="score-bar-label">
-                      TB: {assignment.avgScore}/{assignment.totalScore}
-                    </div>
+                    <span
+                      className={`badge ${assignment.category === "test" ? "badge-test" : "badge-hw"}`}
+                    >
+                      {assignment.category === "test" ? "Kiểm tra" : "Bài tập"}
+                    </span>
+                    {!isUnassignedSubject(assignment.subject) ? (
+                      <span className="badge badge-subject">
+                        {assignment.subject}
+                      </span>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
 
-              <div className="a-card-divider" />
+                  <div className="a-title">{assignment.title}</div>
 
-              <div className="a-card-bottom">
-                <div className="assigned-classes">
-                  {assignment.assignedClasses.length === 0 ? (
-                    <span className="no-class">Chưa giao lớp nào</span>
-                  ) : (
-                    <>
-                      {assignment.assignedClasses.slice(0, 3).map((classId) => {
-                        const classroom = CLASSES.find(
-                          (item) => item.id === classId,
-                        );
-                        return classroom ? (
-                          <span key={classId} className="class-chip">
-                            {classroom.name}
-                          </span>
-                        ) : (
-                          <span key={classId} className="class-chip">
-                            {classId}
-                          </span>
-                        );
-                      })}
-                      {assignment.assignedClasses.length > 3 ? (
-                        <span className="class-more">
-                          +{assignment.assignedClasses.length - 3}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
+                  <div className="a-meta">
+                    <span className="a-meta-item">
+                      <Ic.FileText /> {assignment.questionCount} câu
+                    </span>
+                    <span className="a-meta-item">
+                      <Ic.BarChart /> {formatLabel(assignment.format)}
+                    </span>
+                    {assignment.duration ? (
+                      <span className="a-meta-item">
+                        <Ic.Clock /> {assignment.duration} phút
+                      </span>
+                    ) : null}
+                    <span className="a-meta-item">
+                      <Ic.Calendar /> {toDisplayDate(assignment.createdAt)}
+                    </span>
+                  </div>
+
+                  {assignment.submissions > 0 ? (
+                    <div className="score-bar-wrap">
+                      <div className="score-bar-track">
+                        <div
+                          className="score-bar-fill"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              assignment.totalScore > 0
+                                ? (assignment.avgScore /
+                                    assignment.totalScore) *
+                                    100
+                                : 0,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="score-bar-label">
+                        TB: {assignment.avgScore}/{assignment.totalScore}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="a-card-actions">
-                  <button
-                    className="act-btn"
-                    title="Xem"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleOpenAssignment(assignment);
-                    }}
-                  >
-                    <Ic.Eye />
-                  </button>
-                  <button
-                    className="act-btn"
-                    title="Giao bài"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openAssign(assignment);
-                    }}
-                  >
-                    <Ic.Share />
-                  </button>
-                  <button
-                    className="act-btn"
-                    title="Chỉnh sửa"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleOpenAssignment(assignment);
-                    }}
-                  >
-                    <Ic.Edit />
-                  </button>
-                  <button
-                    className="act-btn"
-                    title="Nhân bản"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      duplicate(assignment);
-                    }}
-                  >
-                    <Ic.Copy />
-                  </button>
-                  <button
-                    className="act-btn danger"
-                    title="Xóa"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setDeleteModal(assignment);
-                    }}
-                  >
-                    <Ic.Trash />
-                  </button>
+                <div className="a-card-divider" />
+
+                <div className="a-card-bottom">
+                  <div className="assigned-classes">
+                    {assignment.assignedClasses.length === 0 ? (
+                      <span className="no-class">Chưa giao lớp nào</span>
+                    ) : (
+                      <>
+                        {assignment.assignedClasses
+                          .slice(0, 3)
+                          .map((classId) => {
+                            const classroom = CLASSES.find(
+                              (item) => item.id === classId,
+                            );
+                            return classroom ? (
+                              <span key={classId} className="class-chip">
+                                {classroom.name}
+                              </span>
+                            ) : (
+                              <span key={classId} className="class-chip">
+                                {classId}
+                              </span>
+                            );
+                          })}
+                        {assignment.assignedClasses.length > 3 ? (
+                          <span className="class-more">
+                            +{assignment.assignedClasses.length - 3}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="a-card-actions">
+                    <button
+                      className="act-btn"
+                      title="Xem"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleOpenAssignment(assignment);
+                      }}
+                    >
+                      <Ic.Eye />
+                    </button>
+                    <button
+                      className="act-btn"
+                      title="Giao bài"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openAssign(assignment);
+                      }}
+                    >
+                      <Ic.Share />
+                    </button>
+                    <button
+                      className="act-btn"
+                      title="Chỉnh sửa"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleOpenAssignment(assignment);
+                      }}
+                    >
+                      <Ic.Edit />
+                    </button>
+                    <button
+                      className="act-btn"
+                      title="Nhân bản"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        duplicate(assignment);
+                      }}
+                    >
+                      <Ic.Copy />
+                    </button>
+                    <button
+                      className="act-btn danger"
+                      title="Xóa"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setDeleteModal(assignment);
+                      }}
+                    >
+                      <Ic.Trash />
+                    </button>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {filtered.length > PAGE_SIZE ? (
+            <div className="hub-pagination">
+              <button
+                type="button"
+                className="hub-pagination-btn"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                disabled={page === 1}
+              >
+                ← Trước
+              </button>
+              <span className="hub-pagination-info">
+                Trang {page}/{totalPages}
+              </span>
+              <button
+                type="button"
+                className="hub-pagination-btn"
+                onClick={() =>
+                  setPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                disabled={page === totalPages}
+              >
+                Sau →
+              </button>
             </div>
-          ))}
-        </div>
+          ) : null}
+        </>
       )}
 
       {assignModal ? (
