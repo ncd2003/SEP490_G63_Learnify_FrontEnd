@@ -7,9 +7,10 @@ const BASE = API_SUFFIX.MATERIAL;
 export const materialApi = {
   /**
    * @param {number} folderId
+   * @param {number} classroomId
    */
-  getByFolder: async (folderId) => {
-    const response = await apiRequest.get(`${BASE}/folder/${folderId}`);
+  getByFolder: async (folderId, classroomId) => {
+    const response = await apiRequest.get(`${BASE}/folder/${folderId}`, { params: { classroomId } });
     const parsed = MaterialListSchema.safeParse(response.result ?? []);
     return { ...response, result: parsed.success ? parsed.data : [] };
   },
@@ -38,12 +39,14 @@ export const materialApi = {
   /**
    * @param {number} materialId
    * @param {string} name
+   * @param {number} classroomId
    */
-  renameMaterial: (materialId, name) =>
-    apiRequest.patch(`${BASE}/${materialId}`, null, { params: { name } }),
+  renameMaterial: (materialId, name, classroomId) =>
+    apiRequest.patch(`${BASE}/${materialId}`, null, { params: { name, classroomId } }),
 
   /**
    * @param {number} id
+   * @param {number} classroomId
    */
-  deleteMaterial: (id) => apiRequest.delete(`${BASE}/${id}`),
+  deleteMaterial: (id, classroomId) => apiRequest.delete(`${BASE}/${id}`, { params: { classroomId } }),
 };

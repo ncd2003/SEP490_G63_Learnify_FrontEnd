@@ -4,7 +4,7 @@ import { materialApi } from "@/apis/material.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { isTeacherRole } from "@/lib/auth-role";
 
-const useMaterials = (folderId) => {
+const useMaterials = (folderId, classroomId) => {
   const { user, adjustStorageUsage, refreshCurrentUser } = useAuth();
   const canManageMaterials = isTeacherRole(user?.role);
   const [materials, setMaterials] = useState([]);
@@ -65,14 +65,14 @@ const useMaterials = (folderId) => {
   }, []);
 
   const fetchMaterials = useCallback(async () => {
-    if (!folderId) {
+    if (!folderId || classroomId == null) {
       setMaterials([]);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const response = await materialApi.getByFolder(folderId);
+      const response = await materialApi.getByFolder(folderId, Number(classroomId));
       setMaterials(response.result ?? []);
     } catch (err) {
       const message = getErrorMessage(err, "Không thể tải tài liệu.");
@@ -225,7 +225,7 @@ const useMaterials = (folderId) => {
       if (!materialId || !name?.trim()) return { success: false };
       setError(null);
       try {
-        await materialApi.renameMaterial(materialId, name.trim());
+        await materialApi.renameMaterial(materialId, name.trim(), Number(classroomId));
         await fetchMaterials();
         // Rely on HTTP interceptor to surface server success messages.
         return { success: true };
@@ -254,7 +254,7 @@ const useMaterials = (folderId) => {
       if (!materialId) return { success: false };
       setError(null);
       try {
-        await materialApi.deleteMaterial(materialId);
+        await materialApi.deleteMaterial(materialId, Number(classroomId));
         await fetchMaterials();
         // Rely on HTTP interceptor to surface server success messages.
         return { success: true };

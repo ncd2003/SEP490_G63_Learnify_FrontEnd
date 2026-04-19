@@ -155,7 +155,6 @@ const StudentClassroomPage = () => {
                 onClick={() => setSelectedStatus(statusItem.value)}
               >
                 <span className="status-filter-label">{statusItem.label}</span>
-                <span className="status-filter-value">{statusItem.value}</span>
                 <span className="status-filter-count">
                   {statusCounts[statusItem.value] ?? 0} lớp
                 </span>

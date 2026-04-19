@@ -146,6 +146,18 @@ const createHttp = () => {
           reqConfig?.url?.includes("/assignments") ||
           reqConfig?.url?.includes("/draft-sessions");
 
+        // Special-case: backend returns code 2003 -> user not allowed to access resource
+        if (data?.code === 2003) {
+          try {
+            // Navigate back to previous page
+            window.history.back();
+          } catch (e) {
+            // Fallback: redirect to home if history.back() fails
+            window.location.href = "/";
+          }
+          return Promise.reject(error);
+        }
+
         // Show error toast
         const errorMessage = data?.message || "Đã có lỗi xảy ra";
         const isBlockedAccount = isLockedOrInactiveError(errorMessage);
