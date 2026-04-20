@@ -219,6 +219,7 @@ const StudentClassroomPage = () => {
                 key={classroom.id}
                 classroom={classroom}
                 status={selectedStatus}
+                canNavigate={selectedStatus === ENROLLMENT_STATUS.ACCEPTED}
                 onNavigate={() =>
                   navigate(PATH_STUDENT.classroom.detail(classroom.id))
                 }
@@ -278,11 +279,30 @@ const StudentClassroomPage = () => {
 };
 
 /**
- * @param {{ classroom: import("@/schema/classroom.schema").TClassroom & { teacherName?: string }, status: "PENDING" | "ACCEPTED" | "REJECTED", onNavigate: () => void, onLeave: () => void }} props
+ * @param {{ classroom: import("@/schema/classroom.schema").TClassroom & { teacherName?: string }, status: "PENDING" | "ACCEPTED" | "REJECTED", canNavigate?: boolean, onNavigate: () => void, onLeave: () => void }} props
  */
-const StudentClassroomCard = ({ classroom, status, onNavigate, onLeave }) => {
+const StudentClassroomCard = ({
+  classroom,
+  status,
+  canNavigate = true,
+  onNavigate,
+  onLeave,
+}) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+
+  const handleNavigate = () => {
+    if (!canNavigate) return;
+    onNavigate();
+  };
+
+  const handleNavigateByKeyboard = (e) => {
+    if (!canNavigate) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onNavigate();
+    }
+  };
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -298,11 +318,12 @@ const StudentClassroomCard = ({ classroom, status, onNavigate, onLeave }) => {
     <div className="student-classroom-card">
       {/* Card cover — clickable */}
       <div
-        className="student-card-cover"
-        onClick={onNavigate}
-        role="button"
-        tabIndex={0}
-        onKeyPress={(e) => { if (e.key === "Enter") onNavigate(); }}
+        className={`student-card-cover ${canNavigate ? "" : "is-disabled"}`}
+        onClick={handleNavigate}
+        role={canNavigate ? "button" : undefined}
+        tabIndex={canNavigate ? 0 : -1}
+        onKeyDown={handleNavigateByKeyboard}
+        aria-disabled={!canNavigate}
       >
         {classroom.imageUrl ? (
           <img src={classroom.imageUrl} alt={classroom.name} />
@@ -317,11 +338,12 @@ const StudentClassroomCard = ({ classroom, status, onNavigate, onLeave }) => {
       <div className="student-card-body">
         <div className="student-card-header-row">
           <p
-            className="student-card-name"
-            onClick={onNavigate}
-            role="button"
-            tabIndex={0}
-            onKeyPress={(e) => { if (e.key === "Enter") onNavigate(); }}
+            className={`student-card-name ${canNavigate ? "" : "is-disabled"}`}
+            onClick={handleNavigate}
+            role={canNavigate ? "button" : undefined}
+            tabIndex={canNavigate ? 0 : -1}
+            onKeyDown={handleNavigateByKeyboard}
+            aria-disabled={!canNavigate}
           >
             {classroom.name}
           </p>

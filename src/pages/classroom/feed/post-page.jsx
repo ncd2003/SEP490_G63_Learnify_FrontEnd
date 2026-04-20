@@ -2,8 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, AlertCircle, Filter } from "lucide-react";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
+import { useAuth } from "@/contexts/AuthContext";
 import usePosts from "@/hooks/use-posts";
 import usePostMutations from "@/hooks/use-post";
+import { isStudentRole } from "@/lib/auth-role";
 import PostCard from "@/pages/post/list/post-card";
 import PostForm from "@/pages/post/create/post-form";
 import DeletePostDialog from "@/pages/post/delete/delete-post-dialog";
@@ -12,6 +14,8 @@ import "@/assets/css/pages/classroom/modals.css";
 
 const ClassroomFeedPage = () => {
   const { id: classroomId } = useParams();
+  const { user } = useAuth();
+  const canCreatePost = !isStudentRole(user?.role);
 
   const { posts, setPosts, loading, error, refetch } = usePosts(Number(classroomId));
   const { createPost, updatePost, submitting } = usePostMutations(setPosts);
@@ -113,14 +117,16 @@ const ClassroomFeedPage = () => {
         </div>
 
         <div className="feed-col main-col">
-          <div className="post-form-wrapper">
-            <PostForm
-              key={classroomId}
-              classroomId={Number(classroomId)}
-              onSubmit={handleCreate}
-              submitting={submitting}
-            />
-          </div>
+          {canCreatePost && (
+            <div className="post-form-wrapper">
+              <PostForm
+                key={classroomId}
+                classroomId={Number(classroomId)}
+                onSubmit={handleCreate}
+                submitting={submitting}
+              />
+            </div>
+          )}
 
           <div className="post-list">
             {loading ? (

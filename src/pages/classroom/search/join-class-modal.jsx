@@ -53,7 +53,7 @@ const JoinClassModal = ({ onClose, onJoined }) => {
       onClose?.();
     } catch (err) {
       const apiCode = err.response?.data?.code;
-      const message = err.response?.data?.message ?? "Không thể gửi yêu cầu tham gia. Vui lòng thử lại.";
+      const message = err.response?.data?.message ?? "";
       setJoinError(message);
 
       if ([10007, 10008, 10013].includes(apiCode)) {
