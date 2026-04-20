@@ -46,6 +46,24 @@ const getAssignmentsForClassroom = (classroomId) =>
   apiRequest.get(`${BASE}/${classroomId}/assignments`);
 
 /**
+ * @param {number|string} classroomId
+ * @param {Object} [params]
+ * @param {"TODO"|"COMPLETED"|"OVERDUE"} [params.category]
+ * @param {number} [params.page]
+ * @param {number} [params.size]
+ * @returns {Promise<import("axios").AxiosResponse>}
+ */
+const getStudentAssignmentsByCategory = (classroomId, params = {}) =>
+  apiRequest.get(`${BASE}/${classroomId}/assignments`, { params });
+
+/**
+ * @param {number|string} classroomId
+ * @returns {Promise<import("axios").AxiosResponse>}
+ */
+const getCategorizedAssignmentsForClassroomDashboard = (classroomId) =>
+  apiRequest.get(`${BASE}/${classroomId}/assignments/dashboard`);
+
+/**
  * @param {import("@/schema/classroom.schema").TCreateClassroom} data
  * @param {File|null} file
  * @returns {Promise<import("axios").AxiosResponse<ClassroomResponse>>}
@@ -95,6 +113,8 @@ export const classroomApi = {
   getClassroomsByUser,
   getClassroomById,
   getAssignmentsForClassroom,
+  getStudentAssignmentsByCategory,
+  getCategorizedAssignmentsForClassroomDashboard,
   createClassroom,
   updateClassroom,
   deleteClassroom,

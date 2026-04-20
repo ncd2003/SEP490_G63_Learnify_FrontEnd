@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
+import Pagination from "@/components/Pagination";
 import { classroomApi } from "@/apis/classroom.api";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_STUDENT } from "@/routes/paths";
+
+const PAGE_SIZE = 5;
 
 const toDisplayDateTime = (value) => {
   if (!value) return "-";
@@ -57,22 +60,59 @@ const normalizeFormat = (format) => {
 const normalizeCategory = (category) =>
   String(category || "").toUpperCase() === "TEST" ? "exam" : "homework";
 
-const normalizeMyStatus = (status) => {
+const normalizeMyStatus = (status, fallback = "pending") => {
   const normalized = String(status || "").toUpperCase();
-  if (normalized === "SUBMITTED" || normalized === "GRADED") return "done";
-  if (normalized === "LATE" || normalized === "MISSED") return "late";
-  return "pending";
+  if (
+    normalized === "SUBMITTED" ||
+    normalized === "GRADED" ||
+    normalized === "COMPLETED"
+  ) {
+    return "done";
+  }
+
+  if (
+    normalized === "LATE" ||
+    normalized === "MISSED" ||
+    normalized === "OVERDUE" ||
+    normalized === "EXPIRED"
+  ) {
+    return "late";
+  }
+
+  if (
+    normalized === "PENDING" ||
+    normalized === "NOT_STARTED" ||
+    normalized === "IN_PROGRESS"
+  ) {
+    return "pending";
+  }
+
+  return fallback;
 };
 
-const toUiAssignment = (item) => {
+const toUiAssignment = (item, fallbackStatus = "pending", classInfo = null) => {
   const deadline = item?.effectiveDeadline ?? item?.deadline ?? null;
   const myStatus = normalizeMyStatus(
     item?.status ?? item?.mySubmissionStatus ?? item?.submissionStatus,
+    fallbackStatus,
   );
   const urgency = getUrgency(
     deadline,
     myStatus === "done" ? "SUBMITTED" : myStatus.toUpperCase(),
   );
+
+  const hasPasswordString = Boolean(
+    item?.setting?.password || item?.password || item?.setting?.pw || item?.pw,
+  );
+
+  const requirePasswordVal =
+    item?.requirePassword ??
+    item?.requiresPassword ??
+    item?.passwordRequired ??
+    item?.hasPassword ??
+    item?.setting?.requirePassword ??
+    item?.setting?.hasPassword ??
+    hasPasswordString;
 
   return {
     id: Number(item?.assignmentId ?? item?.id ?? item?.classroomAssignmentId),
@@ -89,7 +129,9 @@ const toUiAssignment = (item) => {
         item?.assignmentTitle ||
         `Bài tập #${item?.assignmentId ?? item?.id ?? ""}`,
     ),
-    subject: String(item?.subject || item?.subjectName || ""),
+    subject: String(
+      item?.subject || item?.subjectName || classInfo?.subject || "",
+    ),
     category: normalizeCategory(item?.category || "HOMEWORK"),
     format: normalizeFormat(item?.format),
     totalScore: Number(item?.totalPoints ?? item?.totalScore ?? 10),
@@ -108,14 +150,7 @@ const toUiAssignment = (item) => {
     deadline,
     description: String(item?.description || ""),
     myStatus,
-    requirePassword: Boolean(
-      item?.requirePassword ??
-      item?.requiresPassword ??
-      item?.passwordRequired ??
-      item?.hasPassword ??
-      item?.setting?.requirePassword ??
-      item?.setting?.hasPassword,
-    ),
+    requirePassword: Boolean(requirePasswordVal),
     myScore:
       item?.highestScore != null
         ? Number(item.highestScore)
@@ -143,7 +178,7 @@ const CSS = `
   --border:#E2E8F0;--border-l:#F1F5F9;
   --sh-l:0 12px 40px rgba(30,41,59,.11);
   --r-s:10px;--r-m:12px;--r-l:16px;--r-xl:20px;
-  --font:'Be Vietnam Pro',sans-serif;--font-d:'Lora',serif;
+  --font:'Be Vietnam Pro',sans-serif;--font-d:'Be Vietnam Pro',sans-serif;
   --ease:cubic-bezier(0.4,0,0.2,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -177,6 +212,13 @@ const CSS = `
 .prog-track{height:7px;background:var(--border-l);border-radius:10px;overflow:hidden}
 .prog-fill{height:100%;border-radius:10px;background:var(--gradient);transition:width .6s var(--ease)}
 .filter-bar{padding:14px 24px;background:var(--card);border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.assignment-segment-wrap{padding:12px 24px;background:var(--card);border-bottom:1.5px solid var(--border)}
+.assignment-segment{display:flex;align-items:center;gap:6px;background:#F1F5F9;border:1px solid var(--border);border-radius:999px;padding:4px;overflow-x:auto}
+.assignment-segment-btn{display:flex;align-items:center;justify-content:center;gap:6px;border:none;background:transparent;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;color:var(--text2);font-family:var(--font);cursor:pointer;transition:all .18s var(--ease);white-space:nowrap}
+.assignment-segment-btn:hover{color:var(--primary)}
+.assignment-segment-btn.active{background:var(--card);color:var(--primary);box-shadow:0 2px 8px rgba(15,23,42,.08)}
+.assignment-segment-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:rgba(148,163,184,.16);font-size:11px;font-weight:800;color:var(--text2)}
+.assignment-segment-btn.active .assignment-segment-count{background:var(--primary-light);color:var(--primary-dark)}
 .search-wrap{flex:1;min-width:200px;position:relative}
 .search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
 .search-inp{width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--border);border-radius:var(--r-m);font-size:12px;font-family:var(--font);font-weight:500;color:var(--text);background:var(--input-bg);transition:all .2s var(--ease)}
@@ -858,17 +900,17 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
             ))}
           </div>
 
-          {!isDone && !isLate ? (
+          {requirePassword && !isDone && !isLate ? (
             <div className="pw-row">
               <label className="pw-lbl" htmlFor="assignment-start-password">
-                {requirePassword
-                  ? "Mật khẩu bài thi (bắt buộc)"
-                  : "Mật khẩu bài thi (nếu có)"}
+                Mật khẩu bài thi (bắt buộc)
               </label>
               <input
                 id="assignment-start-password"
                 className="pw-inp"
                 type="password"
+                name="assignment-start-password"
+                autoComplete="new-password"
                 placeholder="Nhập mật khẩu trước khi bắt đầu làm bài"
                 value={password}
                 onChange={(event) => {
@@ -877,9 +919,8 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
                 }}
               />
               <div className="pw-note">
-                {requirePassword
-                  ? "Bài thi này có cài mật khẩu. Học sinh cần nhập đúng để vào làm bài."
-                  : "Nếu giáo viên có cài mật khẩu, bạn có thể nhập ngay tại đây để vào bài nhanh hơn."}
+                Bài thi này có cài mật khẩu. Học sinh cần nhập đúng để vào làm
+                bài.
               </div>
               {passwordError ? (
                 <div className="pw-err">{passwordError}</div>
@@ -907,12 +948,21 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
                     return;
                   }
 
-                  onClose();
-                  onStartAssignment(
+                  const promise = onStartAssignment(
                     assignment,
                     "start",
                     String(password || "").trim(),
                   );
+
+                  if (promise && typeof promise.then === "function") {
+                    promise
+                      .then(() => onClose())
+                      .catch(() => {
+                        // keep modal open on error (toast already shown)
+                      });
+                  } else {
+                    onClose();
+                  }
                 }}
               >
                 <Ic.Send width={13} height={13} /> Bắt đầu làm bài
@@ -944,40 +994,77 @@ const getTabPath = (key, classId) => {
   return PATH_STUDENT.classroom.detail(classId);
 };
 
-const parseStudentAssignments = (response) => {
-  const result = response?.result;
+const ASSIGNMENT_CATEGORY_OPTIONS = [
+  { key: "todo", label: "Cần làm", status: "pending", color: "var(--primary)" },
+  {
+    key: "completed",
+    label: "Đã hoàn thành",
+    status: "done",
+    color: "var(--green)",
+  },
+  {
+    key: "overdue",
+    label: "Đã hết hạn",
+    status: "late",
+    color: "#9CA3AF",
+  },
+];
 
-  if (Array.isArray(result)) {
-    return result;
-  }
-
-  if (Array.isArray(result?.content)) {
-    return result.content;
-  }
-
-  if (Array.isArray(result?.items)) {
-    return result.items;
-  }
-
-  return [];
+const ASSIGNMENT_CATEGORY_TO_API = {
+  todo: "TODO",
+  completed: "COMPLETED",
+  overdue: "OVERDUE",
 };
 
-const parseClassroomAssignments = (response) => {
+const EMPTY_PAGE_META = {
+  page: 1,
+  totalPages: 1,
+  totalElements: 0,
+};
+
+const createDefaultCategoryMeta = () => ({
+  todo: { ...EMPTY_PAGE_META },
+  completed: { ...EMPTY_PAGE_META },
+  overdue: { ...EMPTY_PAGE_META },
+});
+
+const createDefaultPageByCategory = () => ({
+  todo: 1,
+  completed: 1,
+  overdue: 1,
+});
+
+const parsePagedAssignments = (response) => {
   const result = response?.result;
 
   if (Array.isArray(result)) {
-    return result;
+    return {
+      items: result,
+      pageNumber: 0,
+      totalPages: 1,
+      totalElements: result.length,
+    };
   }
 
-  if (Array.isArray(result?.content)) {
-    return result.content;
-  }
+  const safeResult = result || {};
+  const content = Array.isArray(safeResult?.content)
+    ? safeResult.content
+    : Array.isArray(safeResult?.items)
+      ? safeResult.items
+      : [];
 
-  if (Array.isArray(result?.items)) {
-    return result.items;
-  }
-
-  return [];
+  return {
+    items: content,
+    pageNumber: Math.max(
+      0,
+      Number(safeResult?.pageNumber ?? safeResult?.number ?? 0),
+    ),
+    totalPages: Math.max(1, Number(safeResult?.totalPages ?? 1)),
+    totalElements: Math.max(
+      0,
+      Number(safeResult?.totalElements ?? content.length ?? 0),
+    ),
+  };
 };
 
 const StudentAssignmentListPage = () => {
@@ -987,11 +1074,14 @@ const StudentAssignmentListPage = () => {
 
   const [classInfo, setClassInfo] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [categoryMeta, setCategoryMeta] = useState(createDefaultCategoryMeta);
+  const [pageByCategory, setPageByCategory] = useState(
+    createDefaultPageByCategory,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("todo");
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -1007,83 +1097,134 @@ const StudentAssignmentListPage = () => {
       return;
     }
 
+    setAssignments([]);
+    setCategoryMeta(createDefaultCategoryMeta());
+    setPageByCategory(createDefaultPageByCategory());
+    setActiveCategory("todo");
+  }, [classId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(classId) || classId <= 0) return;
+
+    let alive = true;
+
+    classroomApi
+      .getClassroomById(classId)
+      .then((classRes) => {
+        if (!alive) return;
+        setClassInfo(classRes?.result || null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setClassInfo(null);
+      });
+
+    Promise.all(
+      Object.entries(ASSIGNMENT_CATEGORY_TO_API).map(([key, apiCategory]) =>
+        classroomApi
+          .getStudentAssignmentsByCategory(classId, {
+            category: apiCategory,
+            page: 0,
+            size: 1,
+          })
+          .then((res) => ({ key, parsed: parsePagedAssignments(res) }))
+          .catch(() => ({ key, parsed: null })),
+      ),
+    ).then((results) => {
+      if (!alive) return;
+
+      setCategoryMeta((prev) => {
+        const next = { ...prev };
+
+        results.forEach(({ key, parsed }) => {
+          if (!parsed) return;
+          next[key] = {
+            ...next[key],
+            totalElements: parsed.totalElements,
+          };
+        });
+
+        return next;
+      });
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [classId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(classId) || classId <= 0) return;
+
+    const activeOption =
+      ASSIGNMENT_CATEGORY_OPTIONS.find((item) => item.key === activeCategory) ||
+      ASSIGNMENT_CATEGORY_OPTIONS[0];
+    const apiCategory =
+      ASSIGNMENT_CATEGORY_TO_API[activeCategory] ||
+      ASSIGNMENT_CATEGORY_TO_API.todo;
+    const uiPage = pageByCategory[activeCategory] || 1;
+
     let alive = true;
 
     setLoading(true);
     setError("");
 
-    Promise.all([
-      classroomApi.getClassroomById(classId).catch(() => null),
-      classroomApi
-        .getAssignmentsForClassroom(classId)
-        .catch(() => ({ result: [] })),
-      assignmentApi
-        .getStudentAssignments({ classroomId: classId })
-        .catch(() => ({ result: [] })),
-    ])
-      .then(([classRes, classroomAssignRes, studentAssignRes]) => {
+    classroomApi
+      .getStudentAssignmentsByCategory(classId, {
+        category: apiCategory,
+        page: Math.max(0, uiPage - 1),
+        size: PAGE_SIZE,
+      })
+      .then(async (response) => {
         if (!alive) return;
 
-        const classData = classRes?.result || null;
-        setClassInfo(classData);
+        let parsed = parsePagedAssignments(response);
 
-        const classroomAssignments =
-          parseClassroomAssignments(classroomAssignRes);
-        const classroomAssignmentMap = new Map(
-          classroomAssignments
-            .map((item) => {
-              const assignmentId = Number(item?.assignmentId ?? item?.id);
-              if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
-                return null;
-              }
-              return [assignmentId, item];
-            })
-            .filter(Boolean),
-        );
+        // Fallback for backends that ignore/unsupported category params and only
+        // expose classroom assignments as a plain array response.
+        if (parsed.items.length === 0) {
+          try {
+            const fallbackResponse =
+              await classroomApi.getAssignmentsForClassroom(classId);
+            const fallbackParsed = parsePagedAssignments(fallbackResponse);
 
-        const studentAssignments = parseStudentAssignments(studentAssignRes);
+            if (fallbackParsed.items.length > 0) {
+              parsed = fallbackParsed;
+            }
+          } catch {
+            // Keep original parsed result if fallback request fails.
+          }
+        }
 
-        const mergedRawList =
-          studentAssignments.length > 0
-            ? studentAssignments.map((item) => {
-                const assignmentId = Number(
-                  item?.assignmentId ?? item?.id ?? item?.classroomAssignmentId,
-                );
-                const classroomItem = classroomAssignmentMap.get(assignmentId);
+        if (!alive) return;
 
-                if (!classroomItem) {
-                  return item;
-                }
-
-                return {
-                  ...classroomItem,
-                  ...item,
-                  totalQuestions:
-                    item?.totalQuestions ?? classroomItem?.totalQuestions,
-                  assignmentId:
-                    item?.assignmentId ??
-                    classroomItem?.assignmentId ??
-                    assignmentId,
-                  assignmentTitle:
-                    item?.assignmentTitle ?? classroomItem?.assignmentTitle,
-                  effectiveDuration:
-                    item?.effectiveDuration ?? classroomItem?.effectiveDuration,
-                };
-              })
-            : classroomAssignments;
-
-        const list = mergedRawList
-          .map(toUiAssignment)
-          .map((item) => ({
-            ...item,
-            subject: item.subject || String(classData?.subject || ""),
-          }))
+        const normalizedItems = parsed.items
+          .map((item) => toUiAssignment(item, activeOption.status, classInfo))
           .filter((item) => Number.isFinite(item.id) && item.id > 0);
 
-        setAssignments(list);
+        setAssignments(normalizedItems);
+
+        const actualPage = parsed.pageNumber + 1;
+        setCategoryMeta((prev) => ({
+          ...prev,
+          [activeCategory]: {
+            page: actualPage,
+            totalPages: parsed.totalPages,
+            totalElements: parsed.totalElements,
+          },
+        }));
+
+        if (actualPage !== uiPage) {
+          setPageByCategory((prev) => ({
+            ...prev,
+            [activeCategory]: actualPage,
+          }));
+        }
       })
       .catch((err) => {
         if (!alive) return;
+        // Don't clear existing assignments on fetch error to avoid showing empty state
+        // which may happen during transient failures (e.g., modal actions).
         setError(err?.response?.data?.message || "Không thể tải dữ liệu.");
       })
       .finally(() => {
@@ -1093,66 +1234,37 @@ const StudentAssignmentListPage = () => {
     return () => {
       alive = false;
     };
-  }, [classId]);
+  }, [classId, activeCategory, pageByCategory, classInfo]);
 
-  const filtered = useMemo(() => {
-    return assignments
-      .filter((item) => {
-        const normalizedSearch = search.trim().toLowerCase();
+  const visibleAssignments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
 
-        if (
-          normalizedSearch &&
-          !item.title.toLowerCase().includes(normalizedSearch) &&
-          !item.subject.toLowerCase().includes(normalizedSearch)
-        ) {
-          return false;
-        }
+    return assignments.filter((item) => {
+      if (!normalizedSearch) return true;
+      const title = (item?.title || "").toString().toLowerCase();
+      const subject = (item?.subject || "").toString().toLowerCase();
 
-        if (statusFilter === "pending" && item.myStatus !== "pending")
-          return false;
-        if (statusFilter === "done" && item.myStatus !== "done") return false;
-        if (statusFilter === "late" && item.myStatus !== "late") return false;
-        if (statusFilter === "urgent" && item.urgency !== "urgent")
-          return false;
-
-        if (
-          urgentOnly &&
-          item.urgency !== "urgent" &&
-          item.urgency !== "soon"
-        ) {
-          return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (a.myStatus === "late" && b.myStatus !== "late") return 1;
-        if (b.myStatus === "late" && a.myStatus !== "late") return -1;
-
-        const urgencyOrder = {
-          urgent: 0,
-          soon: 1,
-          normal: 2,
-          done: 3,
-          late: 4,
-        };
-        return (urgencyOrder[a.urgency] ?? 2) - (urgencyOrder[b.urgency] ?? 2);
-      });
-  }, [assignments, search, statusFilter, urgentOnly]);
-
-  const pending = filtered.filter((item) => item.myStatus === "pending");
-  const done = filtered.filter((item) => item.myStatus === "done");
-  const late = filtered.filter((item) => item.myStatus === "late");
+      return (
+        title.includes(normalizedSearch) || subject.includes(normalizedSearch)
+      );
+    });
+  }, [assignments, search]);
 
   const counts = {
-    total: assignments.length,
-    done: assignments.filter((item) => item.myStatus === "done").length,
-    pending: assignments.filter((item) => item.myStatus === "pending").length,
-    late: assignments.filter((item) => item.myStatus === "late").length,
+    pending: categoryMeta.todo.totalElements,
+    done: categoryMeta.completed.totalElements,
+    late: categoryMeta.overdue.totalElements,
   };
+  counts.total = counts.pending + counts.done + counts.late;
 
   const progressPct =
     counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0;
+
+  const activeCategoryData =
+    ASSIGNMENT_CATEGORY_OPTIONS.find((item) => item.key === activeCategory) ||
+    ASSIGNMENT_CATEGORY_OPTIONS[0];
+  const activePageMeta = categoryMeta[activeCategory] || EMPTY_PAGE_META;
+  const activePage = pageByCategory[activeCategory] || 1;
 
   const classInitials = classInfo
     ? (classInfo.name || "").replace(/\d/g, "").substring(0, 2).toUpperCase() ||
@@ -1177,12 +1289,32 @@ const StudentAssignmentListPage = () => {
       });
       return;
     }
+    const trimmed = String(password || "").trim();
 
-    navigate(PATH_STUDENT.classroom.assignmentDo(classId, assignment.id), {
-      state: {
-        startPassword: String(password || "").trim() || null,
-      },
-    });
+    if (assignment?.requirePassword && !trimmed) {
+      showToast("Vui lòng nhập mật khẩu bài thi.", "error");
+      return Promise.reject(new Error("missing-password"));
+    }
+
+    // Return the promise so caller (modal) can decide to close the modal only on success
+    return assignmentApi
+      .startStudentAssignment(assignment.id, classId, trimmed || null)
+      .then((res) => {
+        navigate(PATH_STUDENT.classroom.assignmentDo(classId, assignment.id), {
+          state: {
+            startPassword: trimmed || null,
+          },
+        });
+
+        return res;
+      })
+      .catch((err) => {
+        const backendMessage =
+          err?.response?.data?.message || "Không thể bắt đầu làm bài.";
+
+        showToast(backendMessage, "error");
+        return Promise.reject(err);
+      });
   };
 
   return (
@@ -1271,30 +1403,42 @@ const StudentAssignmentListPage = () => {
             <Ic.Search width={13} height={13} />
             <input
               className="search-inp"
+              name="assignment-search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               placeholder="Tìm kiếm bài tập..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+        </div>
 
-          <select
-            className="fsel"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="pending">Chưa nộp</option>
-            <option value="done">Đã nộp</option>
-            <option value="late">Quá hạn</option>
-            <option value="urgent">Sắp hết hạn</option>
-          </select>
+        <div className="assignment-segment-wrap">
+          <div className="assignment-segment">
+            {ASSIGNMENT_CATEGORY_OPTIONS.map((item) => {
+              const count =
+                item.key === "todo"
+                  ? counts.pending
+                  : item.key === "completed"
+                    ? counts.done
+                    : counts.late;
 
-          <button
-            className={`urgency-chip${urgentOnly ? " active" : ""}`}
-            onClick={() => setUrgentOnly((prev) => !prev)}
-          >
-            <Ic.Warn width={11} height={11} /> Sắp hết hạn
-          </button>
+              return (
+                <button
+                  key={item.key}
+                  className={`assignment-segment-btn${activeCategory === item.key ? " active" : ""}`}
+                  onClick={() => {
+                    setActiveCategory(item.key);
+                  }}
+                >
+                  <span>{item.label}</span>
+                  <span className="assignment-segment-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {loading ? (
@@ -1320,12 +1464,12 @@ const StudentAssignmentListPage = () => {
           </div>
         ) : null}
 
-        {!loading && !error && filtered.length === 0 ? (
+        {!loading && !error && visibleAssignments.length === 0 ? (
           <div className="state-box">
             <div className="state-icon">
               <Ic.File width={26} height={26} />
             </div>
-            <div className="state-title">Không tìm thấy bài tập</div>
+            <div className="state-title">Không có bài tập trong mục này</div>
             <div className="state-text">
               Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.
             </div>
@@ -1334,73 +1478,44 @@ const StudentAssignmentListPage = () => {
 
         {!loading && !error ? (
           <div style={{ paddingTop: 6, paddingBottom: 28 }}>
-            {pending.length > 0 ? (
-              <>
-                <div className="section-head">
-                  <div className="section-head-title">
-                    <div
-                      className="section-head-bar"
-                      style={{ background: "var(--primary)" }}
-                    />
-                    Cần làm
-                  </div>
-                  <span className="section-count">{pending.length} bài</span>
-                </div>
-                {pending.map((assignment, index) => (
-                  <AssignmentCard
-                    key={assignment.id}
-                    assignment={assignment}
-                    index={index}
-                    onOpen={handleOpenModal}
-                  />
-                ))}
-              </>
-            ) : null}
+            <div className="section-head">
+              <div className="section-head-title">
+                <div
+                  className="section-head-bar"
+                  style={{ background: activeCategoryData.color }}
+                />
+                <span style={{ color: activeCategoryData.color }}>
+                  {activeCategoryData.label}
+                </span>
+              </div>
+              <span className="section-count">
+                {visibleAssignments.length} bài
+              </span>
+            </div>
 
-            {done.length > 0 ? (
-              <>
-                <div className="section-head" style={{ marginTop: 8 }}>
-                  <div className="section-head-title">
-                    <div
-                      className="section-head-bar"
-                      style={{ background: "var(--green)" }}
-                    />
-                    <span style={{ color: "var(--green)" }}>Đã hoàn thành</span>
-                  </div>
-                  <span className="section-count">{done.length} bài</span>
-                </div>
-                {done.map((assignment, index) => (
-                  <AssignmentCard
-                    key={assignment.id}
-                    assignment={assignment}
-                    index={index + pending.length}
-                    onOpen={handleOpenModal}
-                  />
-                ))}
-              </>
-            ) : null}
+            {visibleAssignments.map((assignment, index) => (
+              <AssignmentCard
+                key={assignment.id}
+                assignment={assignment}
+                index={index}
+                onOpen={handleOpenModal}
+              />
+            ))}
 
-            {late.length > 0 ? (
-              <>
-                <div className="section-head" style={{ marginTop: 8 }}>
-                  <div className="section-head-title">
-                    <div
-                      className="section-head-bar"
-                      style={{ background: "#9CA3AF" }}
-                    />
-                    <span style={{ color: "#9CA3AF" }}>Quá hạn</span>
-                  </div>
-                  <span className="section-count">{late.length} bài</span>
-                </div>
-                {late.map((assignment, index) => (
-                  <AssignmentCard
-                    key={assignment.id}
-                    assignment={assignment}
-                    index={index + pending.length + done.length}
-                    onOpen={handleOpenModal}
-                  />
-                ))}
-              </>
+            {!loading && !error && activePageMeta.totalPages > 1 ? (
+              <div style={{ padding: "0 24px" }}>
+                <Pagination
+                  page={activePage}
+                  totalPages={activePageMeta.totalPages}
+                  loading={loading}
+                  onPageChange={(nextPage) => {
+                    setPageByCategory((prev) => ({
+                      ...prev,
+                      [activeCategory]: nextPage,
+                    }));
+                  }}
+                />
+              </div>
             ) : null}
           </div>
         ) : null}

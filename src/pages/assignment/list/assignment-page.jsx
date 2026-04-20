@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
-import { classroomApi } from "@/apis/classroom.api";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import { PATH_TEACHER } from "@/routes/paths";
 import { usePendingSessions } from "@/hooks/use-pending-sessions";
@@ -353,7 +352,7 @@ const Ic = {
    CSS
    ════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
 
 :root {
   --primary: #2563EB;
@@ -400,14 +399,15 @@ const CSS = `
   --r-xl: 20px;
 
   --font: 'Be Vietnam Pro', sans-serif;
-  --font-d: 'Lora', serif;
+  --font-d: 'Be Vietnam Pro', sans-serif;
   --ease: cubic-bezier(0.4,0,0.2,1);
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
 
-.page{max-width:1200px;margin:0 auto;padding:28px 32px 60px}
+.page{max-width:1200px;margin:0 auto;padding:28px 32px 60px;width:100%}
+.page.classroom-context{max-width:none;margin:0;padding:24px 24px 56px}
 
 /* ═══ HEADER ═══ */
 .page-top{margin-bottom:28px}
@@ -568,7 +568,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font
 
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){.stats-row{grid-template-columns:1fr}.cards-grid{grid-template-columns:1fr}.page{padding:16px 12px 40px}.toolbar{flex-direction:column}.page-title-row{flex-direction:column;align-items:flex-start}.tabs{overflow-x:auto}}
+@media(max-width:640px){.stats-row{grid-template-columns:1fr}.cards-grid{grid-template-columns:1fr}.page{padding:16px 12px 40px}.page.classroom-context{padding:16px 12px 40px}.toolbar{flex-direction:column}.page-title-row{flex-direction:column;align-items:flex-start}.tabs{overflow-x:auto}}
 `;
 
 const AssignmentPage = () => {
@@ -646,7 +646,7 @@ const AssignmentPage = () => {
 
         if (hasClassroomContext) {
           const response =
-            await classroomApi.getAssignmentsForClassroom(classroomId);
+            await assignmentApi.getAssignmentsForClassroom(classroomId);
           const list = Array.isArray(response?.result) ? response.result : [];
 
           setAssignments(list.map(mapClassroomAssignmentToCard));
@@ -701,6 +701,10 @@ const AssignmentPage = () => {
   };
 
   const handleViewAssignment = (id) => {
+    navigate(PATH_TEACHER.assignmentDetail(id));
+  };
+
+  const handleEditAssignment = (id) => {
     navigate(`${PATH_TEACHER.assignmentCreateManual}?assignmentId=${id}`);
   };
 
@@ -716,14 +720,20 @@ const AssignmentPage = () => {
     f === "MC" ? "Trắc nghiệm" : f === "ESSAY" ? "Tự luận" : "Hỗn hợp";
 
   const pageContent = (
-    <div className="page">
+    <div className={`page${hasClassroomContext ? " classroom-context" : ""}`}>
       <style>{CSS}</style>
 
       {/* Header */}
       <div className="page-top">
-        <div className="breadcrumb">Khu vực làm việc / Ngân hàng bài tập</div>
+        <div className="breadcrumb">
+          {hasClassroomContext
+            ? "Khu vực lớp học / Bài tập"
+            : "Khu vực làm việc / Ngân hàng bài tập"}
+        </div>
         <div className="page-title-row">
-          <h1 className="page-title">Thư viện bài tập</h1>
+          <h1 className="page-title">
+            {hasClassroomContext ? "Bài tập" : "Thư viện bài tập"}
+          </h1>
           <div className="page-title-actions">
             <button className="btn btn-primary" onClick={handleCreateNew}>
               <Ic.Plus /> Tạo bài tập
@@ -922,6 +932,7 @@ const AssignmentPage = () => {
               key={a.id}
               className="a-card"
               style={{ animationDelay: `${i * 0.04}s` }}
+              onClick={() => handleViewAssignment(a.assignmentId || a.id)}
             >
               <div className="a-card-top">
                 <div className="a-card-badge-row">
@@ -977,28 +988,40 @@ const AssignmentPage = () => {
                   <button
                     className="act-btn"
                     title="Xem"
-                    onClick={() => handleViewAssignment(a.assignmentId || a.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleViewAssignment(a.assignmentId || a.id);
+                    }}
                   >
                     <Ic.Eye />
                   </button>
                   <button
                     className="act-btn"
                     title="Chỉnh sửa"
-                    onClick={() => handleViewAssignment(a.assignmentId || a.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleEditAssignment(a.assignmentId || a.id);
+                    }}
                   >
                     <Ic.Edit />
                   </button>
                   <button
                     className="act-btn"
                     title="Nhân bản"
-                    onClick={() => handleDuplicateAssignment(a)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDuplicateAssignment(a);
+                    }}
                   >
                     <Ic.Copy />
                   </button>
                   <button
                     className="act-btn danger"
                     title="Xóa"
-                    onClick={() => handleDeleteAssignment(a)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteAssignment(a);
+                    }}
                   >
                     <Ic.Trash />
                   </button>
@@ -1020,7 +1043,11 @@ const AssignmentPage = () => {
   );
 
   if (hasClassroomContext) {
-    return <ClassroomDetailLayout>{pageContent}</ClassroomDetailLayout>;
+    return (
+      <ClassroomDetailLayout activeMenuKeyOverride="assignments">
+        {pageContent}
+      </ClassroomDetailLayout>
+    );
   }
 
   return pageContent;

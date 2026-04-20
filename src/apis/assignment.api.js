@@ -3,6 +3,7 @@ import { API_SUFFIX } from "@/apis/util.api";
 
 const ASSIGNMENT_BASE = API_SUFFIX.ASSIGNMENT;
 const DRAFT_SESSION_BASE = API_SUFFIX.DRAFT_SESSION;
+const TEACHER_GRADING_BASE = "/teacher";
 const STUDENT_START_ASSIGNMENT_CACHE_TTL_MS = 1500;
 
 const startStudentAssignmentInFlight = new Map();
@@ -153,6 +154,11 @@ const getAssignments = (params = {}) => {
 const getStudentAssignments = (params = {}) =>
   apiRequest.get("/student/assignments", { params });
 
+const getAssignmentsForClassroom = (classroomId) => {
+  const safeClassroomId = normalizeId(classroomId, "classroomId");
+  return apiRequest.get(`${ASSIGNMENT_BASE}/classrooms/${safeClassroomId}`);
+};
+
 const startStudentAssignment = (assignmentId, classroomId, password = null) => {
   const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
   const safeClassroomId = normalizeId(classroomId, "classroomId");
@@ -253,6 +259,49 @@ const getAvailableClassroomsForAssignment = (assignmentId) => {
   );
 };
 
+const getClassroomAssignments = (assignmentId) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  return apiRequest.get(`${ASSIGNMENT_BASE}/${safeAssignmentId}/classrooms`);
+};
+
+const getSubmissions = (assignmentId, params = {}) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  const normalized = {
+    page: 1,
+    size: 10,
+    sortBy: "submitTime",
+    sortDirection: "DESC",
+    ...params,
+  };
+
+  if (normalized.keyword !== undefined) {
+    const trimmedKeyword = String(normalized.keyword || "").trim();
+    normalized.keyword = trimmedKeyword || undefined;
+  }
+
+  return apiRequest.get(
+    `${TEACHER_GRADING_BASE}/assignments/${safeAssignmentId}/submissions`,
+    {
+      params: normalized,
+    },
+  );
+};
+
+const getSubmissionDetail = (submissionId) => {
+  const safeSubmissionId = normalizeId(submissionId, "submissionId");
+  return apiRequest.get(
+    `${TEACHER_GRADING_BASE}/submissions/${safeSubmissionId}`,
+  );
+};
+
+const gradeSubmission = (submissionId, payload = {}) => {
+  const safeSubmissionId = normalizeId(submissionId, "submissionId");
+  return apiRequest.put(
+    `${TEACHER_GRADING_BASE}/submissions/${safeSubmissionId}/grade-essay`,
+    payload,
+  );
+};
+
 const getAssignmentById = (assignmentId) => getAssignment(assignmentId);
 
 const deleteAssignment = (assignmentId) => {
@@ -278,11 +327,9 @@ const updateAssignment = (assignmentId, payload) => {
 /**
  * @param {number|string} assignmentId
  */
-const publishAssignment = (assignmentId, classroomIds = []) => {
+const publishAssignment = (assignmentId) => {
   const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
-  return apiRequest.post(`${ASSIGNMENT_BASE}/${safeAssignmentId}/publish`, {
-    classroomIds,
-  });
+  return apiRequest.post(`${ASSIGNMENT_BASE}/${safeAssignmentId}/publish`);
 };
 
 /**
@@ -381,6 +428,42 @@ const addQuestionsFromBank = (assignmentId, payload = {}) => {
   return apiRequest.post(
     `${ASSIGNMENT_BASE}/${safeAssignmentId}/items/from-bank`,
     { itemIds: normalizedItemIds },
+  );
+};
+
+/**
+ * @param {number|string} assignmentId
+ * @param {{
+ *   questionIds: Array<number|string>,
+ *   pointOverride?: number,
+ *   sectionId?: number|string,
+ * }} payload
+ */
+const importQuestionsFromBank = (assignmentId, payload = {}) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  const normalizedQuestionIds = Array.isArray(payload?.questionIds)
+    ? payload.questionIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    : [];
+
+  const body = {
+    questionIds: normalizedQuestionIds,
+  };
+
+  const pointOverride = Number(payload?.pointOverride);
+  if (Number.isFinite(pointOverride) && pointOverride > 0) {
+    body.pointOverride = pointOverride;
+  }
+
+  const safeSectionId = normalizeOptionalId(payload?.sectionId, "sectionId");
+  if (safeSectionId !== undefined) {
+    body.sectionId = safeSectionId;
+  }
+
+  return apiRequest.post(
+    `${ASSIGNMENT_BASE}/${safeAssignmentId}/import-from-bank`,
+    body,
   );
 };
 
@@ -517,8 +600,14 @@ const getAssignmentQuestions = (assignmentId, sectionId, params = {}) => {
   );
 };
 
-const getPendingSession = (scope = {}) => {
-  const params = normalizeDraftScope(scope);
+const getPendingSession = (
+  scope = {},
+  sessionType = DRAFT_SESSION_TYPE.MANUAL_CREATION,
+) => {
+  const params = {
+    ...normalizeDraftScope(scope),
+    sessionType: normalizeDraftSessionType(scope?.sessionType || sessionType),
+  };
   return apiRequest.get(`${DRAFT_SESSION_BASE}/pending`, { params });
 };
 
@@ -820,6 +909,7 @@ export const assignmentApi = {
   createAssignment,
   getAssignments,
   getStudentAssignments,
+  getAssignmentsForClassroom,
   startStudentAssignment,
   saveStudentAssignmentDraft,
   recordStudentAssignmentViolation,
@@ -827,6 +917,10 @@ export const assignmentApi = {
   getSubmissionResult,
   getAssignment,
   getAvailableClassroomsForAssignment,
+  getClassroomAssignments,
+  getSubmissions,
+  getSubmissionDetail,
+  gradeSubmission,
   getAssignmentById,
   deleteAssignment,
   updateAssignment,
@@ -835,6 +929,7 @@ export const assignmentApi = {
   updateClassroomOverride,
   confirmAndPublishAssignment,
   addQuestionsFromBank,
+  importQuestionsFromBank,
   createSection,
   updateSection,
   deleteSection,

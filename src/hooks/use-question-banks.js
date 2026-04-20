@@ -2,14 +2,14 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { questionBankApi } from "@/apis/question-bank.api";
 
-const MSG39 = "Ngân hàng đề đã được tạo thành công.";
+const MSG39 = "Ngân hàng câu hỏi đã được tạo thành công.";
 const MSG40 =
-  "Tên ngân hàng đề bị trùng trong Khối lớp/Môn học này. Vui lòng đổi tên khác.";
+  "Tên ngân hàng câu hỏi bị trùng trong Khối lớp/Môn học này. Vui lòng đổi tên khác.";
 const MSG02 =
   "Các trường bắt buộc phải được điền đầy đủ và tất cả giá trị nhập vào phải hợp lệ.";
-const MSG81 = "Ngân hàng đề đã được cập nhật thành công.";
-const MSG83 = "Ngân hàng đề đã được xóa thành công.";
-const MSG84 = "Hiện tại không thể xóa Ngân hàng đề. Vui lòng thử lại sau.";
+const MSG81 = "Ngân hàng câu hỏi đã được cập nhật thành công.";
+const MSG83 = "Ngân hàng câu hỏi đã được xóa thành công.";
+const MSG84 = "Hiện tại không thể xóa Ngân hàng câu hỏi. Vui lòng thử lại sau.";
 
 const INITIAL_PAGINATION = {
   pageNumber: 1,
