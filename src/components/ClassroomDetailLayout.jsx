@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
+  CheckCheck,
   MessageSquare,
   Users,
   FileText,
@@ -70,12 +71,63 @@ const ClassroomDetailLayout = ({
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "Vừa xong";
+
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffInSeconds = Math.floor((now - past) / 1000);
+
+    if (diffInSeconds < 60) return "Vừa xong";
+    if (diffInSeconds < 3600)
+      return `${Math.floor(diffInSeconds / 60)} phút trước`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)} giờ trước`;
+    if (diffInSeconds < 2592000)
+      return `${Math.floor(diffInSeconds / 86400)} ngày trước`;
+
+    return past.toLocaleDateString("vi-VN");
+  };
+
+  const fetchNotificationData = useCallback(async ({ withList = false } = {}) => {
+    try {
+      if (withList) {
+        setIsNotificationLoading(true);
+      }
+
+      const calls = [notificationApi.getUnreadCount()];
+      if (withList) {
+        calls.push(notificationApi.getMyNotifications());
+      }
+
+      const [unreadResponse, listResponse] = await Promise.all(calls);
+      setUnreadCount(Number(unreadResponse?.result || 0));
+
+      if (withList) {
+        setNotifications(Array.isArray(listResponse?.result) ? listResponse.result : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      if (withList) {
+        setIsNotificationLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest(".classroom-workspace-user-menu")) {
         setIsUserMenuOpen(false);
+      }
+
+      if (!event.target.closest(".classroom-workspace-notification-wrapper")) {
+        setIsNotificationOpen(false);
       }
     };
 
@@ -86,23 +138,18 @@ const ClassroomDetailLayout = ({
   useEffect(() => {
     let isMounted = true;
 
-    const fetchUnreadCount = async () => {
-      try {
-        const response = await notificationApi.getUnreadCount();
-        if (!isMounted) return;
-        setUnreadCount(Number(response?.result || 0));
-      } catch (err) {
-        console.error("Failed to fetch unread notifications:", err);
-      }
+    const refreshUnread = async () => {
+      if (!isMounted) return;
+      await fetchNotificationData({ withList: false });
     };
 
-    fetchUnreadCount();
-    const timer = window.setInterval(fetchUnreadCount, 30000);
+    refreshUnread();
+    const timer = window.setInterval(refreshUnread, 30000);
     const token = localStorage.getItem("accessToken");
     const disconnect = createNotificationSocket({
       token,
-      onConnected: fetchUnreadCount,
-      onNotification: fetchUnreadCount,
+      onConnected: refreshUnread,
+      onNotification: refreshUnread,
       onError: (error) => {
         console.error("Notification socket error:", error);
       },
@@ -113,7 +160,7 @@ const ClassroomDetailLayout = ({
       window.clearInterval(timer);
       disconnect();
     };
-  }, []);
+  }, [fetchNotificationData]);
 
   const fetchClassroomInfo = useCallback(async () => {
     if (!safeResolvedClassId) {
@@ -145,8 +192,60 @@ const ClassroomDetailLayout = ({
     navigate(PATH_TEACHER.classroom.root);
   };
 
-  const handleOpenNotifications = () => {
-    navigate(PATH_COMMON.notifications);
+  const handleToggleNotifications = async () => {
+    const nextState = !isNotificationOpen;
+    setIsNotificationOpen(nextState);
+
+    if (nextState) {
+      setIsUserMenuOpen(false);
+      await fetchNotificationData({ withList: true });
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification?.id) return;
+
+    try {
+      let nextNotification = notification;
+
+      if (!notification.read) {
+        const response = await notificationApi.markAsRead(notification.id);
+        nextNotification = {
+          ...notification,
+          ...(response?.result || {}),
+          read: true,
+        };
+      }
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notification.id ? { ...item, ...nextNotification, read: true } : item,
+        ),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - (notification.read ? 0 : 1)));
+
+      const redirectUrl =
+        typeof nextNotification?.redirectUrl === "string"
+          ? nextNotification.redirectUrl.trim()
+          : "";
+
+      if (redirectUrl) {
+        setIsNotificationOpen(false);
+        navigate(redirectUrl);
+      }
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Failed to mark all notifications as read:", err);
+    }
   };
 
   const handleLogout = async () => {
@@ -425,26 +524,89 @@ const ClassroomDetailLayout = ({
           </div>
 
           <div className="classroom-workspace-right">
-            <button
-              type="button"
-              className="classroom-workspace-notification"
-              onClick={handleOpenNotifications}
-              aria-label="Mở thông báo"
-              title="Thông báo"
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="classroom-notification-badge">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
+            <div className="classroom-workspace-notification-wrapper">
+              <button
+                type="button"
+                className="classroom-workspace-notification"
+                onClick={handleToggleNotifications}
+                aria-label="Mở thông báo"
+                title="Thông báo"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="classroom-notification-badge">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationOpen && (
+                <div className="classroom-notification-dropdown">
+                  <div className="classroom-notification-dropdown-header">
+                    <h3>Thông báo</h3>
+                    <button
+                      type="button"
+                      className="classroom-notification-mark-all"
+                      onClick={handleMarkAllAsRead}
+                      disabled={unreadCount === 0}
+                    >
+                      <CheckCheck size={14} />
+                      <span>Đánh dấu tất cả đã đọc</span>
+                    </button>
+                  </div>
+
+                  <div className="classroom-notification-list">
+                    {isNotificationLoading ? (
+                      <div className="classroom-notification-empty">Đang tải thông báo...</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="classroom-notification-empty">Bạn chưa có thông báo nào</div>
+                    ) : (
+                      notifications.slice(0, 8).map((notification) => (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          className={`classroom-notification-item ${notification.read ? "read" : "unread"}`}
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="classroom-notification-item-title-row">
+                            <div className="classroom-notification-item-title">{notification.title}</div>
+                            {!notification.read && <span className="classroom-notification-dot" />}
+                          </div>
+                          <div className="classroom-notification-item-desc">
+                            {notification.shortDescription || "Không có mô tả"}
+                          </div>
+                          <div className="classroom-notification-item-time">
+                            {formatTimeAgo(notification.createdAt)}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="classroom-notification-footer">
+                    <button
+                      type="button"
+                      className="classroom-notification-view-all"
+                      onClick={() => {
+                        setIsNotificationOpen(false);
+                        navigate(PATH_COMMON.notifications);
+                      }}
+                    >
+                      Xem tất cả
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             <div className="classroom-workspace-user-menu">
               <button
                 type="button"
                 className="classroom-workspace-user-trigger"
-                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                onClick={() => {
+                  setIsNotificationOpen(false);
+                  setIsUserMenuOpen((prev) => !prev);
+                }}
               >
                 <div className="classroom-workspace-avatar">
                   {user?.avatarUrl ? (

@@ -92,6 +92,7 @@ const MemberClass = () => {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState('');
   const [reportSuccess, setReportSuccess] = useState('');
+  const [activeTeacherTab, setActiveTeacherTab] = useState('members');
 
   const fetchClassroomInfo = useCallback(async () => {
     try {
@@ -361,6 +362,7 @@ const MemberClass = () => {
   };
 
   const classSize = members.length || classroomInfo?.studentCount || 0;
+  const pendingCount = pendingRequests.length;
 
   return (
     <ClassroomDetailLayout>
@@ -370,7 +372,33 @@ const MemberClass = () => {
             <h2>Thành viên lớp học ({classSize})</h2>
           </header>
 
-          <div className={`members-layout ${!isTeacher ? 'no-aside' : ''}`}>
+          {isTeacher && (
+            <div className="members-tabs" role="tablist" aria-label="Phân loại thành viên lớp học">
+              <button
+                type="button"
+                className={`members-tab ${activeTeacherTab === 'members' ? 'active' : ''}`}
+                onClick={() => setActiveTeacherTab('members')}
+                role="tab"
+                aria-selected={activeTeacherTab === 'members'}
+              >
+                Danh sách thành viên
+              </button>
+              <button
+                type="button"
+                className={`members-tab ${activeTeacherTab === 'pending' ? 'active' : ''}`}
+                onClick={() => setActiveTeacherTab('pending')}
+                role="tab"
+                aria-selected={activeTeacherTab === 'pending'}
+              >
+                Yêu cầu phê duyệt
+                {pendingCount > 0 && (
+                  <span className="members-tab-badge">{pendingCount}</span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {(!isTeacher || activeTeacherTab === 'members') && (
             <div className="members-main">
               <div className="members-toolbar">
                 <div className="members-view-toggle" aria-hidden="true">
@@ -471,107 +499,107 @@ const MemberClass = () => {
                 </div>
               )}
             </div>
+          )}
 
-            {isTeacher && (
-              <aside className="members-sidecard">
-                <>
-                  <h3>Chờ duyệt • {pendingRequests.length}</h3>
-                  <p>
-                    Yêu cầu vào lớp sẽ được hiển thị khi có học sinh tham gia bằng mã lớp
-                    {' '}
-                    <strong>{classroomInfo?.code || '—'}</strong>
-                  </p>
+          {isTeacher && activeTeacherTab === 'pending' && (
+            <section className="pending-tab-panel">
+              <div className="members-sidecard pending-tab-card">
+                <h3>Chờ duyệt • {pendingCount}</h3>
+                <p>
+                  Yêu cầu vào lớp sẽ được hiển thị khi có học sinh tham gia bằng mã lớp
+                  {' '}
+                  <strong>{classroomInfo?.code || '—'}</strong>
+                </p>
 
-                  {error && <div className="pending-requests-alert alert-error sidebar-alert">{error}</div>}
-                  {success && <div className="pending-requests-alert alert-success sidebar-alert">{success}</div>}
+                {error && <div className="pending-requests-alert alert-error sidebar-alert">{error}</div>}
+                {success && <div className="pending-requests-alert alert-success sidebar-alert">{success}</div>}
 
-                  {loading ? (
-                    <div className="pending-side-loading">
-                      <Loader2 size={16} className="spin" />
-                      <span>Đang tải yêu cầu...</span>
-                    </div>
-                  ) : pendingRequests.length === 0 ? (
-                    <div className="pending-side-empty">Hiện chưa có yêu cầu đang chờ duyệt.</div>
-                  ) : (
-                    <>
-                      <label className="pending-side-selectall">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          onChange={handleSelectAll}
-                          aria-label="Chọn tất cả yêu cầu"
-                        />
-                        <span>Chọn tất cả</span>
-                      </label>
+                {loading ? (
+                  <div className="pending-side-loading">
+                    <Loader2 size={16} className="spin" />
+                    <span>Đang tải yêu cầu...</span>
+                  </div>
+                ) : pendingCount === 0 ? (
+                  <div className="pending-side-empty">Hiện chưa có yêu cầu đang chờ duyệt.</div>
+                ) : (
+                  <>
+                    <label className="pending-side-selectall">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={handleSelectAll}
+                        aria-label="Chọn tất cả yêu cầu"
+                      />
+                      <span>Chọn tất cả</span>
+                    </label>
 
-                      <div className="pending-side-list">
-                        {pendingRequests.map((request) => (
-                          <div
-                            key={request.memberId ?? request.studentId}
-                            className={`pending-side-item ${selectedIds.includes(getRequestActionId(request)) ? 'selected' : ''}`}
-                          >
-                            <label className="pending-side-item-top">
-                              <input
-                                type="checkbox"
-                                checked={selectedIds.includes(getRequestActionId(request))}
-                                onChange={() => handleSelectOne(getRequestActionId(request))}
-                                aria-label={`Chọn ${request.studentName}`}
-                              />
-                              <div className="pending-side-student">
-                                <span className="pending-side-name">{request.studentName}</span>
-                                <span className="pending-side-email">{request.studentEmail || '—'}</span>
-                                <span className="pending-side-time">{formatDateTime(request.requestedAt)}</span>
-                              </div>
-                            </label>
-
-                            <div className="pending-side-item-actions">
-                              <button
-                                className="row-btn-approve"
-                                title="Duyệt"
-                                disabled={actionLoading}
-                                onClick={() => openApprove([getRequestActionId(request)])}
-                              >
-                                <CheckCircle size={13} />
-                                Duyệt
-                              </button>
-                              <button
-                                className="row-btn-reject"
-                                title="Từ chối"
-                                disabled={actionLoading}
-                                onClick={() => openReject([getRequestActionId(request)])}
-                              >
-                                <XCircle size={13} />
-                                Từ chối
-                              </button>
+                    <div className="pending-side-list pending-tab-list">
+                      {pendingRequests.map((request) => (
+                        <div
+                          key={request.memberId ?? request.studentId}
+                          className={`pending-side-item ${selectedIds.includes(getRequestActionId(request)) ? 'selected' : ''}`}
+                        >
+                          <label className="pending-side-item-top">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(getRequestActionId(request))}
+                              onChange={() => handleSelectOne(getRequestActionId(request))}
+                              aria-label={`Chọn ${request.studentName}`}
+                            />
+                            <div className="pending-side-student">
+                              <span className="pending-side-name">{request.studentName}</span>
+                              <span className="pending-side-email">{request.studentEmail || '—'}</span>
+                              <span className="pending-side-time">{formatDateTime(request.requestedAt)}</span>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          </label>
 
-                      <div className="pending-side-actions">
-                        <button
-                          className="btn-approve"
-                          onClick={() => openApprove(selectedIds)}
-                          disabled={selectedIds.length === 0 || actionLoading}
-                        >
-                          {actionLoading ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
-                          Duyệt {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
-                        </button>
-                        <button
-                          className="btn-reject"
-                          onClick={() => openReject(selectedIds)}
-                          disabled={selectedIds.length === 0 || actionLoading}
-                        >
-                          {actionLoading ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
-                          Từ chối {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </>
-              </aside>
-            )}
-          </div>
+                          <div className="pending-side-item-actions">
+                            <button
+                              className="row-btn-approve"
+                              title="Duyệt"
+                              disabled={actionLoading}
+                              onClick={() => openApprove([getRequestActionId(request)])}
+                            >
+                              <CheckCircle size={13} />
+                              Duyệt
+                            </button>
+                            <button
+                              className="row-btn-reject"
+                              title="Từ chối"
+                              disabled={actionLoading}
+                              onClick={() => openReject([getRequestActionId(request)])}
+                            >
+                              <XCircle size={13} />
+                              Từ chối
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pending-side-actions pending-tab-actions">
+                      <button
+                        className="btn-approve"
+                        onClick={() => openApprove(selectedIds)}
+                        disabled={selectedIds.length === 0 || actionLoading}
+                      >
+                        {actionLoading ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
+                        Duyệt {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+                      </button>
+                      <button
+                        className="btn-reject"
+                        onClick={() => openReject(selectedIds)}
+                        disabled={selectedIds.length === 0 || actionLoading}
+                      >
+                        {actionLoading ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
+                        Từ chối {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
         </section>
 
         {isMemberModalOpen && (

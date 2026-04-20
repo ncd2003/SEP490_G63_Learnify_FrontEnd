@@ -695,6 +695,48 @@
   color: #0f172a;
 }
 
+.members-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #dbe3ef;
+  background: #ffffff;
+}
+
+.members-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d5dfef;
+  border-radius: 10px;
+  background: #f8fbff;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.members-tab.active {
+  background: #1d8ef1;
+  color: #ffffff;
+  border-color: #1d8ef1;
+}
+
+.members-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .members-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
@@ -713,6 +755,25 @@
 .members-main {
   border-right: 1px solid #dbe3ef;
   min-width: 0;
+}
+
+.pending-tab-panel {
+  padding: 14px 16px 18px;
+  background: #ffffff;
+}
+
+.pending-tab-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.pending-tab-list {
+  max-height: 420px;
+}
+
+.pending-tab-actions {
+  max-width: 420px;
 }
 
 .members-sidecard {
@@ -848,6 +909,15 @@
 }
 
 @media (max-width: 900px) {
+  .members-tabs {
+    flex-wrap: wrap;
+  }
+
+  .members-tab {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .members-toolbar {
     grid-template-columns: 1fr;
   }

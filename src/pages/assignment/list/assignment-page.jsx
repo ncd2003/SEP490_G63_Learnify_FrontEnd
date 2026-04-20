@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
 import { classroomApi } from "@/apis/classroom.api";
+import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import { PATH_TEACHER } from "@/routes/paths";
 import { usePendingSessions } from "@/hooks/use-pending-sessions";
 import "@/assets/css/pages/classroom/assignments/assignment-page.css";
@@ -714,7 +715,7 @@ const AssignmentPage = () => {
   const formatLabel = (f) =>
     f === "MC" ? "Trắc nghiệm" : f === "ESSAY" ? "Tự luận" : "Hỗn hợp";
 
-  return (
+  const pageContent = (
     <div className="page">
       <style>{CSS}</style>
 
@@ -1017,6 +1018,12 @@ const AssignmentPage = () => {
       )}
     </div>
   );
+
+  if (hasClassroomContext) {
+    return <ClassroomDetailLayout>{pageContent}</ClassroomDetailLayout>;
+  }
+
+  return pageContent;
 };
 
 export default AssignmentPage;
