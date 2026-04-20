@@ -2,7 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
 
 :root {
   --primary: #2563EB;
@@ -49,7 +49,7 @@ const CSS = `
   --r-2xl: 24px;
 
   --font: 'Be Vietnam Pro', sans-serif;
-  --font-d: 'Lora', serif;
+  --font-d: 'Be Vietnam Pro', sans-serif;
   --ease: cubic-bezier(0.4,0,0.2,1);
 }
 
@@ -102,7 +102,7 @@ const CSS = `
 
 .methods-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, minmax(270px, 1fr));
   gap: 16px;
   align-items: stretch;
 }
@@ -500,6 +500,10 @@ const CSS = `
 }
 
 @media (max-width: 1200px) {
+  .methods-grid {
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+  }
+
   .compare-section {
     max-width: calc(100% - 20px);
   }
@@ -717,9 +721,20 @@ const Ic = {
 
 const CreateAssignmentMethodPage = () => {
   const [searchParams] = useSearchParams();
-  const preservedQuery = searchParams.toString();
-  const withQuery = (path) =>
-    preservedQuery ? `${path}?${preservedQuery}` : path;
+  const withQuery = (path, overrides = {}) => {
+    const next = new URLSearchParams(searchParams);
+
+    Object.entries(overrides).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
+    });
+
+    const query = next.toString();
+    return query ? `${path}?${query}` : path;
+  };
 
   return (
     <div className="page">
@@ -833,44 +848,6 @@ const CreateAssignmentMethodPage = () => {
 
         <article className="method-card fade-up fade-up-3">
           <div className="mc-header">
-            <div className="mc-icon sky">
-              <Ic.Upload />
-            </div>
-            <div className="mc-badge fast">Nhanh</div>
-          </div>
-
-          <div className="mc-title">Tạo bằng import file</div>
-          <div className="mc-desc">
-            Tải lên file Word hoặc Excel để import câu hỏi hàng loạt theo mẫu có
-            sẵn. Phù hợp khi đã có sẵn ngân hàng câu hỏi.
-          </div>
-
-          <div className="mc-bullets">
-            <div className="mc-bullet">
-              <div className="mc-bullet-dot sky" /> Hỗ trợ .docx, .xlsx, .csv
-            </div>
-            <div className="mc-bullet">
-              <div className="mc-bullet-dot sky" /> Import hàng loạt nhanh chóng
-            </div>
-            <div className="mc-bullet">
-              <div className="mc-bullet-dot sky" /> Tải mẫu file có sẵn
-            </div>
-            <div className="mc-bullet">
-              <div className="mc-bullet-dot sky" /> Xem trước và chỉnh sửa sau
-              import
-            </div>
-          </div>
-
-          <Link
-            to={withQuery(PATH_TEACHER.assignmentCreateImport)}
-            className="mc-cta outline"
-          >
-            Import file <Ic.ChevR />
-          </Link>
-        </article>
-
-        <article className="method-card fade-up fade-up-4">
-          <div className="mc-header">
             <div className="mc-icon green">
               <Ic.BookOpen />
             </div>
@@ -901,7 +878,9 @@ const CreateAssignmentMethodPage = () => {
           </div>
 
           <Link
-            to={withQuery(PATH_TEACHER.assignmentQuestionBankPicker)}
+            to={withQuery(PATH_TEACHER.assignmentCreateManual, {
+              source: "question-bank",
+            })}
             className="mc-cta outline"
           >
             Chọn từ ngân hàng <Ic.ChevR />
@@ -921,7 +900,6 @@ const CreateAssignmentMethodPage = () => {
               <th>Tính năng</th>
               <th className="highlight">Tạo với AI</th>
               <th>Tạo thủ công</th>
-              <th>Import file</th>
               <th>Từ ngân hàng</th>
             </tr>
           </thead>
@@ -935,18 +913,12 @@ const CreateAssignmentMethodPage = () => {
               </td>
               <td>Chậm</td>
               <td>Nhanh</td>
-              <td>Nhanh</td>
             </tr>
             <tr>
               <td>Tự động sinh câu hỏi</td>
               <td className="highlight">
                 <div className="check-icon">
                   <Ic.Check />
-                </div>
-              </td>
-              <td>
-                <div className="cross-icon">
-                  <Ic.X />
                 </div>
               </td>
               <td>
@@ -973,36 +945,8 @@ const CreateAssignmentMethodPage = () => {
                 </div>
               </td>
               <td>
-                <div className="cross-icon">
-                  <Ic.Minus />
-                </div>
-              </td>
-              <td>
                 <div className="check-icon">
                   <Ic.Check />
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>Import hàng loạt</td>
-              <td className="highlight">
-                <div className="cross-icon">
-                  <Ic.Minus />
-                </div>
-              </td>
-              <td>
-                <div className="cross-icon">
-                  <Ic.X />
-                </div>
-              </td>
-              <td>
-                <div className="check-icon">
-                  <Ic.Check />
-                </div>
-              </td>
-              <td>
-                <div className="cross-icon">
-                  <Ic.X />
                 </div>
               </td>
             </tr>
@@ -1023,43 +967,10 @@ const CreateAssignmentMethodPage = () => {
                   <Ic.Check />
                 </div>
               </td>
-              <td>
-                <div className="check-icon">
-                  <Ic.Check />
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>Yêu cầu file có sẵn</td>
-              <td className="highlight">
-                <div className="cross-icon">
-                  <Ic.X />
-                </div>
-              </td>
-              <td>
-                <div className="cross-icon">
-                  <Ic.X />
-                </div>
-              </td>
-              <td>
-                <div className="check-icon">
-                  <Ic.Check />
-                </div>
-              </td>
-              <td>
-                <div className="cross-icon">
-                  <Ic.X />
-                </div>
-              </td>
             </tr>
             <tr>
               <td>Yêu cầu ngân hàng câu hỏi</td>
               <td className="highlight">
-                <div className="cross-icon">
-                  <Ic.X />
-                </div>
-              </td>
-              <td>
                 <div className="cross-icon">
                   <Ic.X />
                 </div>
@@ -1091,11 +1002,6 @@ const CreateAssignmentMethodPage = () => {
               <td>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>
                   Kiểm soát chi tiết
-                </span>
-              </td>
-              <td>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>
-                  Đã có sẵn ngân hàng
                 </span>
               </td>
               <td>

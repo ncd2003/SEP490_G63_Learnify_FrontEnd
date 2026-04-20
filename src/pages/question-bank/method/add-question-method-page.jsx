@@ -1,4 +1,11 @@
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import {
+  Link,
+  useParams,
+  useSearchParams,
+  useNavigate,
+} from "react-router-dom";
+import { questionBankApi } from "@/apis/question-bank.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const CSS = `
@@ -697,6 +704,9 @@ const Ic = {
 const AddQuestionMethodPage = () => {
   const { bankId } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [loadingManual, setLoadingManual] = useState(false);
+  const [loadingAi, setLoadingAi] = useState(false);
 
   const safeBankId = Number(bankId);
   const hasValidBankId = Number.isFinite(safeBankId) && safeBankId > 0;
@@ -707,12 +717,52 @@ const AddQuestionMethodPage = () => {
   const withBankId = (pathFactory) =>
     hasValidBankId ? pathFactory(safeBankId) : PATH_TEACHER.questionBank;
 
+  const handleInitManualSession = async () => {
+    if (!hasValidBankId) {
+      navigate(PATH_TEACHER.questionBank);
+      return;
+    }
+    setLoadingManual(true);
+    try {
+      const response = await questionBankApi.initManualSession(safeBankId);
+      const sessionId = response?.result?.sessionId;
+      if (sessionId) {
+        const path = PATH_TEACHER.questionBankManual(safeBankId);
+        navigate(withQuery(path));
+      }
+    } catch (error) {
+      console.error("Failed to init manual session:", error);
+    } finally {
+      setLoadingManual(false);
+    }
+  };
+
+  const handleInitAiSession = async () => {
+    if (!hasValidBankId) {
+      navigate(PATH_TEACHER.questionBank);
+      return;
+    }
+    setLoadingAi(true);
+    try {
+      const response = await questionBankApi.initAiSession(safeBankId);
+      const sessionId = response?.result?.sessionId;
+      if (sessionId) {
+        const path = PATH_TEACHER.questionBankAi(safeBankId);
+        navigate(withQuery(path));
+      }
+    } catch (error) {
+      console.error("Failed to init AI session:", error);
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
   return (
     <div className="page">
       <style>{CSS}</style>
 
       <div className="breadcrumb">
-        Khu vực làm việc / Ngân hàng đề / <span>Tạo câu hỏi</span>
+        Khu vực làm việc / Ngân hàng câu hỏi / <span>Tạo câu hỏi</span>
       </div>
 
       <div className="page-header fade-up">
@@ -768,12 +818,17 @@ const AddQuestionMethodPage = () => {
             </div>
           </div>
 
-          <Link
-            to={withQuery(withBankId(PATH_TEACHER.questionBankAi))}
+          <button
+            onClick={handleInitAiSession}
+            disabled={loadingAi || !hasValidBankId}
             className="mc-cta primary"
+            style={{
+              cursor: loadingAi || !hasValidBankId ? "not-allowed" : "pointer",
+            }}
           >
-            <Ic.Sparkles /> Bắt đầu với AI <Ic.ChevR />
-          </Link>
+            <Ic.Sparkles /> {loadingAi ? "Đang khởi tạo..." : "Bắt đầu với AI"}{" "}
+            <Ic.ChevR />
+          </button>
         </article>
 
         <article className="method-card fade-up fade-up-2">
@@ -807,12 +862,17 @@ const AddQuestionMethodPage = () => {
             </div>
           </div>
 
-          <Link
-            to={withQuery(withBankId(PATH_TEACHER.questionBankManual))}
+          <button
+            onClick={handleInitManualSession}
+            disabled={loadingManual || !hasValidBankId}
             className="mc-cta outline"
+            style={{
+              cursor:
+                loadingManual || !hasValidBankId ? "not-allowed" : "pointer",
+            }}
           >
-            Tạo thủ công <Ic.ChevR />
-          </Link>
+            {loadingManual ? "Đang khởi tạo..." : "Tạo thủ công"} <Ic.ChevR />
+          </button>
         </article>
 
         <article className="method-card fade-up fade-up-3">

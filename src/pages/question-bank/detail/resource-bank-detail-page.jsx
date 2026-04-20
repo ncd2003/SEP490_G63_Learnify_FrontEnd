@@ -211,7 +211,7 @@ const ResourceBankDetailPage = () => {
     <div className="resource-bank-detail-page">
       <nav className="rb-crumb">
         <Link to={PATH_TEACHER.questionBank} className="rb-crumb-link">
-          Ngân hàng đề
+          Ngân hàng câu hỏi
         </Link>
         <ChevronRight size={12} />
         <span>Xem chi tiết</span>
@@ -242,7 +242,7 @@ const ResourceBankDetailPage = () => {
       <section className="rb-card">
         <div className="rb-section-title">
           <BookOpen size={15} />
-          <span>Thông tin ngân hàng đề</span>
+          <span>Thông tin ngân hàng câu hỏi</span>
         </div>
 
         <div className="rb-info-grid">

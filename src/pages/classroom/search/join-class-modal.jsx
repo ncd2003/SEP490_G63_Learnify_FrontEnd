@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Search, BookOpen, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { classroomApi } from "@/apis/classroom.api";
 import { classroomMemberApi } from "@/apis/classroom-member.api";
 import "@/assets/css/pages/classroom/modals.css";
@@ -47,16 +48,20 @@ const JoinClassModal = ({ onClose, onJoined }) => {
     setJoinError("");
 
     try {
-      await classroomMemberApi.joinClass(classroom.id);
-      setJoinSuccess(true);
+      const response = await classroomMemberApi.joinClass(classroom.id);
+      toast.success(
+        response?.message ??
+          "Yêu cầu tham gia lớp học đã được gửi. Vui lòng chờ giáo viên phê duyệt.",
+      );
       onJoined?.();
       onClose?.();
     } catch (err) {
       const apiCode = err.response?.data?.code;
       const message = err.response?.data?.message ?? "";
       setJoinError(message);
+      toast.error(message);
 
-      if ([10007, 10008, 10013].includes(apiCode)) {
+      if ([10015, 10020, 10025].includes(apiCode)) {
         setJoinBlocked(true);
       }
     } finally {

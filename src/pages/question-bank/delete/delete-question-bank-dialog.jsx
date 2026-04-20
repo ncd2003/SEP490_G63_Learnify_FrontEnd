@@ -91,7 +91,7 @@ const DeleteQuestionBankDialog = ({ questionBank, onClose, onSubmit }) => {
     >
       <div className="modal-container qb-delete-modal">
         <div className="modal-header qb-delete-header">
-          <h2 className="modal-title">Xác nhận xóa ngân hàng đề</h2>
+          <h2 className="modal-title">Xác nhận xóa ngân hàng câu hỏi</h2>
           <button
             onClick={onClose}
             disabled={deleting}
@@ -109,9 +109,9 @@ const DeleteQuestionBankDialog = ({ questionBank, onClose, onSubmit }) => {
             <div className="qb-delete-warning-text">
               <strong>Cảnh báo: Hành động này không thể hoàn tác</strong>
               <p>
-                Ngân hàng đề sẽ được chuyển vào trạng thái đã xóa. Nếu bạn không
-                khôi phục trong vòng 30 ngày, hệ thống sẽ tự động xóa vĩnh viễn.
-                Vui lòng xem xét kỹ trước khi xác nhận.
+                Ngân hàng câu hỏi sẽ được chuyển vào trạng thái đã xóa. Nếu bạn
+                không khôi phục trong vòng 30 ngày, hệ thống sẽ tự động xóa vĩnh
+                viễn. Vui lòng xem xét kỹ trước khi xác nhận.
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ const DeleteQuestionBankDialog = ({ questionBank, onClose, onSubmit }) => {
 
           <div className="qb-delete-impact-box">
             <div className="qb-delete-impact-title">
-              Ảnh hưởng khi xóa ngân hàng đề này:
+              Ảnh hưởng khi xóa ngân hàng câu hỏi này:
             </div>
             <ul>
               <li>

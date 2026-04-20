@@ -268,6 +268,47 @@ export const AuthProvider = ({ children }) => {
     });
   }, []);
 
+  const adjustAiRequestUsage = useCallback((deltaCount) => {
+    const delta = Number(deltaCount);
+    if (!Number.isFinite(delta) || delta === 0) {
+      return;
+    }
+
+    setUser((prevUser) => {
+      if (!prevUser) {
+        return prevUser;
+      }
+
+      const usageList = Array.isArray(prevUser.userBenefitUsageDTO)
+        ? prevUser.userBenefitUsageDTO
+        : [];
+      const aiRequestIndex = usageList.findIndex(
+        (item) => item?.benefitCode === "AI_REQUEST",
+      );
+
+      if (aiRequestIndex < 0) {
+        return prevUser;
+      }
+
+      const nextUsageList = [...usageList];
+      const currentUsed = Number(nextUsageList[aiRequestIndex]?.used);
+      const safeCurrentUsed = Number.isFinite(currentUsed) ? currentUsed : 0;
+
+      nextUsageList[aiRequestIndex] = {
+        ...nextUsageList[aiRequestIndex],
+        used: Math.max(0, safeCurrentUsed + delta),
+      };
+
+      const nextUser = {
+        ...prevUser,
+        userBenefitUsageDTO: nextUsageList,
+      };
+
+      localStorage.setItem("user", JSON.stringify(nextUser));
+      return nextUser;
+    });
+  }, []);
+
   const refreshCurrentUser = useCallback(async () => {
     const response = await authApi.getCurrentUser();
 
@@ -305,6 +346,7 @@ export const AuthProvider = ({ children }) => {
         handleOAuth2Login,
         updateUserRole,
         adjustStorageUsage,
+        adjustAiRequestUsage,
         refreshCurrentUser,
       }}
     >

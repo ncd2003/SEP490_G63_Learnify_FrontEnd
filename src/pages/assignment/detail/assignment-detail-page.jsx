@@ -3,15 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
-const CLASSES = [
-  { id: "c1", name: "10A1", students: 42 },
-  { id: "c2", name: "10A2", students: 38 },
-  { id: "c3", name: "10A3", students: 40 },
-  { id: "c4", name: "11B1", students: 35 },
-  { id: "c5", name: "11B2", students: 37 },
-  { id: "c6", name: "12C1", students: 33 },
-];
-
 const normalizeStatus = (s) => {
   const v = String(s || "").toUpperCase();
   if (v === "PUBLISHED") return "published";
@@ -28,6 +19,26 @@ const normalizeFormat = (f) => {
 
 const normalizeCategory = (c) =>
   String(c || "").toUpperCase() === "TEST" ? "test" : "homework";
+
+const normalizeClassroomAssignmentStatus = (status) => {
+  const value = String(status || "").toUpperCase();
+  if (value.includes("REVOKE") || value.includes("UNASSIGN")) {
+    return "revoked";
+  }
+  return "assigned";
+};
+
+const normalizeClassroomAssignment = (item, idx) => ({
+  id: item?.id || `${item?.classroomId || idx}`,
+  classroomId: String(item?.classroomId ?? item?.id ?? idx),
+  classroomName:
+    item?.classroomName || item?.name || `Lớp ${item?.classroomId || idx + 1}`,
+  studentCount: Number(
+    item?.studentCount ?? item?.numberOfStudents ?? item?.students ?? 0,
+  ),
+  assignedAt: item?.assignedAt || item?.createdAt || null,
+  status: normalizeClassroomAssignmentStatus(item?.status),
+});
 
 const formatLabel = (f) =>
   f === "mc" ? "Trắc nghiệm" : f === "essay" ? "Tự luận" : "Hỗn hợp";
@@ -499,7 +510,7 @@ const CSS = `
   --r-l: 16px;
   --r-xl: 20px;
   --font: 'Be Vietnam Pro', sans-serif;
-  --font-d: 'Lora', serif;
+  --font-d: 'Be Vietnam Pro', sans-serif;
   --ease: cubic-bezier(0.4,0,0.2,1);
 }
 
@@ -594,9 +605,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text)}
 .setting-val{font-size:12px;font-weight:700;color:var(--text);text-align:right}
 .setting-val.on{color:var(--green)}
 .setting-val.off{color:var(--text3)}
-.cls-chips-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:14px 22px}
-.cls-chip-detail{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--r-s);background:var(--primary-light);border:1px solid rgba(37,99,235,.12);font-size:12px;font-weight:700;color:var(--primary-dark)}
-.cls-chip-detail span{font-size:10px;font-weight:600;color:var(--primary);opacity:.7}
+.cls-list-wrap{display:flex;flex-direction:column;gap:8px;padding:14px 22px}
+.cls-row-detail{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:var(--r-s);border:1px solid var(--border-l);background:var(--card)}
+.cls-main{min-width:0;display:flex;flex-direction:column;gap:4px}
+.cls-name-line{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cls-name{font-size:12px;font-weight:700;color:var(--text)}
+.cls-meta-line{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;color:var(--text3);flex-wrap:wrap}
+.cls-status{padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
+.cls-status.assigned{background:var(--green-l);color:var(--green)}
+.cls-status.revoked{background:var(--red-l);color:var(--red)}
+.cls-view-btn{padding:6px 10px !important;font-size:11px !important;white-space:nowrap}
 .no-cls{padding:20px 22px;font-size:13px;color:var(--text3);font-style:italic}
 .score-bar-wrap{display:flex;align-items:center;gap:10px;margin-top:4px}
 .score-bar-track{flex:1;height:6px;background:var(--border-l);border-radius:6px;overflow:hidden}
@@ -704,9 +722,7 @@ const QuestionCard = ({ q, index }) => {
                     {opt.correct && <Ic.Check />}
                   </div>
                   <div className="q-opt-letter">{LETTERS[oi]}</div>
-                  <span className="q-opt-text">
-                    {opt.text || "(trống)"}
-                  </span>
+                  <span className="q-opt-text">{opt.text || "(trống)"}</span>
                 </div>
               ))}
             </div>
@@ -751,6 +767,7 @@ export default function AssignmentDetailPage() {
   const { id: assignmentId } = useParams();
 
   const [assignment, setAssignment] = useState(null);
+  const [classroomAssignments, setClassroomAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editModeModal, setEditModeModal] = useState(false);
@@ -768,13 +785,26 @@ export default function AssignmentDetailPage() {
     let alive = true;
     setLoading(true);
     setError("");
+    setClassroomAssignments([]);
 
-    assignmentApi
-      .getAssignmentById(assignmentId)
-      .then((res) => {
+    Promise.all([
+      assignmentApi.getAssignmentById(assignmentId),
+      assignmentApi
+        .getClassroomAssignments(assignmentId)
+        .catch(() => ({ result: [] })),
+    ])
+      .then(([res, classroomRes]) => {
         if (!alive) return;
         const data = res?.result || res;
         setAssignment(toDetailAssignment(data || {}));
+
+        const list = Array.isArray(classroomRes?.result?.content)
+          ? classroomRes.result.content
+          : Array.isArray(classroomRes?.result)
+            ? classroomRes.result
+            : [];
+
+        setClassroomAssignments(list.map(normalizeClassroomAssignment));
       })
       .catch((err) => {
         if (!alive) return;
@@ -808,13 +838,16 @@ export default function AssignmentDetailPage() {
   const handleEditRawAssignment = () => {
     if (!assignment?.id) return;
     setEditModeModal(false);
-    navigate(`${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`);
+    navigate(
+      `${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`,
+    );
   };
 
   const handleEditQuestions = () => {
     if (!assignment?.id) return;
 
-    const formatParam = assignment.format === "mc" ? "multiple_choice" : assignment.format;
+    const formatParam =
+      assignment.format === "mc" ? "multiple_choice" : assignment.format;
     const params = new URLSearchParams({
       assignmentId: String(assignment.id),
       format: String(formatParam || "mixed"),
@@ -823,7 +856,25 @@ export default function AssignmentDetailPage() {
     });
 
     setEditModeModal(false);
-    navigate(`${PATH_TEACHER.assignmentCreateManualQuestions}?${params.toString()}`);
+    navigate(
+      `${PATH_TEACHER.assignmentCreateManualQuestions}?${params.toString()}`,
+    );
+  };
+
+  const handleViewClassSubmissions = (classroom) => {
+    if (!assignment?.id || !classroom?.classroomId) return;
+
+    const params = new URLSearchParams({
+      classroomId: String(classroom.classroomId),
+    });
+
+    if (classroom.classroomName) {
+      params.set("classroomName", classroom.classroomName);
+    }
+
+    navigate(
+      `${PATH_TEACHER.assignmentSubmissions(assignment.id)}?${params.toString()}`,
+    );
   };
 
   const filteredQuestions = assignment
@@ -949,10 +1000,7 @@ export default function AssignmentDetailPage() {
             >
               <Ic.ArrowLeft /> Quay lại
             </button>
-            <button
-              className="btn btn-ghost"
-              onClick={handleOpenEditModeModal}
-            >
+            <button className="btn btn-ghost" onClick={handleOpenEditModeModal}>
               <Ic.Edit /> Chỉnh sửa
             </button>
             <button
@@ -1003,7 +1051,7 @@ export default function AssignmentDetailPage() {
           <div className="stat-icon">
             <Ic.Layers />
           </div>
-          <div className="stat-val">{assignment.assignedClasses.length}</div>
+          <div className="stat-val">{classroomAssignments.length}</div>
           <div className="stat-label">Lớp được giao</div>
         </div>
       </div>
@@ -1145,16 +1193,49 @@ export default function AssignmentDetailPage() {
                 <Ic.Share /> Giao thêm
               </button>
             </div>
-            {assignment.assignedClasses.length === 0 ? (
+            {classroomAssignments.length === 0 ? (
               <div className="no-cls">Chưa giao cho lớp nào.</div>
             ) : (
-              <div className="cls-chips-wrap">
-                {assignment.assignedClasses.map((cid) => {
-                  const cls = CLASSES.find((c) => c.id === cid);
+              <div className="cls-list-wrap">
+                {classroomAssignments.map((classroom) => {
                   return (
-                    <div key={cid} className="cls-chip-detail">
-                      {cls ? cls.name : cid}
-                      {cls ? <span>{cls.students} hs</span> : null}
+                    <div key={classroom.id} className="cls-row-detail">
+                      <div className="cls-main">
+                        <div className="cls-name-line">
+                          <span className="cls-name">
+                            {classroom.classroomName}
+                          </span>
+                          <span
+                            className={`cls-status ${
+                              classroom.status === "revoked"
+                                ? "revoked"
+                                : "assigned"
+                            }`}
+                          >
+                            {classroom.status === "revoked"
+                              ? "Đã thu hồi"
+                              : "Đã giao"}
+                          </span>
+                        </div>
+
+                        <div className="cls-meta-line">
+                          {classroom.studentCount > 0 ? (
+                            <span>{classroom.studentCount} học sinh</span>
+                          ) : null}
+                          {classroom.assignedAt ? (
+                            <span>
+                              Giao {toDisplayDateTime(classroom.assignedAt)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <button
+                        className="btn btn-ghost cls-view-btn"
+                        onClick={() => handleViewClassSubmissions(classroom)}
+                      >
+                        <Ic.Eye /> View
+                      </button>
                     </div>
                   );
                 })}
@@ -1403,7 +1484,9 @@ export default function AssignmentDetailPage() {
                 <div className="edit-mode-badge">
                   <Ic.Edit /> Chỉnh sửa bài tập
                 </div>
-                <div className="edit-mode-title">Chọn kiểu chỉnh sửa phù hợp</div>
+                <div className="edit-mode-title">
+                  Chọn kiểu chỉnh sửa phù hợp
+                </div>
                 <div className="edit-mode-sub">
                   Bạn có thể chỉnh nhanh thông tin bài tập hoặc đi vào màn hình
                   chỉnh sửa câu hỏi với auto save.
@@ -1421,7 +1504,9 @@ export default function AssignmentDetailPage() {
                     </div>
                     <div className="edit-choice-tag">Thiết lập</div>
                   </div>
-                  <div className="edit-choice-title">Sửa phần thô assignment</div>
+                  <div className="edit-choice-title">
+                    Sửa phần thô assignment
+                  </div>
                   <div className="edit-choice-desc">
                     Mở màn hình setup để sửa title, mô tả, category, format và
                     cấu hình hiện tại.
@@ -1438,7 +1523,9 @@ export default function AssignmentDetailPage() {
                     </div>
                     <div className="edit-choice-tag">Nội dung đề</div>
                   </div>
-                  <div className="edit-choice-title">Sửa câu hỏi trong assignment</div>
+                  <div className="edit-choice-title">
+                    Sửa câu hỏi trong assignment
+                  </div>
                   <div className="edit-choice-desc">
                     Mở màn hình soạn thủ công để thêm, sửa, xóa câu hỏi và tự
                     động lưu mỗi thay đổi.

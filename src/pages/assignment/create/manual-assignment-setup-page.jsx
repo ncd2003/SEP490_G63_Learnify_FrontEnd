@@ -81,22 +81,22 @@ const Icons = {
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700&display=swap');
-:root{--p:#3B6FED;--pd:#2B55C4;--pl:#EBF0FD;--bg:#FAFBFD;--card:#FFFFFF;--t:#1A2332;--t2:#5A6B82;--t3:#8E9BB3;--b:#E2E7EF;--f:'Be Vietnam Pro',sans-serif;--fd:'Lora',serif}
+:root{--p:#3B6FED;--pd:#2B55C4;--pl:#EBF0FD;--bg:#FAFBFD;--card:#FFFFFF;--t:#1A2332;--t2:#5A6B82;--t3:#8E9BB3;--b:#E2E7EF;--f:'Be Vietnam Pro',sans-serif;--fd:'Be Vietnam Pro',sans-serif}
 *{box-sizing:border-box}
-.app{min-height:100vh;display:flex;flex-direction:column;background:var(--bg);font-family:var(--f);color:var(--t)}
+.app{min-height:100%;display:flex;flex-direction:column;background:var(--bg);font-family:var(--f);color:var(--t)}
 .topbar{background:var(--card);border-bottom:1px solid var(--b);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
 .topbar-left{display:flex;align-items:center;gap:14px}
 .topbar-back{display:flex;align-items:center;gap:8px;padding:6px 12px;border:none;background:none;color:var(--t2);font-size:13px;font-family:var(--f);cursor:pointer;border-radius:10px;transition:all .2s ease}
 .topbar-back:hover{background:#EEF1F6;color:var(--t)}
 .topbar-title{font-family:var(--fd);font-size:18px;font-weight:700}
-.main{max-width:1720px;width:100%;margin:0 auto;padding:24px 12px 74px}
+.main{max-width:1600px;width:100%;margin:0 auto;padding:24px clamp(10px,2vw,20px) 74px}
 .crumb{font-size:12px;color:var(--t3);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:12px}
 .intro{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
 .intro-icon{width:44px;height:44px;border-radius:12px;background:var(--pl);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .intro-title{font-family:var(--fd);font-size:30px;font-weight:700;line-height:1.25;margin-bottom:6px}
 .intro-desc{font-size:14px;color:var(--t2);line-height:1.6}
-.layout-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;margin-bottom:18px;align-items:stretch}
-.layout-grid > *{height:100%}
+.layout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:20px;margin-bottom:18px;align-items:start}
+.layout-grid > *{height:100%;min-width:0}
 .step-card{background:var(--card);border:1.5px solid var(--b);border-radius:16px;padding:22px;box-shadow:0 1px 3px rgba(26,35,50,.06);height:100%}
 .step-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .step-number{width:30px;height:30px;border-radius:50%;background:var(--pl);color:var(--p);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -116,8 +116,10 @@ const CSS = `
 .setting-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto;padding-top:6px}
 .setting-toggle-item{padding:10px 12px;border:1.5px solid var(--b);border-radius:12px;background:#FFF}
 .setting-toggle-item .label{margin-bottom:8px}
-.setting-toggle-item .pill-group{gap:8px;flex-wrap:nowrap}
-.setting-toggle-item .pill{flex:1;display:inline-flex;justify-content:center;padding:8px 12px}
+.setting-toggle-item .pill-group{gap:8px;flex-wrap:wrap}
+.setting-toggle-item .pill{flex:1;min-width:86px;display:inline-flex;justify-content:center;padding:8px 12px}
+.mixed-sections-list{display:grid;gap:8px}
+.mixed-section-row{display:grid;grid-template-columns:minmax(0,1fr) 180px 110px;gap:8px;align-items:center}
 .full{grid-column:1 / -1}
 .help{font-size:11px;color:var(--t3);margin-top:4px}
 .error{margin-top:12px;padding:10px 12px;border-radius:10px;background:#FDEDEB;color:#B91C1C;font-size:13px;font-weight:600}
@@ -132,7 +134,9 @@ const CSS = `
 .btn.primary{background:linear-gradient(135deg,var(--p),var(--pd));color:#FFF;box-shadow:0 6px 18px rgba(59,111,237,.28)}
 .btn.primary:disabled{opacity:.6;cursor:not-allowed}
 .loading{font-size:13px;color:var(--t2);margin-top:6px}
-@media(max-width:1200px){.main{padding:22px 10px 74px}.layout-grid{grid-template-columns:1fr}.setting-grid,.setting-checks{grid-template-columns:1fr}.layout-grid > *{height:auto}.step-card,.setting-panel{height:auto}}
+@media(min-width:1320px){.layout-grid{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:stretch}}
+@media(max-width:1100px){.main{padding:22px 10px 74px}.setting-grid,.setting-checks{grid-template-columns:1fr}.layout-grid > *{height:auto}.step-card,.setting-panel{height:auto}}
+@media(max-width:900px){.mixed-section-row{grid-template-columns:1fr}.mixed-section-row .btn{width:100%;justify-content:center}}
 @media(max-width:640px){.topbar{padding:0 12px}.main{padding:18px 10px 74px}.intro-title{font-size:24px}.actions{flex-direction:column}.btn{justify-content:center;width:100%}}
 `;
 
@@ -145,12 +149,6 @@ const FORMAT_OPTIONS = [
   { value: "MULTIPLE_CHOICE", label: "Trắc nghiệm" },
   { value: "ESSAY", label: "Tự luận" },
   { value: "MIXED", label: "Hỗn hợp" },
-];
-
-const SECTION_TYPE_OPTIONS = [
-  { value: "OBJECTIVE", label: "Phần trắc nghiệm" },
-  { value: "ESSAY", label: "Phần tự luận" },
-  { value: "MIXED", label: "Phần hỗn hợp" },
 ];
 
 const RESULT_VISIBILITY_OPTIONS = [
@@ -201,49 +199,6 @@ const toPositiveId = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
-const createMixedSectionDraft = (sectionType = "OBJECTIVE") => ({
-  localId: `mixed-section-${Date.now()}-${Math.random()}`,
-  id: null,
-  title:
-    sectionType === "ESSAY"
-      ? "Phần tự luận"
-      : sectionType === "MIXED"
-        ? "Phần hỗn hợp"
-        : "Phần trắc nghiệm",
-  sectionType,
-});
-
-const normalizeSectionType = (value) => {
-  const normalized = String(value || "")
-    .trim()
-    .toUpperCase();
-  if (normalized === "ESSAY") return "ESSAY";
-  if (normalized === "MIXED") return "MIXED";
-  if (normalized === "OBJECTIVE" || normalized === "MULTIPLE_CHOICE") {
-    return "OBJECTIVE";
-  }
-  return "OBJECTIVE";
-};
-
-const mapSectionsFromAssignment = (sections = []) => {
-  if (!Array.isArray(sections)) return [];
-
-  return sections
-    .map((section) => {
-      const id = toPositiveId(section?.id || section?.sectionId);
-      const title = String(section?.title || "").trim();
-      if (!id && !title) return null;
-
-      return {
-        localId: `mixed-section-${id || Math.random()}`,
-        id,
-        title: title || (id ? `Phần ${id}` : "Phần mới"),
-        sectionType: normalizeSectionType(section?.sectionType),
-      };
-    })
-    .filter(Boolean);
-};
-
 const resolveDefaultSectionId = (sections, format) => {
   const list = Array.isArray(sections) ? sections : [];
   if (!list.length) return null;
@@ -283,6 +238,11 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
   const [searchParams] = useSearchParams();
 
   const isAiMode = String(mode || "").toLowerCase() === "ai";
+  const sourceMode = String(searchParams.get("source") || "")
+    .trim()
+    .toLowerCase();
+  const isQuestionBankMode = sourceMode === "question-bank";
+  const bankIdFromQuery = toPositiveId(searchParams.get("bankId"));
 
   const existingAssignmentId = searchParams.get("assignmentId")
     ? Number(searchParams.get("assignmentId"))
@@ -306,22 +266,30 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
     limitTabs: "",
     requireFullScreen: false,
   });
-  const [mixedSections, setMixedSections] = useState([
-    createMixedSectionDraft("OBJECTIVE"),
-    createMixedSectionDraft("ESSAY"),
-  ]);
   const [submitting, setSubmitting] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [isPasswordPeekVisible, setIsPasswordPeekVisible] = useState(false);
 
-  const pageTitle = isAiMode ? "Tạo bài tập với AI" : "Tạo bài tập thủ công";
-  const crumbTitle = isAiMode ? "Tạo với AI" : "Tạo thủ công";
-  const introDescription = isAiMode
-    ? "Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ thống sẽ chuyển sang trang tạo câu hỏi với AI để bạn sinh đề theo cấu hình mong muốn."
-    : "Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ thống sẽ chuyển sang trang soạn câu hỏi và tự động tạo phiên nháp để bạn tiếp tục làm dở.";
+  const pageTitle = isQuestionBankMode
+    ? "Tạo bài tập từ ngân hàng câu hỏi"
+    : isAiMode
+      ? "Tạo bài tập với AI"
+      : "Tạo bài tập thủ công";
+  const crumbTitle = isQuestionBankMode
+    ? "Tạo từ ngân hàng câu hỏi"
+    : isAiMode
+      ? "Tạo với AI"
+      : "Tạo thủ công";
+  const introDescription = isQuestionBankMode
+    ? "Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ thống sẽ chuyển sang trang import/chọn câu hỏi từ ngân hàng để bạn thêm câu hỏi vào bài tập."
+    : isAiMode
+      ? "Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ thống sẽ chuyển sang trang tạo câu hỏi với AI để bạn sinh đề theo cấu hình mong muốn."
+      : "Nhập thông tin cơ bản để khởi tạo bài tập nháp. Sau bước này hệ thống sẽ chuyển sang trang soạn câu hỏi và tự động tạo phiên nháp để bạn tiếp tục làm dở.";
   let continueButtonLabel = "Tiếp tục đến soạn câu hỏi";
-  if (isAiMode) {
+  if (isQuestionBankMode) {
+    continueButtonLabel = "Tiếp tục đến import câu hỏi";
+  } else if (isAiMode) {
     continueButtonLabel = "Tiếp tục đến tạo câu hỏi với AI";
   }
   if (submitting) {
@@ -394,13 +362,6 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
               : String(loadedSetting.limitTabs),
           requireFullScreen: Boolean(loadedSetting?.requireFullScreen),
         });
-
-        if (isAiMode && loadedFormat === "MIXED") {
-          const loadedSections = mapSectionsFromAssignment(data?.sections);
-          if (loadedSections.length > 0) {
-            setMixedSections(loadedSections);
-          }
-        }
       } catch (error) {
         console.error("Load assignment failed", error);
       } finally {
@@ -413,19 +374,6 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
       alive = false;
     };
   }, [existingAssignmentId, isAiMode]);
-
-  useEffect(() => {
-    if (!isAiMode || format !== "MIXED") return;
-
-    setMixedSections((prev) =>
-      prev.length
-        ? prev
-        : [
-            createMixedSectionDraft("OBJECTIVE"),
-            createMixedSectionDraft("ESSAY"),
-          ],
-    );
-  }, [isAiMode, format]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -467,28 +415,6 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
     ) {
       setErrorText("Giới hạn chuyển tab phải là số nguyên không âm.");
       return;
-    }
-
-    const normalizedMixedSections = mixedSections.map((section) => ({
-      ...section,
-      title: String(section?.title || "").trim(),
-      sectionType: normalizeSectionType(section?.sectionType),
-      id: toPositiveId(section?.id),
-    }));
-
-    if (isAiMode && format === "MIXED") {
-      if (!normalizedMixedSections.length) {
-        setErrorText("Vui lòng tạo ít nhất một section cho đề hỗn hợp.");
-        return;
-      }
-
-      const hasInvalidTitle = normalizedMixedSections.some(
-        (section) => !section.title,
-      );
-      if (hasInvalidTitle) {
-        setErrorText("Vui lòng nhập đầy đủ tên section.");
-        return;
-      }
     }
 
     setSubmitting(true);
@@ -576,57 +502,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
         );
       }
 
-      if (isAiMode && format === "MIXED") {
-        const existingSections = normalizedMixedSections.filter(
-          (section) => section.id,
-        );
-        const sectionsToCreate = normalizedMixedSections.filter(
-          (section) => !section.id,
-        );
-
-        const createdSections = [];
-        for (const section of sectionsToCreate) {
-          const sectionResp = await assignmentApi.createSection(assignmentId, {
-            title: section.title,
-            sectionType: section.sectionType,
-          });
-
-          const createdId = toPositiveId(
-            sectionResp?.result?.id || sectionResp?.result?.sectionId,
-          );
-          if (createdId) {
-            createdSections.push({ ...section, id: createdId });
-          }
-        }
-
-        const resolvedSections = [...existingSections, ...createdSections];
-        if (resolvedSections.length > 0) {
-          defaultSectionId = resolvedSections[0].id;
-          sectionsForAiPage = resolvedSections
-            .map((section) => {
-              const safeSectionId = toPositiveId(section?.id);
-              if (!safeSectionId) return null;
-
-              return {
-                id: safeSectionId,
-                title:
-                  String(section?.title || "").trim() ||
-                  `Phần ${safeSectionId}`,
-                sectionType: normalizeSectionType(section?.sectionType),
-              };
-            })
-            .filter(Boolean);
-
-          setMixedSections(
-            resolvedSections.map((section) => ({
-              ...section,
-              localId:
-                section.localId ||
-                `mixed-section-${section.id}-${Math.random()}`,
-            })),
-          );
-        }
-      } else if (isAiMode) {
+      if (isAiMode && format !== "MIXED") {
         const safeDefaultSectionId = toPositiveId(defaultSectionId);
         if (safeDefaultSectionId) {
           const sectionTypeByFormat =
@@ -665,9 +541,21 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
         }
       }
 
-      const nextPath = isAiMode
-        ? PATH_TEACHER.assignmentCreateAi
-        : PATH_TEACHER.assignmentCreateManualQuestions;
+      const nextPath = isQuestionBankMode
+        ? PATH_TEACHER.assignmentQuestionBankPicker
+        : isAiMode
+          ? PATH_TEACHER.assignmentCreateAi
+          : PATH_TEACHER.assignmentCreateManualQuestions;
+
+      if (isQuestionBankMode) {
+        navigate(
+          withQuery(nextPath, {
+            assignmentId,
+            bankId: bankIdFromQuery,
+          }),
+        );
+        return;
+      }
 
       const nextSectionId =
         format === "MIXED"
@@ -808,96 +696,10 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
               {isAiMode && format === "MIXED" ? (
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="label">
-                    Section cho đề hỗn hợp <span className="req">*</span>
-                  </label>
-                  <div className="help" style={{ marginBottom: 8 }}>
-                    Tạo section trước để sang trang AI có thể chọn sectionId khi
-                    sinh câu hỏi theo từng phần.
+                  <div className="help" style={{ marginTop: 10 }}>
+                    Với đề hỗn hợp, bạn sẽ cấu hình và quản lý section trực tiếp
+                    ở bước AI tiếp theo.
                   </div>
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {mixedSections.map((section, index) => (
-                      <div
-                        key={section.localId}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 180px 110px",
-                          gap: 8,
-                          alignItems: "center",
-                        }}
-                      >
-                        <input
-                          className="input"
-                          value={section.title}
-                          placeholder={`Tên section ${index + 1}`}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            setMixedSections((prev) =>
-                              prev.map((item) =>
-                                item.localId === section.localId
-                                  ? { ...item, title: value }
-                                  : item,
-                              ),
-                            );
-                          }}
-                        />
-
-                        <select
-                          className="select"
-                          value={section.sectionType}
-                          onChange={(event) => {
-                            const value = normalizeSectionType(
-                              event.target.value,
-                            );
-                            setMixedSections((prev) =>
-                              prev.map((item) =>
-                                item.localId === section.localId
-                                  ? { ...item, sectionType: value }
-                                  : item,
-                              ),
-                            );
-                          }}
-                        >
-                          {SECTION_TYPE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          style={{ height: 40, padding: "0 10px" }}
-                          disabled={mixedSections.length <= 1}
-                          onClick={() => {
-                            setMixedSections((prev) =>
-                              prev.filter(
-                                (item) => item.localId !== section.localId,
-                              ),
-                            );
-                          }}
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    style={{ marginTop: 8, height: 40 }}
-                    onClick={() =>
-                      setMixedSections((prev) => [
-                        ...prev,
-                        createMixedSectionDraft("OBJECTIVE"),
-                      ])
-                    }
-                  >
-                    + Thêm section
-                  </button>
                 </div>
               ) : null}
             </div>
