@@ -148,7 +148,7 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
         meetingLink: formData.type === SESSION_TYPE.ONLINE ? formData.meetingLink.trim() || null : null,
         recurrencePattern: session ? RECURRENCE_PATTERN.NONE : formData.recurrencePattern,
         recurrenceCount: session ? null : (formData.recurrencePattern !== RECURRENCE_PATTERN.NONE ? Number(formData.recurrenceCount) : null),
-        allowRecording: formData.allowRecording,
+        allowRecording: formData.type === SESSION_TYPE.ONLINE ? formData.allowRecording : false,
       };
 
       await onSubmit(payload, session?.id);
@@ -321,18 +321,19 @@ const SessionModal = ({ isOpen, onClose, onSubmit, session, presetDate = '' }) =
               </div>
             )}
 
-            {/* Allow Recording → allowRecording */}
-            <div className="form-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="allowRecording"
-                  checked={formData.allowRecording}
-                  onChange={handleChange}
-                />
-                <span>Cho phép ghi hình buổi học này</span>
-              </label>
-            </div>
+            {formData.type === SESSION_TYPE.ONLINE && (
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="allowRecording"
+                    checked={formData.allowRecording}
+                    onChange={handleChange}
+                  />
+                  <span>Cho phép ghi hình buổi học này</span>
+                </label>
+              </div>
+            )}
 
             {/* Description → description */}
             <div className="form-group">
