@@ -160,6 +160,7 @@ const ClassroomFeedPage = () => {
                   <div key={post.id} id={`post-${post.id}`} className="post-card-wrapper">
                     <PostCard
                       post={post}
+                      classroomId={Number(classroomId)}
                       onEdit={setEditingPost}
                       onDelete={setDeleteConfirmPost}
                     />

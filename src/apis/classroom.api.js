@@ -96,6 +96,14 @@ const updateClassroom = (id, data, file = null) => {
 };
 
 /**
+ * @param {number|string} id
+ * @param {"active"|"ended"|string} status
+ * @returns {Promise<import("axios").AxiosResponse>}
+ */
+const updateClassroomStatus = (id, status) =>
+  apiRequest.patch(`${BASE}/${id}/status`, null, { params: { status } });
+
+/**
  * @param {number} id
  * @returns {Promise<import("axios").AxiosResponse>}
  */
@@ -117,6 +125,7 @@ export const classroomApi = {
   getCategorizedAssignmentsForClassroomDashboard,
   createClassroom,
   updateClassroom,
+  updateClassroomStatus,
   deleteClassroom,
   searchByCode,
 };

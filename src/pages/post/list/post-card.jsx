@@ -36,11 +36,12 @@ const sortCommentsByDate = (commentList, order) => {
 /**
  * @param {{
  *   post: { id: number, content: string, pinned: boolean, attachments: { id:number, fileName:string, fileUrl:string, fileSize:number, fileType:string }[] },
+ *   classroomId?: number | null,
  *   onEdit: (post: object) => void,
  *   onDelete: (post: object) => void,
  * }} props
  */
-const PostCard = memo(({ post, onEdit, onDelete }) => {
+const PostCard = memo(({ post, classroomId = null, onEdit, onDelete }) => {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -52,14 +53,14 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   const commentsPostId = isOptimisticPost ? null : post.id;
 
   // Determine classroomId from post if available
-  const commentsClassroomId = post?.classroomId ?? post?.classroom?.id ?? null;
+  const commentsClassroomId = post?.classroomId ?? post?.classroom?.id ?? classroomId ?? null;
 
   // Comment hooks
   const { comments, setComments, loading: loadingComments, refetch } = useComments(commentsPostId, commentsClassroomId);
   const { createComment, updateComment, deleteComment, submitting } = useCommentMutations(
     commentsPostId,
-    setComments,
-    commentsClassroomId
+    commentsClassroomId,
+    setComments
   );
 
   // Count total comments including all nested replies
@@ -100,7 +101,11 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
   );
 
   const handleCommentSubmit = async (data) => {
-    const payload = { ...data, classroomId: commentsClassroomId };
+    const payload = {
+      ...data,
+      classroomId: data?.classroomId ?? commentsClassroomId,
+    };
+
     const result = await createComment(payload);
     // If it's a reply, ensure list stays updated without losing scroll. No refetch needed now.
     if (result?.success && !data.parentId) {
@@ -257,6 +262,7 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
                 {/* Comment form at top */}
                 <CommentForm
                   postId={post.id}
+                  classroomId={commentsClassroomId}
                   onSubmit={handleCommentSubmit}
                   submitting={submitting}
                   onCancel={() => setShowComments(false)}
@@ -292,6 +298,7 @@ const PostCard = memo(({ post, onEdit, onDelete }) => {
                           key={comment.id}
                           comment={comment}
                           postId={post.id}
+                          classroomId={commentsClassroomId}
                           onReply={handleCommentSubmit}
                           onEdit={handleCommentUpdate}
                           onDelete={handleCommentDelete}

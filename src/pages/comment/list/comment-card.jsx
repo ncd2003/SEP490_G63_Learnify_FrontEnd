@@ -21,6 +21,7 @@ const REPLIES_BATCH_SIZE = 5;
  *     user: { id: number, name: string }
  *   },
  *   postId: number,
+ *   classroomId?: number,
  *   onReply: (data: { content: string, parentId: number }) => Promise<{ success: boolean, message?: string }>,
  *   onEdit?: (commentId: number, content: string) => Promise<{ success: boolean, message?: string }>,
  *   onDelete?: (commentId: number) => Promise<{ success: boolean, message?: string }>,
@@ -28,7 +29,7 @@ const REPLIES_BATCH_SIZE = 5;
  *   depth?: number,
  * }} props
  */
-const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitting, depth = 0 }) => {
+const CommentCard = memo(({ comment, postId, classroomId, onReply, onEdit, onDelete, submitting, depth = 0 }) => {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -156,6 +157,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
         <div className="comment-reply-form">
           <CommentForm
             postId={postId}
+            classroomId={classroomId}
             parentId={comment.id}
             parentAuthorName={displayName || null}
             onSubmit={handleReplySubmit}
@@ -197,6 +199,7 @@ const CommentCard = memo(({ comment, postId, onReply, onEdit, onDelete, submitti
                   key={reply.id}
                   comment={reply}
                   postId={postId}
+                  classroomId={classroomId}
                   onReply={onReply}
                   onEdit={onEdit}
                   onDelete={onDelete}

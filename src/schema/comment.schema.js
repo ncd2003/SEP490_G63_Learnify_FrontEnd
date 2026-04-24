@@ -3,7 +3,7 @@ import { z } from "zod";
 // ─── Comment Schema (mirrors CommentResponseDTO) ──────────────────────────────
 export const CommentSchema = z.object({
   id:          z.number(),
-  content:     z.string().trim().min(1, "Nội dung bình luận không được để trống").max(1000, "Bình luận tối đa 1000 ký tự"),
+  content:     z.string().trim().min(1, "Nội dung bình luận không được để trống").max(500, "Bình luận tối đa 500 ký tự"),
   active:      z.boolean().optional(),
   user:        z.object({
     id:   z.number(),
@@ -20,7 +20,8 @@ export const CommentSchema = z.object({
 // ─── Create Comment Schema (mirrors CreateCommentRequestDTO) ──────────────────
 export const CreateCommentSchema = z.object({
   postId:  z.number({ required_error: "Post ID không được để trống" }),
-  content: z.string().trim().min(1, "Nội dung bình luận không được để trống").max(1000, "Bình luận tối đa 1000 ký tự"),
+  classroomId: z.number().optional(),
+  content: z.string().trim().min(1, "Nội dung bình luận không được để trống").max(500, "Bình luận tối đa 500 ký tự"),
   parentId: z.number().optional(), // optional for reply comments
 });
 
