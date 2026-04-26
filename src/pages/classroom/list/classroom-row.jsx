@@ -81,12 +81,12 @@ const ClassroomRow = memo(({ classroom, activeMenu, onMenuClick, onMenuClose, on
               >
                 Chỉnh sửa
               </button>
-              <button
+              {/* <button
                 className="action-menu-item"
                 onClick={() => { onMenuClose(); onHide?.(classroom); }}
               >
                 Ẩn lớp học
-              </button>
+              </button> */}
               <button
                 className="action-menu-item danger"
                 onClick={() => { onMenuClose(); onDelete(classroom); }}

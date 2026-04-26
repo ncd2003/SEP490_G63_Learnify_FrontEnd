@@ -87,10 +87,11 @@ const createClassroom = (data, file = null) => {
 const updateClassroom = (id, data, file = null) => {
   const parsed = UpdateClassroomSchema.parse(data);
   const formData = new FormData();
-  formData.append(
-    "data",
-    new Blob([JSON.stringify(parsed)], { type: "application/json" }),
-  );
+  formData.append("name", parsed.name);
+  formData.append("subject", parsed.subject);
+  if (parsed.description !== undefined) {
+    formData.append("description", parsed.description);
+  }
   if (file) formData.append("file", file);
   return apiRequest.put(`${BASE}/${id}`, formData);
 };
