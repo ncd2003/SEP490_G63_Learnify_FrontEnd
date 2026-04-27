@@ -179,6 +179,32 @@ const toPositiveId = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const DRAFT_LAST_SAVED_STORAGE_PREFIX = "learnify:draft:last-saved-at:";
+
+const getDraftLastSavedStorageKey = (sessionId) => {
+  const safeSessionId = toPositiveId(sessionId);
+  return safeSessionId
+    ? `${DRAFT_LAST_SAVED_STORAGE_PREFIX}${safeSessionId}`
+    : null;
+};
+
+const persistDraftLastSavedAt = (sessionId) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const storageKey = getDraftLastSavedStorageKey(sessionId);
+  if (!storageKey) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, new Date().toISOString());
+  } catch {
+    // Ignore localStorage failures to avoid blocking autosave flow.
+  }
+};
+
 const resolveSingleModeSectionId = (sections, formatMode) => {
   const list = Array.isArray(sections) ? sections : [];
   if (!list.length) return null;
@@ -378,6 +404,60 @@ const mapAssignmentSectionsToEditorQuestions = (sections = []) =>
       return mapBackendQuestion(questionItem, sectionId);
     });
   });
+
+const normalizeDraftSessionItem = (item) => {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const questionData =
+    item?.questionData && typeof item.questionData === "object"
+      ? item.questionData
+      : item;
+
+  const itemId = toPositiveId(item?.id || item?.itemId);
+
+  return {
+    ...questionData,
+    id:
+      toPositiveId(questionData?.id) ||
+      itemId ||
+      questionData?.id ||
+      item?.id ||
+      null,
+    itemId: itemId || toPositiveId(questionData?.itemId) || null,
+    orderIndex: Number.isFinite(Number(questionData?.orderIndex))
+      ? Number(questionData.orderIndex)
+      : Number.isFinite(Number(item?.orderIndex))
+        ? Number(item.orderIndex)
+        : null,
+    rowNumber: Number.isFinite(Number(item?.rowNumber))
+      ? Number(item.rowNumber)
+      : null,
+  };
+};
+
+const extractQuestionsFromDraftSessionResult = (result) => {
+  const manualItems = Array.isArray(result?.manualData?.questions)
+    ? result.manualData.questions
+        .map((item) => normalizeDraftSessionItem(item))
+        .filter(Boolean)
+    : [];
+
+  if (manualItems.length > 0) {
+    return manualItems;
+  }
+
+  if (Array.isArray(result?.aiExcelData?.questions)) {
+    return result.aiExcelData.questions;
+  }
+
+  if (Array.isArray(result?.questions)) {
+    return result.questions;
+  }
+
+  return [];
+};
 
 const normalizeAssignmentSettingForUpdate = (setting = {}) => ({
   password: setting?.password ?? null,
@@ -1629,6 +1709,7 @@ const ManualAssignmentCreatorPage = () => {
         const itemId = res?.result;
         if (itemId) itemIdMapRef.current[q.id] = itemId;
       }
+      persistDraftLastSavedAt(sessionId);
       setAutoSaveStatus("saved");
       if (!silent) showToast("Đã lưu");
       return true;
@@ -1659,6 +1740,7 @@ const ManualAssignmentCreatorPage = () => {
         payloadItems,
         scope,
       );
+      persistDraftLastSavedAt(sessionId);
       prevQuestionSnapshotsRef.current = buildSnapshotMap(qs);
       prevOrderSignatureRef.current = buildOrderSignature(qs);
       setAutoSaveStatus("saved");
@@ -1692,6 +1774,35 @@ const ManualAssignmentCreatorPage = () => {
       .filter((id) => Number.isFinite(id) && id > 0);
     return [...new Set(ids)];
   };
+
+  const hasQuestionContent = (q) => {
+    const hasPersistedReference = Boolean(
+      toPositiveId(q?.questionId) ||
+      toPositiveId(itemIdMapRef.current[q?.id] || q?.backendItemId),
+    );
+
+    if (hasPersistedReference) return true;
+    if (String(q?.prompt || "").trim()) return true;
+
+    if (q?.type === "ESSAY") {
+      return Boolean(String(q?.answer || "").trim());
+    }
+
+    if (q?.type === "FILL_IN_BLANK") {
+      return Boolean(String(q?.options?.[0]?.text || "").trim());
+    }
+
+    if (q?.type === "MULTIPLE_CHOICE") {
+      return Array.isArray(q?.options)
+        ? q.options.some((opt) => String(opt?.text || "").trim())
+        : false;
+    }
+
+    return false;
+  };
+
+  const hasAtLeastOneQuestionToPublish = () =>
+    qs.some((question) => hasQuestionContent(question));
 
   const openEditSectionModal = (group) => {
     const safeSectionId = toPositiveId(group?.sectionId);
@@ -1955,6 +2066,16 @@ const ManualAssignmentCreatorPage = () => {
       return;
     }
 
+    if (!isAssignmentUpdateMode && !hasAtLeastOneQuestionToPublish()) {
+      showToast(
+        isBankMode
+          ? "Phải có ít nhất một câu hỏi trước khi lưu ngân hàng."
+          : "Phải có ít nhất một câu hỏi trước khi xuất bản.",
+        "error",
+      );
+      return;
+    }
+
     setPublishing(true);
 
     try {
@@ -2071,7 +2192,9 @@ const ManualAssignmentCreatorPage = () => {
               : error?.message === "INVALID_UPDATE_QUESTION_REFERENCE"
                 ? "Có câu hỏi chưa hợp lệ để cập nhật. Vui lòng kiểm tra lại nội dung câu hỏi mới."
                 : "Cập nhật bài tập thất bại. Vui lòng kiểm tra dữ liệu và thử lại."
-          : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
+          : error?.message === "NO_SELECTED_QUESTION_IDS"
+            ? "Phải có ít nhất một câu hỏi trước khi xuất bản."
+            : "Bạn không thể xuất bản vì có câu hỏi chưa hoàn thiện. Vui lòng kiểm tra lại các vùng bị đỏ hoặc bấm 'Lưu' để hoàn thiện sau";
 
       showToast(reasonMessages[0] || apiMessage || fallbackMessage, "error");
     } finally {
@@ -2194,13 +2317,61 @@ const ManualAssignmentCreatorPage = () => {
     const load = async () => {
       try {
         let sections = [];
+        let draftSessionQuestions = [];
 
         if (preferWorkspace || (!preferAssignment && shouldLoadDraft)) {
           if (!sessionId) return;
-          const resp = await assignmentApi.getDraftWorkspace(sessionId);
-          sections = Array.isArray(resp?.result?.sections)
-            ? resp.result.sections
-            : [];
+
+          if (isBankMode) {
+            const pageSize = 200;
+            let currentPage = 1;
+            let totalPages = 1;
+            const allDraftQuestions = [];
+
+            while (currentPage <= totalPages) {
+              const resp = await assignmentApi.getDraftSession(
+                sessionId,
+                scope,
+                {
+                  page: currentPage,
+                  size: pageSize,
+                },
+              );
+
+              const draftResult = resp?.result;
+              const pageQuestions =
+                extractQuestionsFromDraftSessionResult(draftResult);
+
+              if (pageQuestions.length > 0) {
+                allDraftQuestions.push(...pageQuestions);
+              }
+
+              const paginationSource =
+                draftResult?.manualData ||
+                draftResult?.aiExcelData ||
+                draftResult ||
+                {};
+
+              const parsedTotalPages = Number(paginationSource?.totalPages);
+              totalPages =
+                Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
+                  ? parsedTotalPages
+                  : currentPage;
+
+              if (currentPage >= totalPages) {
+                break;
+              }
+
+              currentPage += 1;
+            }
+
+            draftSessionQuestions = allDraftQuestions;
+          } else {
+            const resp = await assignmentApi.getDraftWorkspace(sessionId);
+            sections = Array.isArray(resp?.result?.sections)
+              ? resp.result.sections
+              : [];
+          }
         } else if (Number.isFinite(assignmentId) && assignmentId > 0) {
           const assignmentResp =
             await assignmentApi.getAssignment(assignmentId);
@@ -2259,39 +2430,74 @@ const ManualAssignmentCreatorPage = () => {
           setMixedSections(nextSections);
         }
 
-        let loaded = sections.flatMap((section) => {
-          const questions = Array.isArray(section?.draftQuestions)
-            ? section.draftQuestions
-            : Array.isArray(section?.questions)
-              ? section.questions
-              : [];
-          const sortedQuestions = [...questions].sort((left, right) => {
-            const leftOrder = Number(left?.orderIndex);
-            const rightOrder = Number(right?.orderIndex);
+        let loaded = [];
 
-            const normalizedLeft = Number.isFinite(leftOrder)
-              ? leftOrder
-              : Number.MAX_SAFE_INTEGER;
-            const normalizedRight = Number.isFinite(rightOrder)
-              ? rightOrder
-              : Number.MAX_SAFE_INTEGER;
+        if (isBankMode && draftSessionQuestions.length > 0) {
+          const sortedDraftQuestions = [...draftSessionQuestions].sort(
+            (left, right) => {
+              const leftOrder = Number(left?.orderIndex);
+              const rightOrder = Number(right?.orderIndex);
 
-            return normalizedLeft - normalizedRight;
+              const normalizedLeft = Number.isFinite(leftOrder)
+                ? leftOrder
+                : Number.MAX_SAFE_INTEGER;
+              const normalizedRight = Number.isFinite(rightOrder)
+                ? rightOrder
+                : Number.MAX_SAFE_INTEGER;
+
+              if (normalizedLeft !== normalizedRight) {
+                return normalizedLeft - normalizedRight;
+              }
+
+              const leftRowNumber = Number(left?.rowNumber);
+              const rightRowNumber = Number(right?.rowNumber);
+              const normalizedLeftRow = Number.isFinite(leftRowNumber)
+                ? leftRowNumber
+                : Number.MAX_SAFE_INTEGER;
+              const normalizedRightRow = Number.isFinite(rightRowNumber)
+                ? rightRowNumber
+                : Number.MAX_SAFE_INTEGER;
+
+              return normalizedLeftRow - normalizedRightRow;
+            },
+          );
+
+          loaded = sortedDraftQuestions.map((item) => mapBackendQuestion(item));
+        } else {
+          loaded = sections.flatMap((section) => {
+            const questions = Array.isArray(section?.draftQuestions)
+              ? section.draftQuestions
+              : Array.isArray(section?.questions)
+                ? section.questions
+                : [];
+            const sortedQuestions = [...questions].sort((left, right) => {
+              const leftOrder = Number(left?.orderIndex);
+              const rightOrder = Number(right?.orderIndex);
+
+              const normalizedLeft = Number.isFinite(leftOrder)
+                ? leftOrder
+                : Number.MAX_SAFE_INTEGER;
+              const normalizedRight = Number.isFinite(rightOrder)
+                ? rightOrder
+                : Number.MAX_SAFE_INTEGER;
+
+              return normalizedLeft - normalizedRight;
+            });
+            const sectionId = section?.id || section?.sectionId || null;
+            return sortedQuestions.map((item) => {
+              if (
+                item &&
+                typeof item === "object" &&
+                item.question &&
+                typeof item.question === "object"
+              ) {
+                return mapAssignmentQuestionToEditorQuestion(item, sectionId);
+              }
+
+              return mapBackendQuestion(item, sectionId);
+            });
           });
-          const sectionId = section?.id || section?.sectionId || null;
-          return sortedQuestions.map((item) => {
-            if (
-              item &&
-              typeof item === "object" &&
-              item.question &&
-              typeof item.question === "object"
-            ) {
-              return mapAssignmentQuestionToEditorQuestion(item, sectionId);
-            }
-
-            return mapBackendQuestion(item, sectionId);
-          });
-        });
+        }
 
         if (
           alive &&
@@ -2407,7 +2613,9 @@ const ManualAssignmentCreatorPage = () => {
   }, [
     assignmentId,
     formatMode,
+    isBankMode,
     sessionId,
+    scope,
     shouldLoadDraft,
     sourceModeFromStatusQuery,
   ]);

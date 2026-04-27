@@ -8,7 +8,7 @@ import {
 import "@/assets/css/pages/classroom/modals.css";
 import "@/assets/css/pages/question-bank/deleteQuestionBankDialog.css";
 
-const MSG84 = "Hiện tại không thể xóa Ngân hàng đề. Vui lòng thử lại sau.";
+const MSG84 = "Hiện tại không thể xóa Ngân hàng câu hỏi. Vui lòng thử lại sau.";
 
 const getFirstValid = (...values) =>
   values.find((value) => value !== undefined && value !== null);
@@ -142,7 +142,7 @@ const DeleteQuestionBankDialog = ({ questionBank, onClose, onSubmit }) => {
           </div>
 
           <p className="qb-delete-confirm-text">
-            Bạn có chắc chắn muốn xóa ngân hàng đề này không?
+            Bạn có chắc chắn muốn xóa ngân hàng câu hỏi này không?
           </p>
 
           {serverError && <p className="modal-error-alert">{serverError}</p>}
@@ -157,7 +157,7 @@ const DeleteQuestionBankDialog = ({ questionBank, onClose, onSubmit }) => {
             disabled={deleting}
             className="btn-danger qb-delete-confirm-btn"
           >
-            {deleting ? "Đang xóa..." : "Xóa ngân hàng đề"}
+            {deleting ? "Đang xóa..." : "Xóa ngân hàng câu hỏi"}
           </button>
         </div>
       </div>

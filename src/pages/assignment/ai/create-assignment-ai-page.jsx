@@ -487,15 +487,169 @@ const applyQuestionDropToSections = (
   };
 };
 
-const getDraftWorkspaceCached = (sessionId, refreshTick) => {
-  const cacheKey = `${sessionId}:${refreshTick}`;
+const extractQuestionsFromDraftSessionResult = (result) => {
+  const aiExcelQuestions = Array.isArray(result?.aiExcelData?.questions)
+    ? result.aiExcelData.questions
+    : [];
+
+  if (aiExcelQuestions.length > 0) {
+    return aiExcelQuestions;
+  }
+
+  const manualQuestions = Array.isArray(result?.manualData?.questions)
+    ? result.manualData.questions
+    : [];
+
+  if (manualQuestions.length > 0) {
+    return manualQuestions;
+  }
+
+  return Array.isArray(result?.questions) ? result.questions : [];
+};
+
+const inferSectionTypeFromQuestions = (questions = []) => {
+  const list = Array.isArray(questions) ? questions : [];
+  if (!list.length) return SECTION_TYPE.MIXED;
+
+  const hasEssay = list.some((question) => question?.type === "ESSAY");
+  const hasObjective = list.some((question) => question?.type !== "ESSAY");
+
+  if (hasEssay && hasObjective) return SECTION_TYPE.MIXED;
+  if (hasEssay) return SECTION_TYPE.ESSAY;
+  return SECTION_TYPE.OBJECTIVE;
+};
+
+const mapDraftSessionQuestionsToSections = (
+  questions = [],
+  preferredSectionId = null,
+) => {
+  const mappedQuestions = (Array.isArray(questions) ? questions : []).map(
+    (item, index) => toQuestionFromDraft(item, index),
+  );
+
+  if (mappedQuestions.length === 0) {
+    return [];
+  }
+
+  const fallbackSectionId = toPositiveId(preferredSectionId) || 1;
+  const sectionMap = new Map();
+
+  mappedQuestions.forEach((question, index) => {
+    const safeSectionId = toPositiveId(question?.sectionId) || fallbackSectionId;
+    const existingSection = sectionMap.get(safeSectionId);
+
+    if (!existingSection) {
+      sectionMap.set(safeSectionId, {
+        id: safeSectionId,
+        title: sectionMap.size === 0 ? "Danh sách câu hỏi" : `Phần ${sectionMap.size + 1}`,
+        sectionType: SECTION_TYPE.MIXED,
+        orderIndex: sectionMap.size + 1,
+        questions: [
+          {
+            ...question,
+            sectionId: safeSectionId,
+            orderIndex: toSafeOrderIndex(question?.orderIndex, index + 1),
+          },
+        ],
+      });
+      return;
+    }
+
+    existingSection.questions.push({
+      ...question,
+      sectionId: safeSectionId,
+      orderIndex: toSafeOrderIndex(
+        question?.orderIndex,
+        existingSection.questions.length + 1,
+      ),
+    });
+  });
+
+  return [...sectionMap.values()]
+    .sort((left, right) => left.orderIndex - right.orderIndex)
+    .map((section) => {
+      const sortedQuestions = sortQuestionsByOrderIndex(section.questions).map(
+        (question, questionIndex) => ({
+          ...question,
+          sectionId: section.id,
+          orderIndex: toSafeOrderIndex(question?.orderIndex, questionIndex + 1),
+        }),
+      );
+
+      return {
+        ...section,
+        questions: sortedQuestions,
+        sectionType: inferSectionTypeFromQuestions(sortedQuestions),
+      };
+    });
+};
+
+const loadDraftSessionSections = async (
+  sessionId,
+  scope = {},
+  preferredSectionId = null,
+) => {
+  const pageSize = 200;
+  let page = 1;
+  let totalPages = 1;
+  const allQuestions = [];
+
+  while (page <= totalPages) {
+    const response = await assignmentApi.getDraftSession(sessionId, scope, {
+      page,
+      size: pageSize,
+    });
+
+    const result = response?.result || {};
+    const pageQuestions = extractQuestionsFromDraftSessionResult(result);
+    if (pageQuestions.length > 0) {
+      allQuestions.push(...pageQuestions);
+    }
+
+    const paginationSource =
+      result?.aiExcelData || result?.manualData || result || {};
+    const parsedTotalPages = Number(paginationSource?.totalPages);
+    totalPages =
+      Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
+        ? parsedTotalPages
+        : page;
+
+    if (page >= totalPages) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return mapDraftSessionQuestionsToSections(allQuestions, preferredSectionId);
+};
+
+const getDraftWorkspaceCached = (
+  sessionId,
+  refreshTick,
+  {
+    isBankMode = false,
+    scope = {},
+    preferredSectionId = null,
+  } = {},
+) => {
+  const scopeKey = `${scope?.bankId || ""}:${scope?.assignmentId || ""}`;
+  const cacheKey = `${sessionId}:${refreshTick}:${isBankMode ? "bank" : "assignment"}:${scopeKey}:${preferredSectionId || ""}`;
   const cached = workspacePreviewRequestCache.get(cacheKey);
   if (cached) {
     return cached;
   }
 
-  const requestPromise = assignmentApi
-    .getDraftWorkspace(sessionId)
+  const requestPromise = (isBankMode
+    ? loadDraftSessionSections(sessionId, scope, preferredSectionId).then(
+        (sections) => ({
+          result: {
+            sections,
+          },
+        }),
+      )
+    : assignmentApi.getDraftWorkspace(sessionId)
+  )
     .catch((error) => {
       workspacePreviewRequestCache.delete(cacheKey);
       throw error;
@@ -521,8 +675,34 @@ const normalizeRichText = (value) =>
     .trim();
 
 const toQuestionFromDraft = (item, index) => {
+  // If item is already normalized (has `prompt` field), return it as-is to
+  // avoid double-normalization when this function is called a second time in
+  // bank mode (loadWorkspacePreview calls it again on already-mapped data).
+  if (item && typeof item.prompt === "string" && item.type) {
+    return {
+      id:
+        toPositiveId(item?.id) ||
+        toPositiveId(item?.itemId) ||
+        Date.now() + Math.random() + index,
+      type: item.type,
+      prompt: item.prompt,
+      opts: Array.isArray(item.opts) ? item.opts : undefined,
+      cor: item.cor,
+      ans: item.ans,
+      sampleAnswer: item.sampleAnswer || "",
+      cognitiveLevel: item.cognitiveLevel || "",
+      sectionId: toPositiveId(item?.sectionId),
+      orderIndex: toSafeOrderIndex(item?.orderIndex, index + 1),
+      status: String(item?.status || "").toUpperCase(),
+      errors: Array.isArray(item?.errors) ? item.errors : [],
+    };
+  }
+
   const questionData = item?.questionData || item || {};
-  const type = normalizeQuestionTypeFromApi(questionData?.questionType);
+  // Support both raw API shape (questionType) and already-normalized shape (type)
+  const type = normalizeQuestionTypeFromApi(
+    questionData?.questionType ?? item?.type ?? "",
+  );
   const rawOptions = Array.isArray(questionData?.options)
     ? questionData.options
     : [];
@@ -544,6 +724,9 @@ const toQuestionFromDraft = (item, index) => {
     toPositiveId(item?.rowNumber) ||
     Date.now() + Math.random() + index;
 
+  // Support both raw API `content` and already-normalized `prompt`
+  const contentText = questionData?.content || item?.prompt || "";
+
   if (type === "MULTIPLE_CHOICE") {
     const options =
       rawOptions.length > 0
@@ -556,7 +739,7 @@ const toQuestionFromDraft = (item, index) => {
     return {
       id,
       type,
-      prompt: normalizeRichText(questionData?.content || ""),
+      prompt: normalizeRichText(contentText),
       opts: options,
       cor: correctIndex >= 0 ? correctIndex : 0,
       sampleAnswer,
@@ -581,7 +764,7 @@ const toQuestionFromDraft = (item, index) => {
     return {
       id,
       type,
-      prompt: normalizeRichText(questionData?.content || ""),
+      prompt: normalizeRichText(contentText),
       cor: isTrue,
       sampleAnswer,
       cognitiveLevel,
@@ -598,7 +781,7 @@ const toQuestionFromDraft = (item, index) => {
     return {
       id,
       type,
-      prompt: normalizeRichText(questionData?.content || ""),
+      prompt: normalizeRichText(contentText),
       ans: normalizeRichText(
         answerOption?.content ?? questionData?.sampleAnswer ?? "",
       ),
@@ -614,7 +797,7 @@ const toQuestionFromDraft = (item, index) => {
   return {
     id,
     type: "ESSAY",
-    prompt: normalizeRichText(questionData?.content || ""),
+    prompt: normalizeRichText(contentText),
     sampleAnswer,
     cognitiveLevel,
     sectionId,
@@ -1284,6 +1467,14 @@ const CreateAssignmentAiPage = () => {
         const response = await getDraftWorkspaceCached(
           safeSessionId,
           workspaceRefreshTick,
+          {
+            isBankMode,
+            scope: {
+              bankId,
+              assignmentId,
+            },
+            preferredSectionId: initialSectionId,
+          },
         );
         if (!alive) return;
 
@@ -1300,7 +1491,9 @@ const CreateAssignmentAiPage = () => {
 
             const draftQuestions = Array.isArray(section?.draftQuestions)
               ? section.draftQuestions
-              : [];
+              : Array.isArray(section?.questions)
+                ? section.questions
+                : [];
 
             const questions = sortQuestionsByOrderIndex(
               draftQuestions.map((question, questionIndex) =>
@@ -1369,7 +1562,14 @@ const CreateAssignmentAiPage = () => {
     return () => {
       alive = false;
     };
-  }, [draftSessionId, initialSectionId, workspaceRefreshTick]);
+  }, [
+    assignmentId,
+    bankId,
+    draftSessionId,
+    initialSectionId,
+    isBankMode,
+    workspaceRefreshTick,
+  ]);
 
   const togQT = (v) => {
     if (!allowedQuestionTypes.includes(v)) return;

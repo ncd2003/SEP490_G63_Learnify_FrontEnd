@@ -101,7 +101,7 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
       : result.error.flatten().fieldErrors;
 
     const nextErrors = {
-      name: fieldErrors.name?.[0] ?? "",
+      name: !normalizedPayload.name ? "Tên ngân hàng câu hỏi là bắt buộc" : (fieldErrors.name?.[0] ?? ""),
       gradeLevel: fieldErrors.gradeLevel?.[0] ?? "",
       customGradeLevel:
         fields.gradeLevel === "other" && !normalizedPayload.gradeLevel
@@ -116,7 +116,8 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
     if (Object.values(nextErrors).some(Boolean)) {
       setErrors(nextErrors);
       setStatus("missing");
-      toast.error(MSG02, { id: "create-resource-bank-msg02" });
+      const errorMessage = nextErrors.name || MSG02;
+      toast.error(errorMessage, { id: "create-resource-bank-msg02" });
       return;
     }
 
@@ -176,7 +177,7 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
             <div className="qb-create-header-icon">
               <FolderPlus size={18} />
             </div>
-            <h2 className="modal-title">Tạo ngân hàng đề mới</h2>
+            <h2 className="modal-title">Tạo ngân hàng câu hỏi mới</h2>
           </div>
           <button
             onClick={onClose}
@@ -201,16 +202,16 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
           <div className="qb-create-info-box">
             <Info size={16} />
             <div>
-              <div className="qb-create-info-title">Về Ngân Hàng Đề</div>
+              <div className="qb-create-info-title">Về Ngân Hàng Câu Hỏi</div>
               <p>
-                Ngân hàng đề giúp bạn tổ chức và quản lý câu hỏi theo môn học và
+                Ngân hàng câu hỏi giúp bạn tổ chức và quản lý câu hỏi theo môn học và
                 khối lớp để tái sử dụng khi ra đề.
               </p>
             </div>
           </div>
 
           <div className="qb-create-tips-box">
-            <div className="qb-create-tips-title">Gợi ý đặt ngân hàng đề</div>
+            <div className="qb-create-tips-title">Gợi ý đặt tên ngân hàng câu hỏi</div>
             <ul>
               {CREATE_TIPS.map((tip) => (
                 <li key={tip}>{tip}</li>
@@ -232,7 +233,11 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
               placeholder="Ví dụ: Toán 10 - Chương 1"
               className={`form-input ${errors.name ? "has-error" : ""}`}
             />
-            {!errors.name && (
+            {errors.name ? (
+              <p className="form-hint-text qb-create-hint-text" style={{ color: "var(--rd)" }}>
+                {errors.name}
+              </p>
+            ) : (
               <p className="form-hint-text qb-create-hint-text">
                 Tên nên phản ánh nội dung để dễ tìm lại trong danh sách ngân
                 hàng.
@@ -333,7 +338,7 @@ const CreateQuestionBankDialog = ({ onClose, onSubmit, submitting }) => {
               Hủy
             </button>
             <button type="submit" disabled={submitting} className="btn-primary">
-              {submitting ? "Đang tạo..." : "Tạo ngân hàng đề"}
+              {submitting ? "Đang tạo..." : "Tạo ngân hàng câu hỏi"}
             </button>
           </div>
         </form>

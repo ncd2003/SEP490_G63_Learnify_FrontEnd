@@ -24,8 +24,8 @@ import {
 import { PATH_TEACHER } from "@/routes/paths";
 import "@/assets/css/pages/question-bank/editResourceBankPage.css";
 
-const MSG81 = "Ngân hàng đề đã được cập nhật thành công.";
-const MSG82 = "Vui lòng nhập tên hợp lệ cho Ngân hàng đề trước khi lưu.";
+const MSG81 = "Ngân hàng câu hỏi đã được cập nhật thành công.";
+const MSG82 = "Vui lòng nhập tên hợp lệ cho Ngân hàng câu hỏi trước khi lưu.";
 
 const HISTORY = [
   { date: "2026-02-03 10:20", text: "Cập nhật mô tả ngân hàng" },
@@ -33,7 +33,7 @@ const HISTORY = [
     date: "2026-01-25 14:35",
     text: 'Đổi tên từ "Toán 10 - Chương Hàm số" thành "Toán 10 - Hàm số"',
   },
-  { date: "2026-01-10 08:45", text: "Tạo ngân hàng đề" },
+  { date: "2026-01-10 08:45", text: "Tạo ngân hàng câu hỏi" },
 ];
 
 const EditResourceBankPage = () => {
@@ -162,7 +162,7 @@ const EditResourceBankPage = () => {
 
     if (!Number.isFinite(safeBankId) || safeBankId <= 0) {
       setStatus("error");
-      toast.error("ID ngân hàng đề không hợp lệ.");
+      toast.error("ID ngân hàng câu hỏi không hợp lệ.");
       return;
     }
 
@@ -187,7 +187,7 @@ const EditResourceBankPage = () => {
       setStatus("error");
       toast.error(
         err.response?.data?.message ??
-          "Cập nhật ngân hàng đề thất bại. Vui lòng thử lại.",
+          "Cập nhật ngân hàng câu hỏi thất bại. Vui lòng thử lại.",
       );
     } finally {
       setIsLoading(false);
@@ -206,7 +206,7 @@ const EditResourceBankPage = () => {
     <div className="edit-rb-page">
       <nav className="edit-rb-crumb">
         <Link to={PATH_TEACHER.questionBank} className="edit-rb-crumb-link">
-          Ngân hàng đề
+          Ngân hàng câu hỏi
         </Link>
         <ChevronRight size={12} />
         <Link
@@ -225,7 +225,7 @@ const EditResourceBankPage = () => {
         </div>
         <div>
           <div className="edit-rb-heading-row">
-            <h1>Chỉnh Sửa Ngân Hàng Đề</h1>
+            <h1>Chỉnh Sửa Ngân Hàng Câu Hỏi</h1>
             <span className="edit-rb-badge">CHẾ ĐỘ CHỈNH SỬA</span>
           </div>
           <p>
@@ -240,7 +240,7 @@ const EditResourceBankPage = () => {
           <CheckCircle2 size={17} />
           <div>
             <strong>MSG81: Cập nhật thành công</strong>
-            <p>Ngân hàng đề đã được cập nhật. Tất cả thay đổi đã được lưu.</p>
+            <p>Ngân hàng câu hỏi đã được cập nhật. Tất cả thay đổi đã được lưu.</p>
           </div>
           <button type="button" onClick={() => setStatus(null)}>
             <X size={13} />
@@ -276,7 +276,7 @@ const EditResourceBankPage = () => {
       <section className="edit-rb-stats">
         <div className="edit-rb-section-title">
           <BarChart2 size={14} />
-          Thống kê ngân hàng đề
+          Thống kê ngân hàng câu hỏi
         </div>
         <div className="edit-rb-stats-grid">
           {[
@@ -312,7 +312,7 @@ const EditResourceBankPage = () => {
 
         <div className="edit-rb-section-title with-line">
           <Database size={14} />
-          Thông tin ngân hàng đề
+          Thông tin ngân hàng câu hỏi
         </div>
 
         <div className="edit-rb-field">
@@ -368,7 +368,7 @@ const EditResourceBankPage = () => {
             rows={5}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Nhập mô tả ngắn về mục đích sử dụng ngân hàng đề này..."
+            placeholder="Nhập mô tả ngắn về mục đích sử dụng ngân hàng câu hỏi này..."
           />
         </div>
 
@@ -435,7 +435,7 @@ const EditResourceBankPage = () => {
             <div className="edit-rb-modal-icon">
               <Trash2 size={26} />
             </div>
-            <h3>Xác nhận xóa ngân hàng đề</h3>
+            <h3>Xác nhận xóa ngân hàng câu hỏi</h3>
             <p>
               Bạn có chắc chắn muốn xóa ngân hàng{" "}
               <strong>{bankData?.name || "N/A"}</strong>? Hành động này không

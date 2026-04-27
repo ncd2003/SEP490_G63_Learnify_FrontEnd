@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { questionBankApi } from "@/apis/question-bank.api";
 import { PATH_TEACHER } from "@/routes/paths";
@@ -412,7 +412,11 @@ body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoot
 .tb-bar{flex:1;height:6px;background:var(--bl);border-radius:6px;overflow:hidden}
 .tb-fill{height:100%;border-radius:6px;transition:width .6s var(--e)}
 .tb-cnt{font-size:11px;font-weight:700;color:var(--t2);min-width:20px;text-align:right}
-.warn{display:flex;align-items:center;gap:9px;padding:12px 16px;background:var(--orl);border:1px solid #FDE68A;border-radius:var(--rm);margin-bottom:16px;font-size:12px;color:#92400E;font-weight:600;animation:fu .3s ease both}
+.warn{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:12px 16px;background:var(--orl);border:1px solid #FDE68A;border-radius:var(--rm);margin-bottom:16px;font-size:12px;color:#92400E;font-weight:600;animation:fu .3s ease both}
+.warn-l{display:flex;align-items:center;gap:9px;flex:1}
+.warn-del{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--rs);border:1.5px solid #F59E0B;background:#fff;color:#92400E;font-size:10px;font-weight:700;font-family:var(--f);cursor:pointer;transition:all .2s var(--e);flex-shrink:0}
+.warn-del:hover{background:#FEF3C7;border-color:#D97706}
+.warn-del:disabled{opacity:.5;cursor:not-allowed}
 .pvh{height:54px;background:var(--card);border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0}
 .pv-t{font-family:var(--fd);font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
 .pv-t svg{color:var(--p)}
@@ -477,6 +481,18 @@ body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoot
 @keyframes skl{to{background-position:-200% 0}}
 .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--rm);font-size:12px;font-weight:600;font-family:var(--f);box-shadow:var(--sl);z-index:2000;animation:tin .3s ease;display:flex;align-items:center;gap:7px;background:var(--gn);color:var(--inv)}
 @keyframes tin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.qc.invalid{border-color:rgba(239,68,68,.35);background:linear-gradient(to bottom,#fff5f5,var(--card))}
+.qc.invalid .qc-n{background:var(--rd)}
+.qc.invalid .qc-pr,.qc.invalid .qc-opts,.qc.invalid .qc-tf,.qc.invalid .qc-fb{opacity:.45}
+.inv-banner{display:flex;align-items:flex-start;gap:7px;margin:8px 0 4px;padding:8px 10px;background:var(--rdl);border:1px solid rgba(239,68,68,.22);border-radius:var(--rs)}
+.inv-icon{flex-shrink:0;margin-top:1px;color:var(--rd)}
+.inv-info{flex:1}
+.inv-title{font-size:10px;font-weight:800;color:var(--rd);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.inv-errs{display:flex;flex-direction:column;gap:2px}
+.inv-err{font-size:10.5px;font-weight:600;color:#b91c1c;line-height:1.4}
+.inv-skip{font-size:9px;font-weight:600;color:var(--rd);opacity:.7;margin-top:3px}
+.qc.invalid .qc-bar{background:#fff5f5}
 @media(max-width:900px){.app{flex-direction:column}.pnl{width:100%}.pnl-l{border-right:none;border-bottom:1px solid var(--b);max-height:50vh}}
 `;
 
@@ -512,14 +528,6 @@ const normalizeEditorType = (type) => {
   if (upper === "TRUE_FALSE") return "TRUE_FALSE";
   if (upper === "ESSAY") return "ESSAY";
   return "MULTIPLE_CHOICE";
-};
-
-const normalizeApiType = (type) => {
-  const normalized = normalizeEditorType(type);
-  if (normalized === "FILL_IN_BLANK") {
-    return "FILL_IN_THE_BLANK";
-  }
-  return normalized;
 };
 
 const normalizeDifficulty = (value) => {
@@ -561,6 +569,7 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
   }
 
   if (type === "FILL_IN_BLANK") {
+    // FILL_IN_BLANK always has exactly one answer: optionA (rawOptions[0])
     return {
       id: Number(item?.id || item?.rowNumber || index + 1),
       rowNumber: Number(item?.rowNumber || index + 1),
@@ -641,77 +650,19 @@ const validateEditorQuestion = (question) => {
   return true;
 };
 
-const mapEditorQuestionToConfirmPayload = (question) => {
-  const type = normalizeEditorType(question?.type);
-
-  if (type === "MULTIPLE_CHOICE") {
-    const options = Array.isArray(question?.opts)
-      ? question.opts
-          .map((option, index) => ({
-            content: String(option || "").trim(),
-            isCorrect: index === question?.cor,
-          }))
-          .filter((option) => option.content)
-      : [];
-
-    return {
-      content: String(question?.prompt || "").trim(),
-      questionType: normalizeApiType(type),
-      difficulty: normalizeDifficulty(question?.difficulty),
-      defaultPoints: Number(question?.points ?? 1) || 1,
-      sampleAnswer: null,
-      options,
-    };
-  }
-
-  if (type === "TRUE_FALSE") {
-    return {
-      content: String(question?.prompt || "").trim(),
-      questionType: normalizeApiType(type),
-      difficulty: normalizeDifficulty(question?.difficulty),
-      defaultPoints: Number(question?.points ?? 1) || 1,
-      sampleAnswer: null,
-      options: [
-        { content: "Đúng", isCorrect: question?.cor === true },
-        { content: "Sai", isCorrect: question?.cor === false },
-      ],
-    };
-  }
-
-  if (type === "FILL_IN_BLANK") {
-    return {
-      content: String(question?.prompt || "").trim(),
-      questionType: normalizeApiType(type),
-      difficulty: normalizeDifficulty(question?.difficulty),
-      defaultPoints: Number(question?.points ?? 1) || 1,
-      sampleAnswer: null,
-      options: [
-        {
-          content: String(question?.ans || "").trim(),
-          isCorrect: true,
-        },
-      ],
-    };
-  }
-
-  return {
-    content: String(question?.prompt || "").trim(),
-    questionType: normalizeApiType(type),
-    difficulty: normalizeDifficulty(question?.difficulty),
-    defaultPoints: Number(question?.points ?? 1) || 1,
-    sampleAnswer: String(question?.ans || "").trim() || null,
-    options: null,
-  };
-};
-
-const ImportAssignmentFilePage = () => {
+const ImportAssignmentFilePage = ({
+  initialPreviewItems = [],
+  isInitializingDraft = false,
+  hasDraftBootstrapped = false,
+}) => {
   const navigate = useNavigate();
   const { bankId: bankIdFromPath } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const resolvedBankId = toPositiveId(
     searchParams.get("bankId") || bankIdFromPath,
   );
+  const currentSessionId = toPositiveId(searchParams.get("sessionId"));
   const isBankMode = Boolean(resolvedBankId);
 
   const [file, setFile] = useState(null);
@@ -722,7 +673,9 @@ const ImportAssignmentFilePage = () => {
   const [editData, setEditData] = useState(null);
   const [toast, setToast] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingInvalid, setIsDeletingInvalid] = useState(false);
   const fRef = useRef(null);
+  const hasAppliedInitialDraftRef = useRef(false);
 
   const fileName = file?.name || "";
   const fileSizeLabel =
@@ -734,6 +687,34 @@ const ImportAssignmentFilePage = () => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
   };
+
+  useEffect(() => {
+    if (!isBankMode || !hasDraftBootstrapped) {
+      return;
+    }
+
+    if (hasAppliedInitialDraftRef.current) {
+      return;
+    }
+
+    const previewItems = Array.isArray(initialPreviewItems)
+      ? initialPreviewItems
+      : [];
+
+    if (previewItems.length <= 0) {
+      return;
+    }
+
+    hasAppliedInitialDraftRef.current = true;
+    setQs(
+      previewItems.map((item, index) =>
+        mapPreviewItemToEditorQuestion(item, index),
+      ),
+    );
+    setPhase("results");
+    setPg(1);
+    showToast(`Đã tải ${previewItems.length} câu hỏi nháp.`);
+  }, [isBankMode, hasDraftBootstrapped, initialPreviewItems, showToast]);
 
   const doImport = async () => {
     if (!file) {
@@ -752,13 +733,49 @@ const ImportAssignmentFilePage = () => {
     }
 
     try {
-      const response = await questionBankApi.previewImportQuestions(
-        resolvedBankId,
+      const response = await questionBankApi.importQuestionsFromExcelDraft(
         file,
+        resolvedBankId,
+        undefined,
+        currentSessionId,
       );
-      const previewItems = Array.isArray(response?.result)
-        ? response.result
+      const sessionResult = response?.result || {};
+      const nextSessionId = toPositiveId(sessionResult?.sessionId);
+
+      if (nextSessionId && nextSessionId !== currentSessionId) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set("sessionId", String(nextSessionId));
+        setSearchParams(nextParams, { replace: true });
+      }
+
+      // Re-fetch the draft session to get questions with real DB `id` values.
+      // The /import response only contains `rowNumber`, not the actual item IDs
+      // needed for confirmDraftSession.
+      const effectiveSessionId = nextSessionId || currentSessionId;
+      let previewItems = Array.isArray(sessionResult?.questions)
+        ? sessionResult.questions
         : [];
+
+      if (effectiveSessionId) {
+        try {
+          const draftResponse = await questionBankApi.getDraftSession(
+            effectiveSessionId,
+            resolvedBankId,
+            undefined,
+            { page: 1, size: 200 },
+          );
+          const draftResult = draftResponse?.result;
+          const draftItems =
+            draftResult?.aiExcelData?.questions ||
+            draftResult?.questions;
+          if (Array.isArray(draftItems) && draftItems.length > 0) {
+            previewItems = draftItems;
+          }
+        } catch {
+          // Fall back to import response items — IDs will be rowNumbers
+          // but at least the user sees the data.
+        }
+      }
 
       setQs(
         previewItems.map((item, index) =>
@@ -769,11 +786,11 @@ const ImportAssignmentFilePage = () => {
       setPg(1);
       showToast(
         response?.message ||
-          `Đã đọc ${previewItems.length} dòng từ file import.`,
+          `Đã xử lý ${previewItems.length} câu từ file Excel.`,
       );
     } catch (error) {
       const apiMessage =
-        error?.response?.data?.message || "Không thể preview file import.";
+        error?.response?.data?.message || "Không thể import file Excel.";
       showToast(apiMessage);
       setQs([]);
       setPhase("upload");
@@ -786,20 +803,43 @@ const ImportAssignmentFilePage = () => {
       return;
     }
 
-    const payload = qs
-      .filter((question) => validateEditorQuestion(question))
-      .map((question) => mapEditorQuestionToConfirmPayload(question));
+    if (!currentSessionId) {
+      showToast("Không tìm thấy phiên làm việc để xác nhận lưu.");
+      return;
+    }
 
-    if (!payload.length) {
-      showToast("Không có câu hỏi hợp lệ để lưu vào ngân hàng đề.");
+    // Block saving if there are still INVALID questions — user must remove them first.
+    const invalidCount = qs.filter((q) => q?.status === "INVALID").length;
+    if (invalidCount > 0) {
+      showToast(
+        `Còn ${invalidCount} câu không hợp lệ. Vui lòng xóa chúng trước khi lưu ngân hàng.`,
+      );
+      return;
+    }
+
+    // Use server-provided status as the source of truth (not FE re-validation)
+    // to ensure we send the correct DB item IDs, not rowNumbers.
+    const selectedQuestionIds = [
+      ...new Set(
+        qs
+          .filter((question) => question?.status === "VALID")
+          .map((question) => toPositiveId(question?.id))
+          .filter(Boolean),
+      ),
+    ];
+
+    if (!selectedQuestionIds.length) {
+      showToast("Không có câu hỏi hợp lệ để xác nhận lưu.");
       return;
     }
 
     try {
       setIsSaving(true);
-      const response = await questionBankApi.confirmImportQuestions(
+      const response = await questionBankApi.confirmDraftSession(
+        currentSessionId,
         resolvedBankId,
-        payload,
+        undefined,
+        selectedQuestionIds,
       );
       showToast(response?.message || "Đã lưu câu hỏi vào ngân hàng đề.");
       navigate(PATH_TEACHER.questionBankDetail(resolvedBankId));
@@ -852,8 +892,31 @@ const ImportAssignmentFilePage = () => {
     if (editId === id) cancelEdit();
   };
 
+  const handleDeleteAllInvalid = async () => {
+    if (!currentSessionId || isDeletingInvalid) return;
+
+    setIsDeletingInvalid(true);
+    try {
+      await questionBankApi.deleteInvalidItems(currentSessionId);
+      // Remove invalid questions from local state immediately
+      setQs((prev) => prev.filter((q) => q.status === "VALID"));
+      setPg(1);
+      showToast("Đã xóa tất cả câu hỏi không hợp lệ.");
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        "Không thể xóa câu hỏi không hợp lệ. Vui lòng thử lại.";
+      showToast(msg);
+    } finally {
+      setIsDeletingInvalid(false);
+    }
+  };
+
+  // Use the server-provided `status` field as the source of truth for stats.
+  // `validateEditorQuestion` is still used in handleSaveToBank to filter
+  // which questions to actually submit.
   const validCount = useMemo(
-    () => qs.filter((question) => validateEditorQuestion(question)).length,
+    () => qs.filter((question) => question?.status === "VALID").length,
     [qs],
   );
   const errs = Math.max(0, qs.length - validCount);
@@ -999,7 +1062,9 @@ const ImportAssignmentFilePage = () => {
             <button
               type="button"
               className="ibtn"
-              disabled={!file || phase === "loading" || isSaving}
+              disabled={
+                !file || phase === "loading" || isSaving || isInitializingDraft
+              }
               onClick={doImport}
             >
               <div className="shim" />
@@ -1074,8 +1139,35 @@ const ImportAssignmentFilePage = () => {
 
               {errs > 0 && (
                 <div className="warn">
-                  <I.Alert /> Có {errs} câu cần kiểm tra. Bấm sửa ở preview bên
-                  phải.
+                  <div className="warn-l">
+                    <I.Alert />
+                    Có {errs} câu không hợp lệ, sẽ bị bỏ qua khi lưu ngân hàng.
+                  </div>
+                  <button
+                    type="button"
+                    className="warn-del"
+                    onClick={handleDeleteAllInvalid}
+                    disabled={isDeletingInvalid || isSaving}
+                    title="Xóa tất cả câu hỏi không hợp lệ khỏi danh sách"
+                  >
+                    {isDeletingInvalid ? (
+                      <>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
+                          <path d="M21 12a9 9 0 11-6.219-8.56" />
+                        </svg>
+                        Đang xóa...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                        Xóa {errs} câu không hợp lệ
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
 
@@ -1150,12 +1242,18 @@ const ImportAssignmentFilePage = () => {
               <I.Eye />
             </div>
             <div className="emp-t">
-              {phase === "loading" ? "Đang xử lý..." : "Chưa có câu hỏi"}
+              {phase === "loading"
+                ? "Đang xử lý..."
+                : isInitializingDraft
+                  ? "Đang tải bản nháp..."
+                  : "Chưa có câu hỏi"}
             </div>
             <div className="emp-d">
               {phase === "loading"
                 ? "Hệ thống đang phân tích file của bạn..."
-                : "Import file ở bên trái để xem preview câu hỏi tại đây."}
+                : isInitializingDraft
+                  ? "Hệ thống đang khởi tạo phiên import và tải dữ liệu bản nháp."
+                  : "Import file ở bên trái để xem preview câu hỏi tại đây."}
             </div>
           </div>
         ) : (
@@ -1164,10 +1262,12 @@ const ImportAssignmentFilePage = () => {
               const num = (pg - 1) * PP + i + 1;
               const isEd = editId === q.id;
               const d = isEd ? editData : q;
+              const isInvalid = q.status === "INVALID";
+              const errors = Array.isArray(q.errors) && q.errors.length > 0 ? q.errors : [];
               return (
                 <div
                   key={q.id}
-                  className={`qc${isEd ? " editing" : ""}`}
+                  className={`qc${isEd ? " editing" : ""}${isInvalid ? " invalid" : ""}`}
                   style={{ animationDelay: `${i * 0.04}s` }}
                 >
                   <div className="qc-m">
@@ -1177,6 +1277,29 @@ const ImportAssignmentFilePage = () => {
                         <span className={`qc-tb ${TC[d.type]}`}>
                           {TL[d.type]}
                         </span>
+                        {isInvalid && (
+                          <div className="inv-banner">
+                            <div className="inv-icon">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                              </svg>
+                            </div>
+                            <div className="inv-info">
+                              <div className="inv-title">Không thể import</div>
+                              <div className="inv-errs">
+                                {errors.length > 0
+                                  ? errors.map((err, ei) => (
+                                      <div key={ei} className="inv-err">• {err}</div>
+                                    ))
+                                  : <div className="inv-err">• Câu hỏi không hợp lệ</div>
+                                }
+                              </div>
+                              <div className="inv-skip">Câu này sẽ bị bỏ qua khi lưu ngân hàng</div>
+                            </div>
+                          </div>
+                        )}
                         {isEd ? (
                           <textarea
                             className="ed-pr"
@@ -1322,11 +1445,20 @@ const ImportAssignmentFilePage = () => {
                           <button
                             type="button"
                             className="ab ed"
-                            onClick={() => startEdit(q)}
+                            onClick={() => !isInvalid && startEdit(q)}
+                            disabled={isInvalid}
+                            style={isInvalid ? { opacity: 0.35, cursor: "not-allowed" } : {}}
+                            title={isInvalid ? "Câu không hợp lệ, không thể sửa" : ""}
                           >
                             <I.Edit /> Sửa
                           </button>
-                          <button type="button" className="ab">
+                          <button
+                            type="button"
+                            className="ab"
+                            disabled={isInvalid}
+                            style={isInvalid ? { opacity: 0.35, cursor: "not-allowed" } : {}}
+                            title={isInvalid ? "Câu không hợp lệ, không thể nhân bản" : ""}
+                          >
                             <I.Copy /> Nhân bản
                           </button>
                         </>

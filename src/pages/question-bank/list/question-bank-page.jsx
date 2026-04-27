@@ -237,7 +237,7 @@ const QuestionBankPage = () => {
             }}
           >
             <Plus size={16} />
-            Tạo ngân hàng đề
+            Tạo ngân hàng câu hỏi
           </button>
         </div>
       </div>
@@ -486,7 +486,7 @@ const QuestionBankPage = () => {
 
                   <p className="qb-card-desc">
                     {questionBank.description ||
-                      "Chưa có mô tả cho ngân hàng đề này."}
+                      "Chưa có mô tả cho ngân hàng câu hỏi này."}
                   </p>
 
                   <div className="qb-card-actions">
