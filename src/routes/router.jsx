@@ -208,6 +208,9 @@ const AdminPlanManagementPage = Loadable(
 const NotFoundPage = Loadable(
   lazy(() => import("@/pages/not-found/not-found-page")),
 );
+const AccessDeniedPage = Loadable(
+  lazy(() => import("@/pages/access-denied/access-denied-page")),
+);
 
 const ClassroomListOrStudentPage = () => {
   const { user } = useAuth();
@@ -264,6 +267,7 @@ const AppRoutes = () =>
     },
     { path: PATH_PAYMENT.success, element: <PaymentSuccessPage /> },
     { path: PATH_PAYMENT.cancel, element: <PaymentCancelPage /> },
+    { path: PATH_AUTH.accessDenied, element: <AccessDeniedPage /> },
     { path: PATH_AUTH.terms, element: <TermsOfServicePage /> },
     { path: PATH_AUTH.privacy, element: <PrivacyPolicyPage /> },
 

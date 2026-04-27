@@ -506,6 +506,12 @@
   color: #111827;
 }
 
+.form-error-text {
+  margin: 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+
 .move-tree-scroll {
   max-height: 50vh;
   overflow-y: auto;
@@ -548,34 +554,42 @@
 }
 
 .material-preview-modal {
-  max-width: 920px;
+  width: min(96vw, 1200px);
+  max-width: 1200px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .material-preview-body {
-  min-height: 360px;
-  max-height: 65vh;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #f9fafb;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
 }
 
 .material-preview-image,
 .material-preview-video,
 .material-preview-frame {
   width: 100%;
-  max-height: calc(65vh - 20px);
+  height: 100%;
+  min-height: 68vh;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
 }
 
 .material-preview-image {
   object-fit: contain;
+  max-height: 100%;
 }
 
 .material-preview-unsupported {

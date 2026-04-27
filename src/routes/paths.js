@@ -25,6 +25,7 @@ export const PATH_AUTH = {
   register: "/register",
   terms: "/terms-of-service",
   privacy: "/privacy-policy",
+  accessDenied: "/access-denied",
   verifyOtp: "/verify-otp",
   oauth2Redirect: "/oauth2/redirect",
   selectRole: "/select-role",
