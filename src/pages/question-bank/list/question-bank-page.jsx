@@ -10,6 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   PenLine,
+  GraduationCap,
+  Hash,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useDebounce from "@/hooks/use-debounce";
@@ -325,19 +329,31 @@ const QuestionBankPage = () => {
 
                   <div className="qb-card-meta-grid">
                     <div className="qb-meta-item">
-                      <span>Khối lớp</span>
+                      <div className="qb-meta-label">
+                        <GraduationCap size={13} />
+                        <span>Khối lớp</span>
+                      </div>
                       <strong>{gradeLabel}</strong>
                     </div>
                     <div className="qb-meta-item">
-                      <span>ID ngân hàng</span>
+                      <div className="qb-meta-label">
+                        <Hash size={13} />
+                        <span>ID ngân hàng</span>
+                      </div>
                       <strong>#{questionBank.id}</strong>
                     </div>
                     <div className="qb-meta-item qb-meta-item-wide">
-                      <span>Ngày tạo</span>
+                      <div className="qb-meta-label">
+                        <Calendar size={13} />
+                        <span>Ngày tạo</span>
+                      </div>
                       <strong>{formatDateTime(questionBank.createdAt)}</strong>
                     </div>
                     <div className="qb-meta-item qb-meta-item-wide">
-                      <span>Cập nhật lúc</span>
+                      <div className="qb-meta-label">
+                        <Clock size={13} />
+                        <span>Cập nhật lúc</span>
+                      </div>
                       <strong>
                         {formatDateTime(
                           questionBank.updatedAt ?? questionBank.updateAt,
