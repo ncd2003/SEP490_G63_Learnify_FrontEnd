@@ -28,8 +28,13 @@ const CreateQuestionManualPage = () => {
       shouldUpdate = true;
     }
 
-    if (!nextParams.get("format")) {
+    if (String(nextParams.get("format") || "").toLowerCase() !== "mixed") {
       nextParams.set("format", "mixed");
+      shouldUpdate = true;
+    }
+
+    if (nextParams.has("sectionId")) {
+      nextParams.delete("sectionId");
       shouldUpdate = true;
     }
 
@@ -38,7 +43,7 @@ const CreateQuestionManualPage = () => {
     }
 
     setSearchParams(nextParams, { replace: true });
-  }, [bankId, searchParams, setSearchParams]);
+  }, [safeBankId, searchParams, setSearchParams]);
 
   if (!isReady) {
     return null;

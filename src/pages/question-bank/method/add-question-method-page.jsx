@@ -887,7 +887,10 @@ const AddQuestionMethodPage = () => {
     sessionType: null,
     mode: null,
   });
-  const [actionError, setActionError] = useState({ sessionType: null, message: "" });
+  const [actionError, setActionError] = useState({
+    sessionType: null,
+    message: "",
+  });
 
   const safeBankId = toPositiveId(bankId);
   const hasValidBankId = Boolean(safeBankId);
@@ -945,7 +948,7 @@ const AddQuestionMethodPage = () => {
     const query = buildQuestionBankQuery(
       sessionId,
       sessionType === SESSION_TYPE.MANUAL_CREATION
-        ? { format: searchParams.get("format") || "mixed" }
+        ? { format: "mixed", sectionId: null }
         : {},
     );
 
@@ -1050,8 +1053,7 @@ const AddQuestionMethodPage = () => {
     } catch (error) {
       console.error(`Action ${mode} failed for ${sessionType}:`, error);
       const message =
-        error?.response?.data?.message ||
-        "Đã xảy ra lỗi. Vui lòng thử lại.";
+        error?.response?.data?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
       setActionError({ sessionType, message });
     } finally {
       setActionLoading({ sessionType: null, mode: null });

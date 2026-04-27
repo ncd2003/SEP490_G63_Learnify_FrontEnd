@@ -833,6 +833,14 @@ const getDraftWorkspace = (sessionId) => {
 
 /**
  * @param {number|string} sessionId
+ */
+const getDraftSessionChatHistory = (sessionId) => {
+  const safeSessionId = normalizeId(sessionId, "sessionId");
+  return apiRequest.get(`${DRAFT_SESSION_BASE}/${safeSessionId}/chat-history`);
+};
+
+/**
+ * @param {number|string} sessionId
  * @param {{
  *   itemId?: number | null,
  *   content?: string,
@@ -946,6 +954,7 @@ export const assignmentApi = {
   refineAiQuestions,
   getDraftSession,
   getDraftWorkspace,
+  getDraftSessionChatHistory,
   autoSaveDraftItem,
   batchAutoSaveDraftItems,
   deleteDraftItem,
