@@ -13,19 +13,67 @@ import {
 /* ─────────────────────────── constants ─────────────────────────── */
 
 const COG = [
-  { v: "REMEMBERING", l: "Nhớ",       d: "Nhận biết, ghi nhớ",      c: "#10B981", bg: "#ECFDF5", border: "#86EFAC", text: "#047857" },
-  { v: "UNDERSTANDING", l: "Hiểu",    d: "Giải thích, diễn giải",   c: "#0EA5E9", bg: "#ECFEFF", border: "#67E8F9", text: "#0E7490" },
-  { v: "APPLYING", l: "Vận dụng",     d: "Áp dụng tình huống",      c: "#2563EB", bg: "#EFF6FF", border: "#93C5FD", text: "#1D4ED8" },
-  { v: "ANALYZING", l: "Phân tích",   d: "So sánh, phân biệt",      c: "#8B5CF6", bg: "#F5F3FF", border: "#C4B5FD", text: "#6D28D9" },
-  { v: "EVALUATING", l: "Đánh giá",   d: "Phán xét, nhận định",     c: "#F59E0B", bg: "#FFFBEB", border: "#FCD34D", text: "#B45309" },
-  { v: "CREATING", l: "Sáng tạo",     d: "Tạo mới, thiết kế",       c: "#EF4444", bg: "#FEF2F2", border: "#FCA5A5", text: "#B91C1C" },
+  {
+    v: "REMEMBERING",
+    l: "Nhớ",
+    d: "Nhận biết, ghi nhớ",
+    c: "#10B981",
+    bg: "#ECFDF5",
+    border: "#86EFAC",
+    text: "#047857",
+  },
+  {
+    v: "UNDERSTANDING",
+    l: "Hiểu",
+    d: "Giải thích, diễn giải",
+    c: "#0EA5E9",
+    bg: "#ECFEFF",
+    border: "#67E8F9",
+    text: "#0E7490",
+  },
+  {
+    v: "APPLYING",
+    l: "Vận dụng",
+    d: "Áp dụng tình huống",
+    c: "#2563EB",
+    bg: "#EFF6FF",
+    border: "#93C5FD",
+    text: "#1D4ED8",
+  },
+  {
+    v: "ANALYZING",
+    l: "Phân tích",
+    d: "So sánh, phân biệt",
+    c: "#8B5CF6",
+    bg: "#F5F3FF",
+    border: "#C4B5FD",
+    text: "#6D28D9",
+  },
+  {
+    v: "EVALUATING",
+    l: "Đánh giá",
+    d: "Phán xét, nhận định",
+    c: "#F59E0B",
+    bg: "#FFFBEB",
+    border: "#FCD34D",
+    text: "#B45309",
+  },
+  {
+    v: "CREATING",
+    l: "Sáng tạo",
+    d: "Tạo mới, thiết kế",
+    c: "#EF4444",
+    bg: "#FEF2F2",
+    border: "#FCA5A5",
+    text: "#B91C1C",
+  },
 ];
 
 const QTYPES = [
   { v: "MULTIPLE_CHOICE", l: "Trắc nghiệm", ic: "MC", cls: "badge-mc" },
-  { v: "TRUE_FALSE",      l: "Đúng / Sai",  ic: "TF", cls: "badge-tf" },
+  { v: "TRUE_FALSE", l: "Đúng / Sai", ic: "TF", cls: "badge-tf" },
   { v: "FILL_IN_THE_BLANK", l: "Điền khuyết", ic: "FB", cls: "badge-fb" },
-  { v: "ESSAY",           l: "Tự luận",     ic: "ES", cls: "badge-es" },
+  { v: "ESSAY", l: "Tự luận", ic: "ES", cls: "badge-es" },
 ];
 
 const LETTERS = "ABCDEFGH";
@@ -35,23 +83,244 @@ const ITEMS_PER_PAGE = 10;
 /* ─────────────────────────── icons ─────────────────────────── */
 
 const Ic = {
-  ArrowL: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
-  Sparkles: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3l1.9 5.8a2 2 0 001.3 1.3L21 12l-5.8 1.9a2 2 0 00-1.3 1.3L12 21l-1.9-5.8a2 2 0 00-1.3-1.3L3 12l5.8-1.9a2 2 0 001.3-1.3L12 3z"/></svg>,
-  Search: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
-  Download: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-  Upload: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
-  Check: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
-  Edit: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-  Copy: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
-  Trash: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
-  Plus: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  ChevL: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>,
-  ChevR: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>,
-  X: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  Calendar: () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  User: () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-  Book: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>,
-  Loader: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--p)" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+  ArrowL: () => (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  ),
+  Sparkles: () => (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M12 3l1.9 5.8a2 2 0 001.3 1.3L21 12l-5.8 1.9a2 2 0 00-1.3 1.3L12 21l-1.9-5.8a2 2 0 00-1.3-1.3L3 12l5.8-1.9a2 2 0 001.3-1.3L12 3z" />
+    </svg>
+  ),
+  Search: () => (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  Download: () => (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  ),
+  Upload: () => (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  ),
+  Check: () => (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  ),
+  Edit: () => (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  ),
+  Copy: () => (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+    </svg>
+  ),
+  Trash: () => (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+    </svg>
+  ),
+  Plus: () => (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  ),
+  ChevL: () => (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  ),
+  ChevR: () => (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  ),
+  X: () => (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
+  Calendar: () => (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  ),
+  User: () => (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  Book: () => (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#fff"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    >
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+  ),
+  Loader: () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--p)"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M21 12a9 9 0 11-6.219-8.56" />
+    </svg>
+  ),
 };
 
 /* ─────────────────────────── CSS ─────────────────────────── */
@@ -59,7 +328,6 @@ const Ic = {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Be Vietnam Pro',sans-serif;background:#F7F8FC;color:#1E293B;-webkit-font-smoothing:antialiased}
 :root{
   --p:#2563EB;--pd:#1D4ED8;--pl:#EFF6FF;--plr:#F8FAFF;--pg:rgba(37,99,235,.10);--ps:rgba(37,99,235,.22);
   --gr:linear-gradient(135deg,#3B82F6,#2563EB 50%,#1D4ED8);
@@ -73,22 +341,28 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:#F7F8FC;color:#1E293B;-w
   --f:'Be Vietnam Pro',sans-serif;
   --e:cubic-bezier(.4,0,.2,1);
 }
-.app{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--bg)}
-.top{height:54px;background:var(--card);border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0}
+.app-content-wrapper{display:flex;flex-direction:column;height:calc(100vh - 140px);overflow:hidden;background:var(--bg);font-family:var(--f);color:var(--t);border-radius:var(--rl);border:1px solid var(--b);box-shadow:var(--ss)}
+
+/* TOP BAR */
+.top-bar{height:54px;background:var(--card);border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0}
 .top-l{display:flex;align-items:center;gap:10px}
-.bk{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--b);border-radius:var(--rs);background:var(--card);font-size:11px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .15s var(--e);font-family:var(--f)}
-.bk:hover{border-color:var(--p);color:var(--p)}
+.bk-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--b);border-radius:var(--rs);background:var(--card);font-size:11px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .15s var(--e);font-family:var(--f)}
+.bk-btn:hover{border-color:var(--p);color:var(--p)}
 .top-t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
 .bank-ic{width:26px;height:26px;border-radius:8px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sep{width:1px;height:18px;background:var(--b)}
+.sep-line{width:1px;height:18px;background:var(--b)}
 .top-r{display:flex;gap:6px;align-items:center}
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--rm);font-size:11px;font-weight:700;font-family:var(--f);cursor:pointer;border:none;transition:all .2s var(--e)}
+.btn-action{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--rm);font-size:11px;font-weight:700;font-family:var(--f);cursor:pointer;border:none;transition:all .2s var(--e)}
 .btn-p{background:var(--gr);color:var(--inv);box-shadow:0 2px 10px var(--ps)}
 .btn-p:hover{transform:translateY(-1px)}
 .btn-g{background:var(--card);color:var(--t2);border:1.5px solid var(--b)}
 .btn-g:hover{border-color:var(--p);color:var(--p);background:var(--hov)}
-.main{display:flex;flex:1;overflow:hidden}
-.sidebar{width:242px;background:var(--card);border-right:1px solid var(--b);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+
+/* LAYOUT */
+.main-layout{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sb-sidebar{width:242px;background:var(--card);border-right:1px solid var(--b);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .sb-hd{padding:14px 16px 10px;border-bottom:1px solid var(--b)}
 .sb-title{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
 .search-wrap{display:flex;align-items:center;gap:6px;background:var(--inp);border:1.5px solid var(--b);border-radius:var(--rm);padding:7px 10px;transition:all .2s}
@@ -97,74 +371,93 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:#F7F8FC;color:#1E293B;-w
 .search-wrap input::placeholder{color:var(--t3)}
 .sb-section{padding:10px 12px 6px}
 .sb-lbl{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:4px 4px 6px}
-.fi{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:var(--rs);cursor:pointer;transition:all .15s;gap:6px}
-.fi:hover{background:var(--hov)}
-.fi.on{background:var(--pl)}
+.fi-item{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:var(--rs);cursor:pointer;transition:all .15s;gap:6px}
+.fi-item:hover{background:var(--hov)}
+.fi-item.on{background:var(--pl)}
 .fi-l{display:flex;align-items:center;gap:7px;flex:1;min-width:0}
 .fi-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .fi-name{font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fi.on .fi-name{color:var(--p)}
+.fi-item.on .fi-name{color:var(--p)}
 .fi-cnt{font-size:10px;font-weight:700;color:var(--t3);background:var(--bl);padding:1px 7px;border-radius:8px;flex-shrink:0}
-.fi.on .fi-cnt{background:var(--pg);color:var(--p)}
+.fi-item.on .fi-cnt{background:var(--pg);color:var(--p)}
 .sb-divider{height:1px;background:var(--b);margin:6px 12px}
 .sb-stats{padding:10px 16px 14px;display:flex;flex-direction:column;gap:6px}
 .stat-row{display:flex;justify-content:space-between;align-items:center;font-size:11px}
 .stat-label{color:var(--t3);font-weight:500}
 .stat-value{font-weight:700;color:var(--t)}
-.content{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+/* CONTENT */
+.content-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .content-bar{background:var(--card);border-bottom:1px solid var(--b);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;flex-wrap:wrap}
-.chips{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.chips-list{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .chip-lbl{font-size:11px;font-weight:700;color:var(--t3)}
-.chip{padding:5px 11px;border-radius:16px;font-size:11px;font-weight:700;border:1.5px solid var(--b);background:var(--card);color:var(--t2);cursor:pointer;transition:all .15s;font-family:var(--f)}
-.chip:hover{border-color:var(--p);color:var(--p)}
-.chip.on{border-color:var(--p);background:var(--pl);color:var(--p)}
+.chip-item{padding:5px 11px;border-radius:16px;font-size:11px;font-weight:700;border:1.5px solid var(--b);background:var(--card);color:var(--t2);cursor:pointer;transition:all .15s;font-family:var(--f)}
+.chip-item:hover{border-color:var(--p);color:var(--p)}
+.chip-item.on{border-color:var(--p);background:var(--pl);color:var(--p)}
 .bar-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .result-cnt{font-size:11px;color:var(--t3);font-weight:600;white-space:nowrap}
 .sort-sel{height:30px;padding:0 8px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:11px;font-family:var(--f);color:var(--t2);background:var(--card);font-weight:600;outline:none;cursor:pointer}
 .sort-sel:focus{border-color:var(--p)}
+
+/* QUESTION LIST */
 .q-scroll{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
-.qcard{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);overflow:hidden;transition:all .2s var(--e);animation:fadeUp .22s ease both}
+
+/* QUESTION CARD */
+.qcard{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);transition:all .2s var(--e);animation:fadeUp .22s ease both;flex-shrink:0}
 .qcard:hover{border-color:var(--p);box-shadow:var(--sm);transform:translateY(-1px)}
 .qcard.sel{border-color:var(--p);background:var(--plr);box-shadow:0 0 0 3px var(--pg)}
-.qcard-main{padding:14px 16px 12px}
-.qcard-top{display:flex;align-items:flex-start;gap:10px}
+.qcard-main{padding:16px 18px 14px}
+.qcard-top{display:flex;align-items:flex-start;gap:12px}
 .qcard-check{flex-shrink:0;margin-top:3px}
-.qcard-check input{width:14px;height:14px;cursor:pointer;accent-color:var(--p)}
-.qcard-num{min-width:24px;height:24px;border-radius:50%;background:var(--p);color:var(--inv);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.qcard-check input{width:15px;height:15px;cursor:pointer;accent-color:var(--p)}
+.qcard-num{min-width:24px;height:24px;border-radius:50%;background:var(--p);color:var(--inv);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
 .qcard-body{flex:1;min-width:0}
-.qcard-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:5px}
-.badge{padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block}
+.qcard-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.badge{padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block}
 .badge-mc{background:var(--pl);color:var(--p)}
 .badge-tf{background:var(--gnl);color:var(--gn)}
 .badge-fb{background:var(--orl);color:var(--or)}
 .badge-es{background:var(--pul);color:var(--pu)}
-.qcard-prompt{font-size:14px;font-weight:600;line-height:1.6;color:var(--t);margin-bottom:12px}
-.opt-block{display:flex;align-items:center;padding:10px 14px;border:1px solid var(--b);border-radius:var(--rm);margin-bottom:8px;gap:12px;background:var(--card)}
-.opt-block.ok{border-color:var(--gn);background:var(--gnl)}
-.opt-letter{width:24px;height:24px;border-radius:50%;background:var(--bl);color:var(--t3);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.opt-block.ok .opt-letter{background:var(--gn);color:var(--inv)}
-.opt-text{font-size:13px;font-weight:500;color:var(--t2)}
-.opt-block.ok .opt-text{color:var(--gn);font-weight:600}
-.qcard-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--b);background:#F8FAFF}
-.footer-l{display:flex;align-items:center;gap:20px}
-.footer-r{display:flex;align-items:center}
-.ab{display:flex;align-items:center;gap:6px;border:none;background:none;font-size:12px;font-weight:600;font-family:var(--f);color:var(--t3);cursor:pointer;transition:all .15s}
-.ab:hover{color:var(--p)}
-.ab.edit{color:var(--or)}
-.ab.edit:hover{opacity:.8}
-.ab.dng:hover{color:var(--rd)}
+.qcard-prompt{font-size:15px;font-weight:600;line-height:1.6;color:var(--t);margin-bottom:4px}
+
+/* OPTIONS DESIGN */
+.opt-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.opt-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1.5px solid var(--b);border-radius:var(--rm);background:var(--card);transition:all .2s;cursor:default}
+.opt-item.ok{border-color:var(--gn);background:var(--gnl)}
+.opt-let{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--b);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--t3);flex-shrink:0}
+.opt-item.ok .opt-let{background:var(--gn);color:var(--inv);border-color:var(--gn)}
+.opt-txt{font-size:13px;font-weight:500;color:var(--t2)}
+.opt-item.ok .opt-txt{color:var(--gn);font-weight:600}
+
+.qcard-footer{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-top:1px solid var(--bl);background:var(--bg)}
+.footer-l{display:flex;align-items:center;gap:12px}
+.qmeta{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--t3)}
+.footer-r{display:flex;gap:2px}
+.ab-btn{display:flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--rs);border:none;background:none;font-size:11px;font-weight:600;font-family:var(--f);color:var(--t3);cursor:pointer;transition:all .15s}
+.ab-btn:hover{background:var(--hov);color:var(--p)}
+.ab-btn.dng:hover{background:var(--rdl);color:var(--rd)}
+
+/* PAGINATION */
 .pag-wrap{padding:10px 20px;background:var(--card);border-top:1px solid var(--b);display:flex;align-items:center;flex-shrink:0;gap:8px}
 .pag-info{font-size:11px;color:var(--t3);font-weight:600;flex:1}
-.pag{display:flex;align-items:center;gap:4px}
-.pg{width:30px;height:30px;border-radius:var(--rs);border:1.5px solid var(--b);background:var(--card);font-size:11px;font-weight:700;font-family:var(--f);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.pg:hover:not(:disabled){border-color:var(--p);color:var(--p)}
-.pg.on{background:var(--p);color:#fff;border-color:var(--p)}
-.pg:disabled{opacity:.35;cursor:not-allowed}
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;padding:40px;text-align:center}
+.pag-nav{display:flex;align-items:center;gap:4px}
+.pg-btn{width:30px;height:30px;border-radius:var(--rs);border:1.5px solid var(--b);background:var(--card);font-size:11px;font-weight:700;font-family:var(--f);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.pg-btn:hover:not(:disabled){border-color:var(--p);color:var(--p)}
+.pg-btn.on{background:var(--p);color:#fff;border-color:var(--p)}
+.pg-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* BULK TOOLBAR */
+.bulk-bar{position:absolute;bottom:0;left:0;right:0;height:52px;background:var(--card);border-top:1px solid var(--b);display:flex;align-items:center;padding:0 20px;gap:10px;box-shadow:0 -4px 14px rgba(30,41,59,.08);transition:transform .25s var(--e),opacity .25s var(--e);z-index:10}
+.bulk-bar.hidden{transform:translateY(100%);opacity:0;pointer-events:none}
+.sel-cnt{font-size:12px;font-weight:700;color:var(--p)}
+
+/* EMPTY */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;padding:40px;text-align:center}
 .empty-ic{width:52px;height:52px;border-radius:var(--rxl);background:var(--pl);color:var(--p);display:flex;align-items:center;justify-content:center;margin-bottom:2px}
-.empty h3{font-size:15px;font-weight:700}
-.empty p{font-size:12px;color:var(--t3);max-width:240px;line-height:1.6}
-.spin{animation:spin 1s linear infinite;}
+.empty-state h3{font-size:15px;font-weight:700}
+.empty-state p{font-size:12px;color:var(--t3);max-width:240px;line-height:1.6}
+
+.spin-anim{animation:spin 1s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
@@ -195,14 +488,26 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:#F7F8FC;color:#1E293B;-w
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
-const getCogUi = (v) => COG.find((c) => c.v === v) || { label: "?", bg: "#F8FAFC", border: "#CBD5E1", text: "#475569", l: "?" };
-const getTypeUi = (v) => QTYPES.find((t) => t.v === v) || { l: "?", ic: "?", cls: "" };
+const getCogUi = (v) =>
+  COG.find((c) => c.v === v) || {
+    label: "?",
+    bg: "#F8FAFC",
+    border: "#CBD5E1",
+    text: "#475569",
+    l: "?",
+  };
+const getTypeUi = (v) =>
+  QTYPES.find((t) => t.v === v) || { l: "?", ic: "?", cls: "" };
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "--";
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "--";
-  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 /* ─────────────────────────── QuestionCard ─────────────────────────── */
@@ -213,20 +518,27 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
 
   const isTrueFalse = question.questionType === "TRUE_FALSE";
   const isMultipleChoice = question.questionType === "MULTIPLE_CHOICE";
-  const isFillBlank = question.questionType === "FILL_IN_THE_BLANK" || question.questionType === "FILL_IN_BLANK";
+  const isFillBlank =
+    question.questionType === "FILL_IN_THE_BLANK" ||
+    question.questionType === "FILL_IN_BLANK";
   const isEssay = question.questionType === "ESSAY";
 
   // For True/False
   let tfCorrect = null;
   if (isTrueFalse && question.options) {
-    const corOpt = question.options.find(o => o.correct || o.isCorrect);
+    const corOpt = question.options.find((o) => o.correct || o.isCorrect);
     if (corOpt) {
-      tfCorrect = corOpt.content.toLowerCase().includes("true") || corOpt.content.toLowerCase() === "đúng";
+      tfCorrect =
+        corOpt.content.toLowerCase().includes("true") ||
+        corOpt.content.toLowerCase() === "đúng";
     }
   }
 
   return (
-    <div className="qcard" style={{ animationDelay: `${(index % 10) * 0.04}s` }}>
+    <div
+      className="qcard"
+      style={{ animationDelay: `${(index % 10) * 0.04}s` }}
+    >
       <div className="qcard-main">
         <div className="qcard-top">
           <div className="qcard-num">{index + 1}</div>
@@ -235,31 +547,45 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
               <span className={`badge ${typeUi.cls}`}>{typeUi.l}</span>
               <span
                 className="badge"
-                style={{ background: cog.bg, border: `1px solid ${cog.border}`, color: cog.text }}
+                style={{
+                  background: cog.bg,
+                  border: `1px solid ${cog.border}`,
+                  color: cog.text,
+                }}
               >
                 Mức độ: {cog.l}
               </span>
+              {question.usedIn > 0 ? (
+                <span className="badge" style={{ background: "var(--gnl)", color: "var(--gn)" }}>
+                  Dùng trong {question.usedIn} đề
+                </span>
+              ) : (
+                <span className="badge" style={{ background: "var(--bl)", color: "var(--t3)" }}>
+                  Chưa dùng
+                </span>
+              )}
             </div>
             <div className="qcard-prompt">{question.content}</div>
 
-            {/* MC options */}
+            {/* Multiple Choice Options - Vertical Style */}
             {isMultipleChoice && Array.isArray(question.options) && (
-              <div style={{ marginTop: 16 }}>
+              <div className="opt-list">
                 {question.options.map((o, oi) => {
                   const isOk = o.correct || o.isCorrect;
                   return (
-                    <div key={o.id || oi} className={`opt-block${isOk ? " ok" : ""}`}>
-                      <div className="opt-letter">{LETTERS[oi]}</div>
-                      <div className="opt-text">{o.content}</div>
+                    <div key={o.id || oi} className={`opt-item${isOk ? " ok" : ""}`}>
+                      <div className="opt-let">{LETTERS[oi]}</div>
+                      <div className="opt-txt">{o.content}</div>
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {/* True/False */}
+            {/* True/False Display */}
             {isTrueFalse && tfCorrect !== null && (
-              <div style={{ marginTop: 7, display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "var(--t2)" }}>Đáp án:</span>
                 <span
                   className="badge"
                   style={{
@@ -269,19 +595,22 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
                     padding: "3px 10px",
                   }}
                 >
-                  Đáp án: {tfCorrect ? "Đúng" : "Sai"}
+                  {tfCorrect ? "Đúng" : "Sai"}
                 </span>
               </div>
             )}
 
-            {/* Fill in blank */}
+            {/* Fill in the Blank Display */}
             {isFillBlank && Array.isArray(question.options) && question.options.length > 0 && (
-              <div style={{ marginTop: 7, fontSize: 11, color: "var(--t3)", fontWeight: 600 }}>
-                Đáp án:{" "}
+              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "var(--t2)" }}>Đáp án:</span>
                 <span
                   style={{
-                    color: "var(--p)", fontWeight: 700, background: "var(--pl)",
-                    padding: "1px 8px", borderRadius: 5, marginLeft: 3,
+                    color: "var(--p)",
+                    fontWeight: 700,
+                    background: "var(--pl)",
+                    padding: "2px 10px",
+                    borderRadius: 8,
                   }}
                 >
                   {question.options[0]?.content}
@@ -289,14 +618,17 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
               </div>
             )}
 
-            {/* Essay */}
+            {/* Essay Display */}
             {isEssay && (
-              <div style={{ marginTop: 7, fontSize: 11, color: "var(--t3)", fontStyle: "italic" }}>
-                Câu tự luận — chấm thủ công
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, color: "var(--t3)", fontStyle: "italic", marginBottom: 4 }}>
+                  Tự luận — chấm thủ công
+                </div>
                 {question.sampleAnswer && (
-                  <span style={{ display: "block", marginTop: 3, fontStyle: "normal", color: "var(--t3)" }}>
-                    Gợi ý: {question.sampleAnswer}
-                  </span>
+                  <div style={{ fontSize: 13 }}>
+                    <span style={{ fontWeight: 600, color: "var(--p)" }}>Gợi ý trả lời: </span>
+                    <span style={{ color: "var(--t2)" }}>{question.sampleAnswer}</span>
+                  </div>
                 )}
               </div>
             )}
@@ -306,11 +638,23 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
 
       <div className="qcard-footer">
         <div className="footer-l">
-          <button className="ab edit" onClick={() => onEdit(question)}><Ic.Edit /> Sửa</button>
-          <button className="ab"><Ic.Copy /> Nhân bản</button>
+          <div className="qmeta">
+            <Ic.Calendar />&nbsp;{formatDate(question.createdAt)}
+          </div>
+          <div className="qmeta">
+            <Ic.User />&nbsp;{question.author || "Giáo viên"}
+          </div>
         </div>
         <div className="footer-r">
-          <button className="ab dng" onClick={() => onDelete(question)}><Ic.Trash /> Xóa</button>
+          <button className="ab-btn" onClick={(e) => { e.stopPropagation(); }}>
+            <Ic.Copy /> Nhân bản
+          </button>
+          <button className="ab-btn" onClick={(e) => { e.stopPropagation(); onEdit(question); }}>
+            <Ic.Edit /> Sửa
+          </button>
+          <button className="ab-btn dng" onClick={(e) => { e.stopPropagation(); onDelete(question); }}>
+            <Ic.Trash /> Xóa
+          </button>
         </div>
       </div>
     </div>
@@ -335,18 +679,22 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
       setCog(question.cognitiveLevel || "REMEMBERING");
       setPoints(question.defaultPoints || 1);
       setSampleAnswer(question.sampleAnswer || "");
-      
+
       let opts = [];
       if (Array.isArray(question.options)) {
-        opts = question.options.map(o => ({
+        opts = question.options.map((o) => ({
           id: o.id || Date.now() + Math.random(),
           content: o.content || "",
-          correct: o.correct || o.isCorrect || false
+          correct: o.correct || o.isCorrect || false,
         }));
       }
-      
+
       // Ensure min options based on type
-      if ((question.questionType === "MULTIPLE_CHOICE" || !question.questionType) && opts.length === 0) {
+      if (
+        (question.questionType === "MULTIPLE_CHOICE" ||
+          !question.questionType) &&
+        opts.length === 0
+      ) {
         opts = [
           { id: 1, content: "Lựa chọn 1", correct: true },
           { id: 2, content: "Lựa chọn 2", correct: false },
@@ -356,12 +704,15 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
       } else if (question.questionType === "TRUE_FALSE" && opts.length === 0) {
         opts = [
           { id: 1, content: "Đúng", correct: true },
-          { id: 2, content: "Sai", correct: false }
+          { id: 2, content: "Sai", correct: false },
         ];
-      } else if (question.questionType === "FILL_IN_THE_BLANK" && opts.length === 0) {
+      } else if (
+        question.questionType === "FILL_IN_THE_BLANK" &&
+        opts.length === 0
+      ) {
         opts = [{ id: 1, content: "", correct: true }];
       }
-      
+
       setOptions(opts);
     }
   }, [isOpen, question]);
@@ -377,12 +728,16 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
     // Validation
     if (type === "MULTIPLE_CHOICE") {
       if (options.length < 2) return toast.error("Cần ít nhất 2 lựa chọn");
-      if (!options.some(o => o.correct)) return toast.error("Vui lòng chọn đáp án đúng");
-      if (options.some(o => !o.content.trim())) return toast.error("Vui lòng nhập đầy đủ nội dung các lựa chọn");
+      if (!options.some((o) => o.correct))
+        return toast.error("Vui lòng chọn đáp án đúng");
+      if (options.some((o) => !o.content.trim()))
+        return toast.error("Vui lòng nhập đầy đủ nội dung các lựa chọn");
     } else if (type === "FILL_IN_THE_BLANK") {
-      if (!options[0]?.content.trim()) return toast.error("Vui lòng nhập đáp án cho câu điền khuyết");
+      if (!options[0]?.content.trim())
+        return toast.error("Vui lòng nhập đáp án cho câu điền khuyết");
     } else if (type === "ESSAY") {
-      if (!sampleAnswer.trim()) return toast.error("Vui lòng nhập gợi ý/đáp án cho câu tự luận");
+      if (!sampleAnswer.trim())
+        return toast.error("Vui lòng nhập gợi ý/đáp án cho câu tự luận");
     }
 
     const payload = {
@@ -392,10 +747,13 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
       defaultPoints: Number(points),
       sampleAnswer: type === "ESSAY" ? sampleAnswer : null,
       sectionId: null,
-      options: type === "ESSAY" ? [] : options.map(o => ({
-        content: o.content,
-        correct: o.correct
-      }))
+      options:
+        type === "ESSAY"
+          ? []
+          : options.map((o) => ({
+              content: o.content,
+              correct: o.correct,
+            })),
     };
 
     try {
@@ -417,14 +775,14 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
     if (newType === "MULTIPLE_CHOICE") {
       setOptions([
         { id: Date.now(), content: "", correct: true },
-        { id: Date.now()+1, content: "", correct: false },
-        { id: Date.now()+2, content: "", correct: false },
-        { id: Date.now()+3, content: "", correct: false },
+        { id: Date.now() + 1, content: "", correct: false },
+        { id: Date.now() + 2, content: "", correct: false },
+        { id: Date.now() + 3, content: "", correct: false },
       ]);
     } else if (newType === "TRUE_FALSE") {
       setOptions([
         { id: Date.now(), content: "Đúng", correct: true },
-        { id: Date.now()+1, content: "Sai", correct: false }
+        { id: Date.now() + 1, content: "Sai", correct: false },
       ]);
     } else if (newType === "FILL_IN_THE_BLANK") {
       setOptions([{ id: Date.now(), content: "", correct: true }]);
@@ -434,70 +792,132 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="modal-content">
         <div className="modal-hdr">
           <h3>Chỉnh sửa câu hỏi</h3>
-          <button className="modal-close" onClick={onClose}><Ic.X /></button>
+          <button className="modal-close" onClick={onClose}>
+            <Ic.X />
+          </button>
         </div>
         <div className="modal-body">
           <div className="form-row">
             <div className="form-group">
               <label>Loại câu hỏi</label>
-              <select className="form-control" value={type} onChange={handleTypeChange}>
-                {QTYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+              <select
+                className="form-control"
+                value={type}
+                onChange={handleTypeChange}
+              >
+                {QTYPES.map((t) => (
+                  <option key={t.v} value={t.v}>
+                    {t.l}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="form-group">
               <label>Mức độ nhận thức</label>
-              <select className="form-control" value={cog} onChange={(e) => setCog(e.target.value)}>
-                {COG.map(c => <option key={c.v} value={c.v}>{c.l}</option>)}
+              <select
+                className="form-control"
+                value={cog}
+                onChange={(e) => setCog(e.target.value)}
+              >
+                {COG.map((c) => (
+                  <option key={c.v} value={c.v}>
+                    {c.l}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="form-group" style={{ flex: 0.5 }}>
               <label>Điểm</label>
-              <input type="number" min="0" step="0.5" className="form-control" value={points} onChange={(e) => setPoints(e.target.value)} />
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                className="form-control"
+                value={points}
+                onChange={(e) => setPoints(e.target.value)}
+              />
             </div>
           </div>
-          
+
           <div className="form-group">
             <label>Nội dung câu hỏi</label>
-            <textarea 
-              className="form-control" 
-              rows={4} 
-              value={content} 
-              onChange={(e) => setContent(e.target.value)} 
+            <textarea
+              className="form-control"
+              rows={4}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
               placeholder="Nhập nội dung câu hỏi..."
             />
           </div>
 
           <div className="form-group">
             <label>ĐÁP ÁN</label>
-            
+
             {type === "MULTIPLE_CHOICE" && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {options.map((opt, i) => (
                   <div key={opt.id} className="opt-row">
-                    <input 
-                      type="radio" 
-                      name="mc_correct" 
+                    <input
+                      type="radio"
+                      name="mc_correct"
                       className="opt-check"
-                      checked={opt.correct} 
-                      onChange={() => setOptions(options.map(o => ({ ...o, correct: o.id === opt.id })))}
+                      checked={opt.correct}
+                      onChange={() =>
+                        setOptions(
+                          options.map((o) => ({
+                            ...o,
+                            correct: o.id === opt.id,
+                          })),
+                        )
+                      }
                     />
-                    <span style={{ fontSize: 13, fontWeight: 700, width: 20 }}>{LETTERS[i]}.</span>
-                    <input 
-                      type="text" 
-                      className="opt-input" 
+                    <span style={{ fontSize: 13, fontWeight: 700, width: 20 }}>
+                      {LETTERS[i]}.
+                    </span>
+                    <input
+                      type="text"
+                      className="opt-input"
                       value={opt.content}
-                      onChange={(e) => setOptions(options.map(o => o.id === opt.id ? { ...o, content: e.target.value } : o))}
-                      placeholder={`Lựa chọn ${i+1}`}
+                      onChange={(e) =>
+                        setOptions(
+                          options.map((o) =>
+                            o.id === opt.id
+                              ? { ...o, content: e.target.value }
+                              : o,
+                          ),
+                        )
+                      }
+                      placeholder={`Lựa chọn ${i + 1}`}
                     />
-                    <button className="opt-del" onClick={() => setOptions(options.filter(o => o.id !== opt.id))}><Ic.Trash /></button>
+                    <button
+                      className="opt-del"
+                      onClick={() =>
+                        setOptions(options.filter((o) => o.id !== opt.id))
+                      }
+                    >
+                      <Ic.Trash />
+                    </button>
                   </div>
                 ))}
                 {options.length < 10 && (
-                  <button className="opt-add" onClick={() => setOptions([...options, { id: Date.now(), content: "", correct: false }])}>
+                  <button
+                    className="opt-add"
+                    onClick={() =>
+                      setOptions([
+                        ...options,
+                        { id: Date.now(), content: "", correct: false },
+                      ])
+                    }
+                  >
                     + Thêm lựa chọn
                   </button>
                 )}
@@ -505,47 +925,93 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
             )}
 
             {type === "TRUE_FALSE" && (
-              <div style={{ display: 'flex', gap: 15 }}>
+              <div style={{ display: "flex", gap: 15 }}>
                 {options.map((opt) => (
-                  <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '10px 20px', border: '1.5px solid var(--b)', borderRadius: '8px', background: opt.correct ? 'var(--gnl)' : 'var(--card)', borderColor: opt.correct ? 'var(--gn)' : 'var(--b)' }}>
-                    <input 
-                      type="radio" 
-                      name="tf_correct" 
-                      style={{ accentColor: 'var(--gn)', width: 16, height: 16 }}
-                      checked={opt.correct} 
-                      onChange={() => setOptions(options.map(o => ({ ...o, correct: o.id === opt.id })))}
+                  <label
+                    key={opt.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: "pointer",
+                      padding: "10px 20px",
+                      border: "1.5px solid var(--b)",
+                      borderRadius: "8px",
+                      background: opt.correct ? "var(--gnl)" : "var(--card)",
+                      borderColor: opt.correct ? "var(--gn)" : "var(--b)",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="tf_correct"
+                      style={{
+                        accentColor: "var(--gn)",
+                        width: 16,
+                        height: 16,
+                      }}
+                      checked={opt.correct}
+                      onChange={() =>
+                        setOptions(
+                          options.map((o) => ({
+                            ...o,
+                            correct: o.id === opt.id,
+                          })),
+                        )
+                      }
                     />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: opt.correct ? 'var(--gn)' : 'var(--t2)' }}>{opt.content}</span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: opt.correct ? "var(--gn)" : "var(--t2)",
+                      }}
+                    >
+                      {opt.content}
+                    </span>
                   </label>
                 ))}
               </div>
             )}
 
             {type === "FILL_IN_THE_BLANK" && (
-              <input 
-                type="text" 
-                className="form-control" 
-                value={options[0]?.content || ""} 
-                onChange={(e) => setOptions([{ ...options[0], content: e.target.value, correct: true }])} 
+              <input
+                type="text"
+                className="form-control"
+                value={options[0]?.content || ""}
+                onChange={(e) =>
+                  setOptions([
+                    { ...options[0], content: e.target.value, correct: true },
+                  ])
+                }
                 placeholder="Nhập từ cần điền (đáp án)..."
               />
             )}
 
             {type === "ESSAY" && (
-              <textarea 
-                className="form-control" 
-                rows={3} 
-                value={sampleAnswer} 
-                onChange={(e) => setSampleAnswer(e.target.value)} 
+              <textarea
+                className="form-control"
+                rows={3}
+                value={sampleAnswer}
+                onChange={(e) => setSampleAnswer(e.target.value)}
                 placeholder="Nhập gợi ý giải hoặc đáp án cho câu tự luận..."
               />
             )}
           </div>
         </div>
         <div className="modal-ftr">
-          <button className="btn btn-g" onClick={onClose} disabled={loading}>Hủy</button>
+          <button className="btn btn-g" onClick={onClose} disabled={loading}>
+            Hủy
+          </button>
           <button className="btn btn-p" onClick={handleSave} disabled={loading}>
-            {loading ? <span className="spin"><Ic.Loader /></span> : <><Ic.Check /> Lưu thay đổi</>}
+            {loading ? (
+              <span className="spin">
+                <Ic.Loader />
+              </span>
+            ) : (
+              <>
+                <Ic.Check /> Lưu thay đổi
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -571,7 +1037,7 @@ export default function ResourceBankDetailPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
+
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [questionsPage, setQuestionsPage] = useState({
     content: [],
@@ -615,10 +1081,10 @@ export default function ResourceBankDetailPage() {
     const fetchQuestions = async () => {
       setLoading(true);
       setError("");
-      
+
       let sortBy = "createdAt";
       let sortDirection = "DESC";
-      
+
       if (sort === "oldest") {
         sortDirection = "ASC";
       } else if (sort === "az") {
@@ -653,14 +1119,24 @@ export default function ResourceBankDetailPage() {
           totalElements: 0,
           totalPages: 0,
         });
-        setError(err.response?.data?.message ?? "Không thể tải danh sách câu hỏi.");
+        setError(
+          err.response?.data?.message ?? "Không thể tải danh sách câu hỏi.",
+        );
       } finally {
         setLoading(false);
       }
     };
 
     fetchQuestions();
-  }, [page, debouncedSearch, typeFilter, cogFilter, sort, safeBankId, refreshTrigger]);
+  }, [
+    page,
+    debouncedSearch,
+    typeFilter,
+    cogFilter,
+    sort,
+    safeBankId,
+    refreshTrigger,
+  ]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -668,67 +1144,101 @@ export default function ResourceBankDetailPage() {
   }, [debouncedSearch, typeFilter, cogFilter, sort]);
 
   const handleDelete = async (question) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này khỏi ngân hàng không?")) {
+    if (
+      window.confirm(
+        "Bạn có chắc chắn muốn xóa câu hỏi này khỏi ngân hàng không?",
+      )
+    ) {
       try {
         await questionBankApi.deleteQuestion(safeBankId, question.id);
         toast.success("Đã xóa câu hỏi thành công");
-        setRefreshTrigger(prev => prev + 1);
+        setRefreshTrigger((prev) => prev + 1);
       } catch (err) {
         toast.error(err.response?.data?.message || "Lỗi khi xóa câu hỏi");
       }
     }
   };
 
-  const handleTypeFilter = (v) => { setTypeFilter(v); };
-  const handleCogFilter = (v) => { setCogFilter(v); };
+  const handleTypeFilter = (v) => {
+    setTypeFilter(v);
+  };
+  const handleCogFilter = (v) => {
+    setCogFilter(v);
+  };
 
-  const subjectLabel = bankData ? getLabelFromOptions(subjectOptions, bankData.subject) : "Toán học";
-  const gradeLabel = bankData ? getLabelFromOptions(gradeOptions, bankData.gradeLevel) : "Khối 10";
+  const subjectLabel = bankData
+    ? getLabelFromOptions(subjectOptions, bankData.subject)
+    : "Toán học";
+  const gradeLabel = bankData
+    ? getLabelFromOptions(gradeOptions, bankData.gradeLevel)
+    : "Khối 10";
 
   const totalPages = Math.max(1, questionsPage.totalPages);
-  const safePage = questionsPage.pageNumber;
+  const safePageNum = questionsPage.pageNumber;
   const visible = questionsPage.content;
-  const fromItem = (safePage - 1) * ITEMS_PER_PAGE + 1;
-  const toItem = Math.min(safePage * ITEMS_PER_PAGE, questionsPage.totalElements);
+  const fromItem = (safePageNum - 1) * ITEMS_PER_PAGE + 1;
+  const toItem = Math.min(
+    safePageNum * ITEMS_PER_PAGE,
+    questionsPage.totalElements,
+  );
 
-  // Fake counts for UI requirements
-  const FAKE_TYPE_COUNTS = { "MULTIPLE_CHOICE": 5, "TRUE_FALSE": 3, "FILL_IN_THE_BLANK": 2, "ESSAY": 2 };
-  const FAKE_COG_COUNTS = { "REMEMBERING": 4, "UNDERSTANDING": 3, "APPLYING": 2, "ANALYZING": 1, "EVALUATING": 1, "CREATING": 1 };
-  const fakeTotal = 12;
-  const fakeUsedIn = 3;
+  // Stats (Using real data where possible, fake for UI placeholders)
+  const stats = {
+    total: questionsPage.totalElements,
+    usedIn: 3, // Mocked for now as requested by UI design
+    ratio: Math.round((3 / (questionsPage.totalElements || 1)) * 100),
+    updatedAt: bankData?.updatedAt ? formatDate(bankData.updatedAt) : "12/04/2025"
+  };
 
   return (
     <>
       <style>{CSS}</style>
-      <div className="app">
-
+      <div className="app-content-wrapper">
         {/* TOP BAR */}
-        <div className="top">
+        <div className="top-bar">
           <div className="top-l">
-            <button className="bk" onClick={() => navigate(PATH_TEACHER.questionBank)}>
+            <button
+              className="bk-btn"
+              onClick={() => navigate(PATH_TEACHER.questionBank)}
+            >
               <Ic.ArrowL /> Ngân hàng câu hỏi
             </button>
-            <div className="sep" />
+            <div className="sep-line" />
             <div className="top-t">
-              <div className="bank-ic"><Ic.Book /></div>
+              <div className="bank-ic">
+                <Ic.Book />
+              </div>
               {bankData?.name ?? `Ngân hàng #${safeBankId || "-"}`}
             </div>
           </div>
           <div className="top-r">
-            <button className="btn btn-g"><Ic.Download /> Xuất Excel</button>
-            <button className="btn btn-g" onClick={() => navigate(PATH_TEACHER.questionBankMethod(safeBankId))}>
+            <button className="btn-action btn-g">
+              <Ic.Download /> Xuất Excel
+            </button>
+            <button
+              className="btn-action btn-g"
+              onClick={() =>
+                navigate(PATH_TEACHER.questionBankMethod(safeBankId))
+              }
+            >
               <Ic.Upload /> Thêm câu hỏi
             </button>
-            <button className="btn btn-p" onClick={() => navigate(`/question-bank/${safeBankId}/questions/create/ai?bankId=${safeBankId}`)}>
-              <Ic.Sparkles /> Tạo bằng AI
+            <button
+              className="btn-action btn-p"
+              onClick={() =>
+                navigate(
+                  `/assignments/create/manual?source=question-bank`,
+                )
+              }
+            >
+              <Ic.Plus /> Tạo bài tập từ ngân hàng
             </button>
           </div>
         </div>
 
-        <div className="main">
-
+        <div className="main-layout">
           {/* SIDEBAR */}
-          <div className="sidebar">
+          <div className="sb-sidebar">
             <div className="sb-hd">
               <div className="sb-title">Tìm kiếm</div>
               <div className="search-wrap">
@@ -745,19 +1255,19 @@ export default function ResourceBankDetailPage() {
             <div className="sb-section">
               <div className="sb-lbl">Loại câu hỏi</div>
               <div
-                className={`fi${typeFilter === "ALL" ? " on" : ""}`}
+                className={`fi-item${typeFilter === "ALL" ? " on" : ""}`}
                 onClick={() => handleTypeFilter("ALL")}
               >
                 <div className="fi-l">
                   <div className="fi-dot" style={{ background: "var(--p)" }} />
                   <span className="fi-name">Tất cả</span>
                 </div>
-                <span className="fi-cnt">{fakeTotal}</span>
+                <span className="fi-cnt">{questionsPage.totalElements}</span>
               </div>
               {QTYPES.map((t) => (
                 <div
                   key={t.v}
-                  className={`fi${typeFilter === t.v ? " on" : ""}`}
+                  className={`fi-item${typeFilter === t.v ? " on" : ""}`}
                   onClick={() => handleTypeFilter(t.v)}
                 >
                   <div className="fi-l">
@@ -765,15 +1275,18 @@ export default function ResourceBankDetailPage() {
                       className="fi-dot"
                       style={{
                         background:
-                          t.v === "MULTIPLE_CHOICE" ? "#2563EB"
-                            : t.v === "TRUE_FALSE" ? "#10B981"
-                            : t.v === "FILL_IN_THE_BLANK" ? "#F59E0B"
-                            : "#8B5CF6",
+                          t.v === "MULTIPLE_CHOICE"
+                            ? "#2563EB"
+                            : t.v === "TRUE_FALSE"
+                              ? "#10B981"
+                              : t.v === "FILL_IN_THE_BLANK" || t.v === "FILL_IN_BLANK"
+                                ? "#F59E0B"
+                                : "#8B5CF6",
                       }}
                     />
                     <span className="fi-name">{t.l}</span>
                   </div>
-                  <span className="fi-cnt">{FAKE_TYPE_COUNTS[t.v] || 0}</span>
+                  <span className="fi-cnt">{t.v === "MULTIPLE_CHOICE" ? 5 : 2}</span> {/* Mock counts for UI */}
                 </div>
               ))}
             </div>
@@ -786,14 +1299,16 @@ export default function ResourceBankDetailPage() {
               {COG.map((c) => (
                 <div
                   key={c.v}
-                  className={`fi${cogFilter === c.v ? " on" : ""}`}
-                  onClick={() => handleCogFilter(cogFilter === c.v ? "ALL" : c.v)}
+                  className={`fi-item${cogFilter === c.v ? " on" : ""}`}
+                  onClick={() =>
+                    handleCogFilter(cogFilter === c.v ? "ALL" : c.v)
+                  }
                 >
                   <div className="fi-l">
                     <div className="fi-dot" style={{ background: c.c }} />
                     <span className="fi-name">{c.l}</span>
                   </div>
-                  <span className="fi-cnt">{FAKE_COG_COUNTS[c.v] || 0}</span>
+                  <span className="fi-cnt">2</span> {/* Mock counts */}
                 </div>
               ))}
             </div>
@@ -804,32 +1319,33 @@ export default function ResourceBankDetailPage() {
             <div className="sb-stats">
               <div className="stat-row">
                 <span className="stat-label">Tổng câu hỏi</span>
-                <span className="stat-value">{questionsPage.totalElements}</span>
+                <span className="stat-value">{stats.total}</span>
               </div>
               <div className="stat-row">
                 <span className="stat-label">Đã dùng trong đề</span>
-                <span className="stat-value">{fakeUsedIn}</span>
+                <span className="stat-value">{stats.usedIn}</span>
               </div>
               <div className="stat-row">
-                <span className="stat-label">Khối lớp</span>
-                <span className="stat-value">{gradeLabel}</span>
+                <span className="stat-label">Tỉ lệ sử dụng</span>
+                <span className="stat-value" style={{ color: "var(--p)" }}>
+                  {stats.ratio}%
+                </span>
               </div>
               <div className="stat-row">
-                <span className="stat-label">Môn học</span>
-                <span className="stat-value">{subjectLabel}</span>
+                <span className="stat-label">Cập nhật lần cuối</span>
+                <span className="stat-value">{stats.updatedAt}</span>
               </div>
             </div>
           </div>
 
           {/* CONTENT */}
-          <div className="content" style={{ position: "relative" }}>
-
+          <div className="content-area" style={{ position: "relative" }}>
             {/* FILTER BAR */}
             <div className="content-bar">
-              <div className="chips">
+              <div className="chips-list">
                 <span className="chip-lbl">Mức độ:</span>
                 <div
-                  className={`chip${cogFilter === "ALL" ? " on" : ""}`}
+                  className={`chip-item${cogFilter === "ALL" ? " on" : ""}`}
                   onClick={() => handleCogFilter("ALL")}
                 >
                   Tất cả
@@ -837,16 +1353,20 @@ export default function ResourceBankDetailPage() {
                 {COG.map((c) => (
                   <div
                     key={c.v}
-                    className={`chip${cogFilter === c.v ? " on" : ""}`}
-                    onClick={() => handleCogFilter(cogFilter === c.v ? "ALL" : c.v)}
+                    className={`chip-item${cogFilter === c.v ? " on" : ""}`}
+                    onClick={() =>
+                      handleCogFilter(cogFilter === c.v ? "ALL" : c.v)
+                    }
                   >
                     {c.l}
                   </div>
                 ))}
               </div>
               <div className="bar-r">
-                <span className="result-cnt">{questionsPage.totalElements} câu hỏi</span>
-                <div className="sep" />
+                <span className="result-cnt">
+                  {questionsPage.totalElements} câu hỏi
+                </span>
+                <div className="sep-line" />
                 <select
                   className="sort-sel"
                   value={sort}
@@ -856,8 +1376,14 @@ export default function ResourceBankDetailPage() {
                   <option value="oldest">Cũ nhất</option>
                   <option value="az">A → Z</option>
                 </select>
-                <div className="sep" />
-                <button className="btn btn-p" style={{ padding: "5px 10px", gap: 4 }} onClick={() => navigate(PATH_TEACHER.questionBankMethod(safeBankId))}>
+                <div className="sep-line" />
+                <button
+                  className="btn-action btn-p"
+                  style={{ padding: "5px 10px", gap: 4 }}
+                  onClick={() =>
+                    navigate(PATH_TEACHER.questionBankMethod(safeBankId))
+                  }
+                >
                   <Ic.Plus /> Thêm câu hỏi
                 </button>
               </div>
@@ -866,20 +1392,25 @@ export default function ResourceBankDetailPage() {
             {/* LIST */}
             <div className="q-scroll">
               {loading ? (
-                <div className="empty">
-                  <div className="spin"><Ic.Loader /></div>
+                <div className="empty-state">
+                  <div className="spin-anim">
+                    <Ic.Loader />
+                  </div>
                   <p>Đang tải câu hỏi...</p>
                 </div>
               ) : error ? (
-                <div className="empty">
-                  <div className="empty-ic" style={{ background: "var(--rdl)", color: "var(--rd)" }}>
+                <div className="empty-state">
+                  <div
+                    className="empty-ic"
+                    style={{ background: "var(--rdl)", color: "var(--rd)" }}
+                  >
                     <Ic.X />
                   </div>
                   <h3>Lỗi</h3>
                   <p>{error}</p>
                 </div>
               ) : visible.length === 0 ? (
-                <div className="empty">
+                <div className="empty-state">
                   <div className="empty-ic">
                     <Ic.Search />
                   </div>
@@ -891,7 +1422,7 @@ export default function ResourceBankDetailPage() {
                   <QuestionCard
                     key={q.id}
                     question={q}
-                    index={(safePage - 1) * ITEMS_PER_PAGE + i}
+                    index={(safePageNum - 1) * ITEMS_PER_PAGE + i}
                     onEdit={(q) => setEditingQuestion(q)}
                     onDelete={handleDelete}
                   />
@@ -906,42 +1437,64 @@ export default function ResourceBankDetailPage() {
                   ? `Hiển thị ${fromItem}–${toItem} / ${questionsPage.totalElements} câu hỏi`
                   : "Không có câu hỏi"}
               </span>
-              <div className="pag">
-                <button className="pg" disabled={safePage <= 1 || loading} onClick={() => setPage(safePage - 1)}>
+              <div className="pag-nav">
+                <button
+                  className="pg-btn"
+                  disabled={safePageNum <= 1 || loading}
+                  onClick={() => setPage(safePageNum - 1)}
+                >
                   <Ic.ChevL />
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-                  // Only show 5 pages max around current page for neatness
-                  if (totalPages > 7 && (p < safePage - 2 || p > safePage + 2) && p !== 1 && p !== totalPages) {
-                    if (p === safePage - 3 || p === safePage + 3) return <span key={p} style={{color: "var(--t3)"}}>...</span>;
-                    return null;
-                  }
-                  return (
-                    <button key={p} className={`pg${p === safePage ? " on" : ""}`} onClick={() => setPage(p)}>
-                      {p}
-                    </button>
-                  );
-                })}
-                <button className="pg" disabled={safePage >= totalPages || loading} onClick={() => setPage(safePage + 1)}>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (p) => {
+                    if (
+                      totalPages > 7 &&
+                      (p < safePageNum - 2 || p > safePageNum + 2) &&
+                      p !== 1 &&
+                      p !== totalPages
+                    ) {
+                      if (p === safePageNum - 3 || p === safePageNum + 3)
+                        return (
+                          <span key={p} style={{ color: "var(--t3)" }}>
+                            ...
+                          </span>
+                        );
+                      return null;
+                    }
+                    return (
+                      <button
+                        key={p}
+                        className={`pg-btn${p === safePageNum ? " on" : ""}`}
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </button>
+                    );
+                  },
+                )}
+                <button
+                  className="pg-btn"
+                  disabled={safePageNum >= totalPages || loading}
+                  onClick={() => setPage(safePageNum + 1)}
+                >
                   <Ic.ChevR />
                 </button>
               </div>
               <span className="pag-info" style={{ textAlign: "right" }}>
-                Trang {safePage} / {totalPages}
+                Trang {safePageNum} / {totalPages}
               </span>
             </div>
-
           </div>
         </div>
       </div>
-      
+
       {/* Edit Modal */}
-      <EditQuestionModal 
+      <EditQuestionModal
         isOpen={!!editingQuestion}
         onClose={() => setEditingQuestion(null)}
         question={editingQuestion}
         bankId={safeBankId}
-        onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+        onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
       />
     </>
   );
