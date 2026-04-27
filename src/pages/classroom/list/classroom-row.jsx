@@ -10,10 +10,11 @@ import { PATH_TEACHER } from "@/routes/paths";
  *   onMenuClick: (id: number) => void,
  *   onMenuClose: () => void,
  *   onEdit: (classroom: object) => void,
+ *   onHide: (classroom: object) => void,
  *   onDelete: (classroom: object) => void,
  * }} props
  */
-const ClassroomRow = memo(({ classroom, activeMenu, onMenuClick, onMenuClose, onEdit, onDelete }) => {
+const ClassroomRow = memo(({ classroom, activeMenu, onMenuClick, onMenuClose, onEdit, onHide, onDelete }) => {
   const navigate = useNavigate();
   const isMenuOpen = activeMenu === classroom.id;
 
@@ -80,7 +81,12 @@ const ClassroomRow = memo(({ classroom, activeMenu, onMenuClick, onMenuClose, on
               >
                 Chỉnh sửa
               </button>
-              <button className="action-menu-item">Ẩn lớp học</button>
+              <button
+                className="action-menu-item"
+                onClick={() => { onMenuClose(); onHide?.(classroom); }}
+              >
+                Ẩn lớp học
+              </button>
               <button
                 className="action-menu-item danger"
                 onClick={() => { onMenuClose(); onDelete(classroom); }}

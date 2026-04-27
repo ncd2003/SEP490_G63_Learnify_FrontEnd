@@ -6,10 +6,10 @@ import { commentApi } from "@/apis/comment.api";
  * Receives `setComments` from `useComments` to update the shared list.
  * 
  * @param {number} postId
+ * @param {number | null | undefined} classroomId
  * @param {Function} setComments - State setter from useComments
- * @param {number} classroomId
  */
-const useCommentMutations = (postId, setComments, classroomId) => {
+const useCommentMutations = (postId, classroomId, setComments) => {
   const [submitting, setSubmitting] = useState(false);
 
   const sortByCreatedDesc = (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
@@ -17,7 +17,11 @@ const useCommentMutations = (postId, setComments, classroomId) => {
   const createComment = async (data) => {
     setSubmitting(true);
     try {
-      const payload = { postId, classroomId, ...data };
+      const payload = {
+        ...data,
+        postId: data?.postId ?? postId,
+        classroomId: data?.classroomId ?? classroomId,
+      };
       const newComment = await commentApi.createComment(payload);
       const created = newComment?.result ?? newComment;
 
@@ -63,7 +67,11 @@ const useCommentMutations = (postId, setComments, classroomId) => {
   const updateComment = async (commentId, data) => {
     setSubmitting(true);
     try {
-      const payload = { postId, classroomId, ...data };
+      const payload = {
+        ...data,
+        postId: data?.postId ?? postId,
+        classroomId: data?.classroomId ?? classroomId,
+      };
       const updated = await commentApi.updateComment(commentId, payload);
       const updatedComment = updated?.result ?? updated;
       

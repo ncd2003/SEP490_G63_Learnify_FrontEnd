@@ -657,7 +657,7 @@ const AdminPlanManagementPage = () => {
             <div className="plan-form-body">
               <div className="plan-form-grid">
                 <div className="plan-form-item">
-                  <label htmlFor="plan-name">Tên gói</label>
+                  <label className="required" htmlFor="plan-name">Tên gói</label>
                   <input
                     id="plan-name"
                     value={form.name}
@@ -667,7 +667,7 @@ const AdminPlanManagementPage = () => {
                 </div>
 
                 <div className="plan-form-item">
-                  <label htmlFor="plan-price">Giá</label>
+                  <label className="required" htmlFor="plan-price">Giá</label>
                   <input
                     id="plan-price"
                     type="number"
@@ -680,7 +680,7 @@ const AdminPlanManagementPage = () => {
                 </div>
 
                 <div className="plan-form-item">
-                  <label htmlFor="plan-duration-unit">Đơn vị thời hạn</label>
+                  <label className="required" htmlFor="plan-duration-unit">Đơn vị thời hạn</label>
                   <select
                     id="plan-duration-unit"
                     value={form.durationUnit}
@@ -695,7 +695,7 @@ const AdminPlanManagementPage = () => {
                 </div>
 
                 <div className="plan-form-item">
-                  <label htmlFor="plan-duration-value">Giá trị thời hạn</label>
+                  <label className="required" htmlFor="plan-duration-value">Giá trị thời hạn</label>
                   <input
                     id="plan-duration-value"
                     type="number"
@@ -708,7 +708,7 @@ const AdminPlanManagementPage = () => {
                 </div>
 
                 <div className="plan-form-item full-width">
-                  <label htmlFor="plan-status">Trạng thái</label>
+                  <label className="required" htmlFor="plan-status">Trạng thái</label>
                   <select
                     id="plan-status"
                     value={form.planStatus}
@@ -723,7 +723,7 @@ const AdminPlanManagementPage = () => {
                 </div>
 
                 <div className="plan-form-item full-width">
-                  <label htmlFor="plan-description">Mô tả</label>
+                  <label className="required" htmlFor="plan-description">Mô tả</label>
                   <textarea
                     id="plan-description"
                     rows={3}
@@ -735,7 +735,7 @@ const AdminPlanManagementPage = () => {
               </div>
 
               <div className="plan-benefit-box">
-                <p className="plan-benefit-title">Lợi ích trong gói</p>
+                <p className="plan-benefit-title required">Lợi ích trong gói</p>
 
                 {/* Inline benefit creation removed */}
 

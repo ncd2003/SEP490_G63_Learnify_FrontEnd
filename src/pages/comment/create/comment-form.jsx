@@ -4,7 +4,8 @@ import { CreateCommentSchema } from "@/schema/comment.schema";
 /**
  * @param {{
  *   postId: number,
- *   onSubmit: (data: { content: string, parentId?: number }) => Promise<{ success: boolean, message?: string }>,
+ *   classroomId?: number,
+ *   onSubmit: (data: { content: string, postId: number, classroomId?: number, parentId?: number }) => Promise<{ success: boolean, message?: string }>,
  *   submitting: boolean,
  *   initialComment?: { id: number, content: string } | null,
  *   onCancel?: () => void,
@@ -12,7 +13,7 @@ import { CreateCommentSchema } from "@/schema/comment.schema";
  *   parentAuthorName?: string,
  * }} props
  */
-const CommentForm = ({ postId, onSubmit, submitting, initialComment = null, onCancel, parentId, parentAuthorName }) => {
+const CommentForm = ({ postId, classroomId, onSubmit, submitting, initialComment = null, onCancel, parentId, parentAuthorName }) => {
   const [content, setContent] = useState(initialComment?.content ?? "");
   const [error, setError] = useState("");
 
@@ -26,6 +27,7 @@ const CommentForm = ({ postId, onSubmit, submitting, initialComment = null, onCa
 
     // Validate using Zod schema
     const payload = { postId, content: content.trim() };
+    if (classroomId != null) payload.classroomId = classroomId;
     if (parentId) payload.parentId = parentId;
     
     const validation = CreateCommentSchema.safeParse(payload);

@@ -5,6 +5,7 @@ import {
   Trash2,
   LayoutList,
 } from "lucide-react";
+import { classroomApi } from "@/apis/classroom.api";
 import useClassrooms from "@/hooks/use-classrooms";
 import useDebounce from "@/hooks/use-debounce";
 import Pagination from "@/components/Pagination";
@@ -109,6 +110,19 @@ const ClassroomPage = () => {
   const handleDeleteClick = (classroom) => setDeletingClassroom(classroom);
   const handleDeleteClose = () => setDeletingClassroom(null);
   const handleDeleteSuccess = () => { refetch(); setDeletingClassroom(null); };
+
+  const handleHideClick = async (classroom) => {
+    if (!classroom?.id) return;
+
+    handleMenuClose();
+
+    try {
+      await classroomApi.updateClassroomStatus(classroom.id, "ended");
+      await refetch({ page, size: 10 });
+    } catch (err) {
+      // Error toast is handled by api interceptor.
+    }
+  };
 
   return (
     <div className="classroom-list-container">
@@ -247,6 +261,7 @@ const ClassroomPage = () => {
                     activeMenu={activeMenu}
                     onMenuClose={handleMenuClose}
                     onEdit={handleEditClick}
+                    onHide={handleHideClick}
                     onDelete={handleDeleteClick}
                   />
                 ))

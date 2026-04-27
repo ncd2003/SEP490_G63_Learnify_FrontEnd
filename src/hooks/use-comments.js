@@ -15,23 +15,28 @@ const useComments = (postId, classroomId) => {
 
   const sortByCreatedDesc = (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
 
-  // Transform API response to UI format
-  const transformComment = (comment) => {
-    const replies = (comment.replies?.map(transformComment) || []).sort(sortByCreatedDesc);
-    return {
-      ...comment,
-      authorName: comment.user?.fullName || comment.user?.name || "Người dùng",
-      replies,
-    };
-  };
-
   const fetchComments = useCallback(async () => {
-    if (!postId || classroomId == null) return;
+    if (!postId || classroomId == null) {
+      setComments([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
-      const data = await commentApi.getCommentsByPost(postId, classroomId);
+      const data = await commentApi.getCommentsByPostId(postId, classroomId);
       const list = data?.result ?? data ?? [];
+      // Transform API response to UI format
+      const transformComment = (comment) => {
+        const replies = (comment.replies?.map(transformComment) || []).sort(sortByCreatedDesc);
+        return {
+          ...comment,
+          authorName: comment.user?.fullName || comment.user?.name || "Người dùng",
+          replies,
+        };
+      };
+
       const transformed = Array.isArray(list) ? list.map(transformComment).sort(sortByCreatedDesc) : [];
       setComments(transformed);
     } catch (err) {
@@ -40,7 +45,7 @@ const useComments = (postId, classroomId) => {
     } finally {
       setLoading(false);
     }
-  }, [postId]);
+  }, [postId, classroomId]);
 
   useEffect(() => {
     fetchComments();

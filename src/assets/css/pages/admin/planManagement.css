@@ -567,3 +567,10 @@
   margin-left: 12px !important;
   transform: translateX(-10px) !important;
 }
+
+/* Required field asterisk (red) */
+.required::after {
+  content: " *";
+  color: #ff0000;
+  margin-left: 6px;
+}

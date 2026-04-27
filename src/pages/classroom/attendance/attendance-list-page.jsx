@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
-import useSchedule from "@/hooks/useSchedule";
+import { attendanceApi } from "@/apis/attendance.api";
 import { PATH_TEACHER } from "@/routes/paths";
 import "@/assets/css/pages/classroom/attendanceListPage.css";
 
@@ -51,6 +51,9 @@ const ITEMS_PER_PAGE = 10;
 const AttendanceListPage = () => {
   const { id: classroomId } = useParams();
   const navigate = useNavigate();
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filters, setFilters] = useState({
     keyword: "",
     sessionDate: "",
@@ -65,7 +68,22 @@ const AttendanceListPage = () => {
   });
   const [page, setPage] = useState(1);
 
-  const { sessions, loading, error } = useSchedule(Number(classroomId));
+  useEffect(() => {
+    const fetchAttendanceSessions = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await attendanceApi.getAttendanceSessionsByClass(Number(classroomId));
+        setSessions(response?.result ?? []);
+      } catch (err) {
+        setError(err?.response?.data?.message ?? "Không thể tải danh sách buổi học điểm danh.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAttendanceSessions();
+  }, [classroomId]);
 
   const sortedSessions = useMemo(() => {
     return [...sessions].sort((a, b) => {
@@ -75,7 +93,7 @@ const AttendanceListPage = () => {
     });
   }, [sessions]);
 
-  const getSessionTitle = (session) => session.topic || session.title || "Buổi học";
+  const getSessionTitle = (session) => session.title || session.topic || "Buổi học";
 
   const getAttendanceStatus = (session) => {
     const state = getAttendanceState(session);
@@ -96,9 +114,9 @@ const AttendanceListPage = () => {
 
   const getAttendanceSummary = (session) => {
     const summary = session.attendanceSummary || session.attendanceStats || {};
-    const total = session.totalStudents ?? summary.total ?? summary.totalCount ?? null;
-    const present = session.presentCount ?? summary.present ?? summary.presentCount ?? null;
-    const absent = session.absentCount ?? summary.absent ?? summary.absentCount ?? null;
+    const total = session.totalStudents ?? summary.total ?? summary.totalCount ?? 0;
+    const present = session.presentCount ?? summary.present ?? summary.presentCount ?? 0;
+    const absent = session.absentCount ?? summary.absent ?? summary.absentCount ?? 0;
     const rate = total ? Math.round((present ?? 0) / total * 100) : null;
     return { total, present, absent, rate };
   };

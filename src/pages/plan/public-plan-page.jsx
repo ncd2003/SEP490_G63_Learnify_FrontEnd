@@ -358,11 +358,11 @@ const PublicPlanPage = () => {
         ) : (
           <section className="plan-grid">
             {activePlans.map((plan) => {
-              const isNullPrice = plan?.price === null;
+              const isNullPrice = plan?.price == null;
               const parsedPrice = Number(plan?.price);
-              const hasNumericPrice = !isNullPrice && Number.isFinite(parsedPrice);
+              const hasNumericPrice = Number.isFinite(parsedPrice);
               const normalizedPrice = hasNumericPrice ? parsedPrice : 0;
-              const isFreePlanByPrice = hasNumericPrice && normalizedPrice <= 0;
+              const isFreePlanByPrice = isNullPrice || (hasNumericPrice && normalizedPrice <= 0);
               const planId = Number(plan?.id);
 
               return (
