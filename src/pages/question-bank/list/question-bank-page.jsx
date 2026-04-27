@@ -106,7 +106,7 @@ const QuestionBankPage = () => {
       size: 5,
       sortBy: sortConfig.sortBy,
       sortDirection: sortConfig.sortDirection,
-    }).catch(() => {});
+    }).catch(() => { });
   }, [
     currentPage,
     debouncedSearch,

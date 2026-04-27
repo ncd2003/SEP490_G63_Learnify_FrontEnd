@@ -403,30 +403,37 @@ const CSS = `
 .q-scroll{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
 
 /* QUESTION CARD */
-.qcard{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);overflow:hidden;transition:all .2s var(--e);animation:fadeUp .22s ease both}
+.qcard{background:var(--card);border:1.5px solid var(--b);border-radius:var(--rl);transition:all .2s var(--e);animation:fadeUp .22s ease both;flex-shrink:0}
 .qcard:hover{border-color:var(--p);box-shadow:var(--sm);transform:translateY(-1px)}
 .qcard.sel{border-color:var(--p);background:var(--plr);box-shadow:0 0 0 3px var(--pg)}
-.qcard-main{padding:14px 16px 12px}
-.qcard-top{display:flex;align-items:flex-start;gap:10px}
+.qcard-main{padding:16px 18px 14px}
+.qcard-top{display:flex;align-items:flex-start;gap:12px}
 .qcard-check{flex-shrink:0;margin-top:3px}
-.qcard-check input{width:14px;height:14px;cursor:pointer;accent-color:var(--p)}
-.qcard-num{min-width:24px;height:24px;border-radius:50%;background:var(--p);color:var(--inv);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.qcard-check input{width:15px;height:15px;cursor:pointer;accent-color:var(--p)}
+.qcard-num{min-width:24px;height:24px;border-radius:50%;background:var(--p);color:var(--inv);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
 .qcard-body{flex:1;min-width:0}
-.qcard-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:5px}
-.badge{padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block}
+.qcard-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.badge{padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block}
 .badge-mc{background:var(--pl);color:var(--p)}
 .badge-tf{background:var(--gnl);color:var(--gn)}
 .badge-fb{background:var(--orl);color:var(--or)}
 .badge-es{background:var(--pul);color:var(--pu)}
-.qcard-prompt{font-size:13px;font-weight:600;line-height:1.65;color:var(--t)}
-.qopts{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.qopt{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:500;color:var(--t2);border:1px solid var(--bl);background:var(--bl)}
-.qopt.ok{border-color:var(--gn);background:var(--gnl);color:var(--gn);font-weight:700}
+.qcard-prompt{font-size:15px;font-weight:600;line-height:1.6;color:var(--t);margin-bottom:4px}
+
+/* OPTIONS DESIGN */
+.opt-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.opt-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1.5px solid var(--b);border-radius:var(--rm);background:var(--card);transition:all .2s;cursor:default}
+.opt-item.ok{border-color:var(--gn);background:var(--gnl)}
+.opt-let{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--b);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--t3);flex-shrink:0}
+.opt-item.ok .opt-let{background:var(--gn);color:var(--inv);border-color:var(--gn)}
+.opt-txt{font-size:13px;font-weight:500;color:var(--t2)}
+.opt-item.ok .opt-txt{color:var(--gn);font-weight:600}
+
 .qcard-footer{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-top:1px solid var(--bl);background:var(--bg)}
 .footer-l{display:flex;align-items:center;gap:12px}
 .qmeta{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--t3)}
 .footer-r{display:flex;gap:2px}
-.ab-btn{display:flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--rs);border:none;background:none;font-size:10px;font-weight:600;font-family:var(--f);color:var(--t3);cursor:pointer;transition:all .15s}
+.ab-btn{display:flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--rs);border:none;background:none;font-size:11px;font-weight:600;font-family:var(--f);color:var(--t3);cursor:pointer;transition:all .15s}
 .ab-btn:hover{background:var(--hov);color:var(--p)}
 .ab-btn.dng:hover{background:var(--rdl);color:var(--rd)}
 
@@ -505,7 +512,7 @@ const formatDate = (dateStr) => {
 
 /* ─────────────────────────── QuestionCard ─────────────────────────── */
 
-function QuestionCard({ question, index, checked, onToggle, onEdit, onDelete }) {
+function QuestionCard({ question, index, onEdit, onDelete }) {
   const cog = getCogUi(question.cognitiveLevel);
   const typeUi = getTypeUi(question.questionType);
 
@@ -529,19 +536,11 @@ function QuestionCard({ question, index, checked, onToggle, onEdit, onDelete }) 
 
   return (
     <div
-      className={`qcard${checked ? " sel" : ""}`}
+      className="qcard"
       style={{ animationDelay: `${(index % 10) * 0.04}s` }}
     >
       <div className="qcard-main">
         <div className="qcard-top">
-          <div className="qcard-check">
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={onToggle}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
           <div className="qcard-num">{index + 1}</div>
           <div className="qcard-body">
             <div className="qcard-meta">
@@ -568,23 +567,25 @@ function QuestionCard({ question, index, checked, onToggle, onEdit, onDelete }) 
             </div>
             <div className="qcard-prompt">{question.content}</div>
 
-            {/* MC options */}
+            {/* Multiple Choice Options - Vertical Style */}
             {isMultipleChoice && Array.isArray(question.options) && (
-              <div className="qopts">
+              <div className="opt-list">
                 {question.options.map((o, oi) => {
                   const isOk = o.correct || o.isCorrect;
                   return (
-                    <span key={o.id || oi} className={`qopt${isOk ? " ok" : ""}`}>
-                      {LETTERS[oi]}. {o.content}
-                    </span>
+                    <div key={o.id || oi} className={`opt-item${isOk ? " ok" : ""}`}>
+                      <div className="opt-let">{LETTERS[oi]}</div>
+                      <div className="opt-txt">{o.content}</div>
+                    </div>
                   );
                 })}
               </div>
             )}
 
-            {/* True/False */}
+            {/* True/False Display */}
             {isTrueFalse && tfCorrect !== null && (
-              <div style={{ marginTop: 7, display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "var(--t2)" }}>Đáp án:</span>
                 <span
                   className="badge"
                   style={{
@@ -594,40 +595,40 @@ function QuestionCard({ question, index, checked, onToggle, onEdit, onDelete }) 
                     padding: "3px 10px",
                   }}
                 >
-                  Đáp án: {tfCorrect ? "Đúng" : "Sai"}
+                  {tfCorrect ? "Đúng" : "Sai"}
                 </span>
               </div>
             )}
 
-            {/* Fill in blank */}
-            {isFillBlank &&
-              Array.isArray(question.options) &&
-              question.options.length > 0 && (
-                <div style={{ marginTop: 7, fontSize: 11, color: "var(--t3)", fontWeight: 600 }}>
-                  Đáp án:{" "}
-                  <span
-                    style={{
-                      color: "var(--p)",
-                      fontWeight: 700,
-                      background: "var(--pl)",
-                      padding: "1px 8px",
-                      borderRadius: 5,
-                      marginLeft: 3,
-                    }}
-                  >
-                    {question.options[0]?.content}
-                  </span>
-                </div>
-              )}
+            {/* Fill in the Blank Display */}
+            {isFillBlank && Array.isArray(question.options) && question.options.length > 0 && (
+              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "var(--t2)" }}>Đáp án:</span>
+                <span
+                  style={{
+                    color: "var(--p)",
+                    fontWeight: 700,
+                    background: "var(--pl)",
+                    padding: "2px 10px",
+                    borderRadius: 8,
+                  }}
+                >
+                  {question.options[0]?.content}
+                </span>
+              </div>
+            )}
 
-            {/* Essay */}
+            {/* Essay Display */}
             {isEssay && (
-              <div style={{ marginTop: 7, fontSize: 11, color: "var(--t3)", fontStyle: "italic" }}>
-                Câu tự luận — chấm thủ công
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, color: "var(--t3)", fontStyle: "italic", marginBottom: 4 }}>
+                  Tự luận — chấm thủ công
+                </div>
                 {question.sampleAnswer && (
-                  <span style={{ display: "block", marginTop: 3, fontStyle: "normal", color: "var(--t3)" }}>
-                    Gợi ý: {question.sampleAnswer}
-                  </span>
+                  <div style={{ fontSize: 13 }}>
+                    <span style={{ fontWeight: 600, color: "var(--p)" }}>Gợi ý trả lời: </span>
+                    <span style={{ color: "var(--t2)" }}>{question.sampleAnswer}</span>
+                  </div>
                 )}
               </div>
             )}
@@ -1032,7 +1033,6 @@ export default function ResourceBankDetailPage() {
   const [cogFilter, setCogFilter] = useState("ALL");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
-  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -1141,7 +1141,6 @@ export default function ResourceBankDetailPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-    setSelectedIds(new Set());
   }, [debouncedSearch, typeFilter, cogFilter, sort]);
 
   const handleDelete = async (question) => {
@@ -1159,24 +1158,6 @@ export default function ResourceBankDetailPage() {
       }
     }
   };
-
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    if (selectedIds.size === questionsPage.content.length && questionsPage.content.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(questionsPage.content.map((q) => q.id)));
-    }
-  };
-
-  const clearSelection = () => setSelectedIds(new Set());
 
   const handleTypeFilter = (v) => {
     setTypeFilter(v);
@@ -1246,11 +1227,11 @@ export default function ResourceBankDetailPage() {
               className="btn-action btn-p"
               onClick={() =>
                 navigate(
-                  `/question-bank/${safeBankId}/questions/create/ai?bankId=${safeBankId}`,
+                  `/assignments/create/manual?source=question-bank`,
                 )
               }
             >
-              <Ic.Sparkles /> Tạo bằng AI
+              <Ic.Plus /> Tạo bài tập từ ngân hàng
             </button>
           </div>
         </div>
@@ -1397,14 +1378,6 @@ export default function ResourceBankDetailPage() {
                 </select>
                 <div className="sep-line" />
                 <button
-                  className="btn-action btn-g"
-                  style={{ padding: "5px 10px", gap: 4 }}
-                  onClick={toggleAll}
-                >
-                  <Ic.Check />
-                  {selectedIds.size === questionsPage.content.length && questionsPage.content.length > 0 ? "Bỏ tất cả" : "Chọn tất cả"}
-                </button>
-                <button
                   className="btn-action btn-p"
                   style={{ padding: "5px 10px", gap: 4 }}
                   onClick={() =>
@@ -1450,8 +1423,6 @@ export default function ResourceBankDetailPage() {
                     key={q.id}
                     question={q}
                     index={(safePageNum - 1) * ITEMS_PER_PAGE + i}
-                    checked={selectedIds.has(q.id)}
-                    onToggle={() => toggleSelect(q.id)}
                     onEdit={(q) => setEditingQuestion(q)}
                     onDelete={handleDelete}
                   />
@@ -1512,27 +1483,6 @@ export default function ResourceBankDetailPage() {
               <span className="pag-info" style={{ textAlign: "right" }}>
                 Trang {safePageNum} / {totalPages}
               </span>
-            </div>
-
-            {/* BULK ACTION TOOLBAR */}
-            <div className={`bulk-bar${selectedIds.size > 0 ? "" : " hidden"}`}>
-              <Ic.Check />
-              <span className="sel-cnt">{selectedIds.size} câu đã chọn</span>
-              <button className="btn-action btn-g" style={{ padding: "6px 12px" }}>
-                <Ic.Plus /> Thêm vào đề
-              </button>
-              <button className="btn-action btn-g" style={{ padding: "6px 12px" }}>
-                <Ic.Copy /> Nhân bản
-              </button>
-              <button
-                className="btn-action btn-g"
-                style={{ padding: "6px 12px", borderColor: "rgba(239,68,68,.4)", color: "var(--rd)" }}
-              >
-                <Ic.Trash /> Xóa
-              </button>
-              <button className="ab-btn" style={{ marginLeft: "auto" }} onClick={clearSelection}>
-                <Ic.X /> Bỏ chọn
-              </button>
             </div>
           </div>
         </div>
