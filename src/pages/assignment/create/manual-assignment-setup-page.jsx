@@ -97,7 +97,7 @@ const CSS = `
 .intro-desc{font-size:14px;color:var(--t2);line-height:1.6}
 .layout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:20px;margin-bottom:18px;align-items:start}
 .layout-grid > *{height:100%;min-width:0}
-.step-card{background:var(--card);border:1.5px solid var(--b);border-radius:16px;padding:22px;box-shadow:0 1px 3px rgba(26,35,50,.06);height:100%}
+.step-card{background:var(--card);border:1.5px solid var(--b);border-radius:16px;padding:22px;box-shadow:0 1px 3px rgba(26,35,50,.06);height:100%;display:flex;flex-direction:column}
 .step-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .step-number{width:30px;height:30px;border-radius:50%;background:var(--pl);color:var(--p);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .step-label{font-size:15px;font-weight:700;color:var(--t)}
@@ -264,7 +264,8 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
     resultReleaseTime: "",
     shuffleQuestions: false,
     limitTabs: "",
-    requireFullScreen: false,
+    maxAttemptsType: "UNLIMITED",
+    maxAttempts: 1,
   });
   const [submitting, setSubmitting] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
@@ -360,7 +361,8 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
             loadedSetting?.limitTabs === undefined
               ? ""
               : String(loadedSetting.limitTabs),
-          requireFullScreen: Boolean(loadedSetting?.requireFullScreen),
+          maxAttemptsType: loadedSetting?.maxAttempts ? "LIMITED" : "UNLIMITED",
+          maxAttempts: loadedSetting?.maxAttempts || 1,
         });
       } catch (error) {
         console.error("Load assignment failed", error);
@@ -454,13 +456,23 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
       }
 
       if (category === "TEST") {
-        settingPayload.requireFullScreen = Boolean(setting.requireFullScreen);
         if (
           setting.limitTabs !== "" &&
           Number.isFinite(parsedLimitTabs) &&
           parsedLimitTabs >= 0
         ) {
           settingPayload.limitTabs = parsedLimitTabs;
+        }
+      } else if (category === "HOMEWORK") {
+        if (setting.maxAttemptsType === "LIMITED") {
+          const parsedAttempts = Number(setting.maxAttempts);
+          if (Number.isFinite(parsedAttempts) && parsedAttempts > 0) {
+            settingPayload.maxAttempts = parsedAttempts;
+          } else {
+            throw new Error("Số lần làm bài tối đa phải lớn hơn 0.");
+          }
+        } else {
+          settingPayload.maxAttempts = null;
         }
       }
 
@@ -647,10 +659,11 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                 />
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group" style={{ marginBottom: 14, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 <label className="label">Mô tả</label>
                 <textarea
                   className="textarea"
+                  style={{ flexGrow: 1 }}
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="Mô tả ngắn về mục tiêu, phạm vi bài tập..."
@@ -712,7 +725,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
               <div className="setting-grid">
                 <div className="form-group">
-                  <label className="label">Mật khẩu (password)</label>
+                  <label className="label">Mật khẩu</label>
                   <div className="password-wrap">
                     <input
                       className="input password-input"
@@ -746,7 +759,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="form-group">
                   <label className="label">
-                    Thời gian làm bài (durationMinutes)
+                    Thời gian làm bài
                   </label>
                   <input
                     className="input"
@@ -763,7 +776,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                 </div>
 
                 <div className="form-group">
-                  <label className="label">Bắt đầu (startTime)</label>
+                  <label className="label">Bắt đầu</label>
                   <input
                     className="input"
                     type="datetime-local"
@@ -778,7 +791,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                 </div>
 
                 <div className="form-group">
-                  <label className="label">Hạn nộp (deadline)</label>
+                  <label className="label">Hạn nộp</label>
                   <input
                     className="input"
                     type="datetime-local"
@@ -794,7 +807,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="form-group">
                   <label className="label">
-                    Hiển thị kết quả (resultVisibility)
+                    Hiển thị kết quả
                   </label>
                   <select
                     className="select"
@@ -816,7 +829,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="form-group">
                   <label className="label">
-                    Thời điểm release điểm (resultReleaseTime)
+                    Thời điểm công bố điểm
                   </label>
                   <select
                     className="select"
@@ -838,7 +851,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="setting-toggle-item">
                   <label className="label">
-                    Cho phép nộp muộn (allowLateSubmission)
+                    Cho phép nộp muộn
                   </label>
                   <div className="pill-group">
                     <button
@@ -870,7 +883,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="setting-toggle-item">
                   <label className="label">
-                    Trộn câu hỏi (shuffleQuestions)
+                    Trộn câu hỏi
                   </label>
                   <div className="pill-group">
                     <button
@@ -903,9 +916,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
               {category === "TEST" ? (
                 <div className="setting-checks">
-                  <div className="setting-toggle-item">
+                  <div className="setting-toggle-item full">
                     <label className="label">
-                      Giới hạn chuyển tab (limitTabs)
+                      Giới hạn chuyển tab
                     </label>
                     <input
                       className="input"
@@ -920,41 +933,49 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                       }
                       placeholder="Để trống nếu không giới hạn"
                     />
-                  </div>
 
-                  <div className="setting-toggle-item">
+                  </div>
+                </div>
+              ) : (
+                <div className="setting-checks">
+                  <div className="setting-toggle-item full">
                     <label className="label">
-                      Yêu cầu toàn màn hình (requireFullScreen)
+                      Số lần làm bài tối đa
                     </label>
-                    <div className="pill-group">
-                      <button
-                        type="button"
-                        className={`pill${setting.requireFullScreen ? " active" : ""}`}
-                        onClick={() =>
-                          setSetting((prev) => ({
-                            ...prev,
-                            requireFullScreen: true,
-                          }))
-                        }
-                      >
-                        Bật
-                      </button>
-                      <button
-                        type="button"
-                        className={`pill${!setting.requireFullScreen ? " active" : ""}`}
-                        onClick={() =>
-                          setSetting((prev) => ({
-                            ...prev,
-                            requireFullScreen: false,
-                          }))
-                        }
-                      >
-                        Tắt
-                      </button>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <div className="pill-group" style={{ flex: 1 }}>
+                        <button
+                          type="button"
+                          className={`pill${setting.maxAttemptsType === "UNLIMITED" ? " active" : ""}`}
+                          onClick={() => setSetting(p => ({ ...p, maxAttemptsType: "UNLIMITED" }))}
+                        >
+                          Vô hạn
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill${setting.maxAttemptsType === "LIMITED" ? " active" : ""}`}
+                          onClick={() => setSetting(p => ({ ...p, maxAttemptsType: "LIMITED" }))}
+                        >
+                          Giới hạn
+                        </button>
+                      </div>
+                      {setting.maxAttemptsType === "LIMITED" && (
+                        <div style={{ position: 'relative', width: 90 }}>
+                          <input
+                            className="input"
+                            type="number"
+                            min="1"
+                            value={setting.maxAttempts}
+                            onChange={(e) => setSetting(p => ({ ...p, maxAttempts: e.target.value }))}
+                            style={{ paddingRight: 32, textAlign: 'center', height: '100%' }}
+                          />
+                          <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--t2)', fontWeight: 600 }}>lần</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
 

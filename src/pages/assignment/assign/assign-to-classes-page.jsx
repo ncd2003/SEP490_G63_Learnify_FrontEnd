@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
@@ -30,6 +31,11 @@ const SETTINGS_PANEL_CSS = `
 .assign-label{display:block;font-size:11px;font-weight:700;color:#64748B;margin-bottom:5px;letter-spacing:.02em}
 .assign-input,.assign-select{width:100%;height:36px;border:1.5px solid #E2E8F0;border-radius:10px;padding:0 11px;font-size:12px;font-family:'Be Vietnam Pro','Segoe UI',sans-serif;color:#1E293B;background:#F8FAFC;transition:all .2s ease;outline:none}
 .assign-input:focus,.assign-select:focus{border-color:#3B82F6;background:#FFFFFF;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.assign-input-wrap{position:relative}
+.assign-input-wrap .assign-input{padding-right:38px}
+.assign-input-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#94A3B8;cursor:pointer;padding:4px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.assign-input-eye:hover{color:#2563EB;background:#EFF6FF}
+.assign-input-eye:focus-visible{outline:2px solid rgba(59,130,246,.35);outline-offset:2px}
 .assign-setting-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
 .assign-setting-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
 .assign-toggle-item{padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:12px;background:#FFFFFF}
@@ -217,6 +223,7 @@ const AssignToClassesPage = () => {
   const [selected, setSelected] = useState(new Set());
   const [settings, setSettings] = useState({});
   const [openCards, setOpenCards] = useState({});
+  const [visiblePasswords, setVisiblePasswords] = useState({});
   const [toast, setToast] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [savingClassOverride, setSavingClassOverride] = useState({});
@@ -339,10 +346,16 @@ const AssignToClassesPage = () => {
           delete n[id];
           return n;
         });
+        setVisiblePasswords((current) => {
+          const nextVisibility = { ...current };
+          delete nextVisibility[id];
+          return nextVisibility;
+        });
       } else {
         next.add(id);
         setSettings((s) => ({ ...s, [id]: { ...baseSettings } }));
         setOpenCards((o) => ({ ...o, [id]: true }));
+        setVisiblePasswords((current) => ({ ...current, [id]: false }));
       }
       return next;
     });
@@ -360,6 +373,10 @@ const AssignToClassesPage = () => {
 
   const toggleCard = (id) => {
     setOpenCards((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const setPasswordVisibility = (classId, isVisible) => {
+    setVisiblePasswords((prev) => ({ ...prev, [classId]: isVisible }));
   };
 
   const selectedArr = useMemo(() => Array.from(selected), [selected]);
@@ -910,18 +927,69 @@ const AssignToClassesPage = () => {
                           <div className="assign-setting-grid">
                             <div className="assign-form-group">
                               <label className="assign-label">Mật khẩu</label>
-                              <input
-                                className="assign-input"
-                                value={settings[id]?.password || ""}
-                                onChange={(event) =>
-                                  updateSetting(
-                                    id,
-                                    "password",
-                                    event.target.value,
-                                  )
-                                }
-                                placeholder="Để trống nếu không dùng"
-                              />
+                              <div className="assign-input-wrap">
+                                <input
+                                  className="assign-input"
+                                  type={
+                                    visiblePasswords[id] ? "text" : "password"
+                                  }
+                                  value={settings[id]?.password || ""}
+                                  onChange={(event) =>
+                                    updateSetting(
+                                      id,
+                                      "password",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Để trống nếu không dùng"
+                                />
+                                <button
+                                  type="button"
+                                  className="assign-input-eye"
+                                  aria-label={
+                                    visiblePasswords[id]
+                                      ? "Ẩn mật khẩu"
+                                      : "Hiển thị mật khẩu"
+                                  }
+                                  onPointerDown={(event) => {
+                                    event.preventDefault();
+                                    setPasswordVisibility(id, true);
+                                  }}
+                                  onPointerUp={() =>
+                                    setPasswordVisibility(id, false)
+                                  }
+                                  onPointerLeave={() =>
+                                    setPasswordVisibility(id, false)
+                                  }
+                                  onPointerCancel={() =>
+                                    setPasswordVisibility(id, false)
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key === " " ||
+                                      event.key === "Enter"
+                                    ) {
+                                      event.preventDefault();
+                                      setPasswordVisibility(id, true);
+                                    }
+                                  }}
+                                  onKeyUp={(event) => {
+                                    if (
+                                      event.key === " " ||
+                                      event.key === "Enter"
+                                    ) {
+                                      event.preventDefault();
+                                      setPasswordVisibility(id, false);
+                                    }
+                                  }}
+                                >
+                                  {visiblePasswords[id] ? (
+                                    <EyeOff size={16} />
+                                  ) : (
+                                    <Eye size={16} />
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
                             <div className="assign-form-group">

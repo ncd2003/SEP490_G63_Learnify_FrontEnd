@@ -7,6 +7,13 @@ import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_STUDENT } from "@/routes/paths";
 
 const PAGE_SIZE = 5;
+const IN_PROGRESS_UI = {
+  title: "Đang làm dở",
+  loading: "Đang tải bài đang làm dở...",
+  empty: "Không có bài đang làm dở.",
+  error: "Không thể tải bài đang làm dở.",
+  continue: "Tiếp tục làm",
+};
 
 const toDisplayDateTime = (value) => {
   if (!value) return "-";
@@ -47,6 +54,42 @@ const getTimeLeftLabel = (deadline, urgency) => {
   const days = Math.max(0, Math.ceil(diff / (24 * 60 * 60 * 1000)));
 
   if (hours < 24) return `Còn ${hours} giờ`;
+  return `Còn ${days} ngày`;
+};
+
+const getInProgressRemainingLabel = (remainingSeconds, deadline) => {
+  if (Number.isFinite(remainingSeconds)) {
+    if (remainingSeconds <= 0) return "Hết thời gian";
+
+    const totalMinutes = Math.ceil(remainingSeconds / 60);
+    if (totalMinutes < 60) return `Còn ${totalMinutes} phút`;
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours < 24) {
+      return minutes > 0
+        ? `Còn ${hours} giờ ${minutes} phút`
+        : `Còn ${hours} giờ`;
+    }
+
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours > 0
+      ? `Còn ${days} ngày ${remainingHours} giờ`
+      : `Còn ${days} ngày`;
+  }
+
+  if (!deadline) return "Không giới hạn";
+
+  const diff = new Date(deadline).getTime() - Date.now();
+  if (!Number.isFinite(diff)) return "Không giới hạn";
+  if (diff <= 0) return "Đã quá hạn";
+
+  const hours = Math.max(0, Math.ceil(diff / (60 * 60 * 1000)));
+  if (hours < 24) return `Còn ${hours} giờ`;
+
+  const days = Math.max(0, Math.ceil(diff / (24 * 60 * 60 * 1000)));
   return `Còn ${days} ngày`;
 };
 
@@ -162,6 +205,29 @@ const toUiAssignment = (item, fallbackStatus = "pending", classInfo = null) => {
   };
 };
 
+const normalizeInProgressSubmission = (item) => {
+  const assignmentId = Number(
+    item?.assignmentId ?? item?.classroomAssignmentId ?? item?.id,
+  );
+  if (!Number.isFinite(assignmentId) || assignmentId <= 0) return null;
+
+  const submissionId = Number(item?.submissionId);
+  const remainingSeconds = Number(item?.durationRemainingSeconds);
+
+  return {
+    assignmentId,
+    submissionId: Number.isFinite(submissionId) ? submissionId : null,
+    title: String(item?.assignmentTitle || `Bài tập #${assignmentId}`),
+    startTime: item?.startTime ?? null,
+    deadline: item?.deadline ?? null,
+    remainingSeconds: Number.isFinite(remainingSeconds)
+      ? Math.max(0, remainingSeconds)
+      : null,
+    attemptNumber: Number(item?.attemptNumber ?? 0),
+    tabSwitchCount: Number(item?.tabSwitchCount ?? 0),
+  };
+};
+
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700&display=swap');
 
@@ -211,6 +277,21 @@ const CSS = `
 .prog-pct{font-size:12px;font-weight:700;color:var(--primary)}
 .prog-track{height:7px;background:var(--border-l);border-radius:10px;overflow:hidden}
 .prog-fill{height:100%;border-radius:10px;background:var(--gradient);transition:width .6s var(--ease)}
+.inprog-wrap{padding:14px 24px;background:var(--card);border-bottom:1.5px solid var(--border)}
+.inprog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.inprog-title{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.inprog-bar{width:3px;height:12px;border-radius:2px;background:var(--amber)}
+.inprog-count{font-size:11px;font-weight:600;color:var(--text3)}
+.inprog-list{display:grid;gap:10px}
+.inprog-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--r-m);background:var(--card);box-shadow:0 8px 20px rgba(15,23,42,.06)}
+.inprog-main{min-width:0}
+.inprog-card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px}
+.inprog-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--text3);font-weight:600}
+.inprog-meta span{display:flex;align-items:center;gap:4px}
+.inprog-btn{border:none;padding:8px 12px;border-radius:10px;background:var(--gradient);color:#fff;font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 2px 8px var(--primary-shadow);transition:all .2s var(--ease)}
+.inprog-btn:hover{transform:translateY(-1px)}
+.inprog-empty{padding:10px 12px;border-radius:var(--r-m);border:1.5px dashed var(--border);font-size:11px;color:var(--text3);background:var(--input-bg)}
+.inprog-empty.error{border-color:rgba(220,38,38,.3);color:var(--red);background:var(--red-l)}
 .filter-bar{padding:14px 24px;background:var(--card);border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .assignment-segment-wrap{padding:12px 24px;background:var(--card);border-bottom:1.5px solid var(--border)}
 .assignment-segment{display:flex;align-items:center;gap:6px;background:#F1F5F9;border:1px solid var(--border);border-radius:999px;padding:4px;overflow-x:auto}
@@ -306,6 +387,8 @@ const CSS = `
 @media(max-width:640px){
   .class-hero{padding:14px 14px 0}.acard{margin:0 14px 10px}.filter-bar{padding:12px 14px}
   .stats-strip .ss-val{font-size:18px}.section-head{padding:14px 14px 7px}
+  .inprog-wrap{padding:12px 14px}.inprog-card{flex-direction:column;align-items:flex-start}
+  .inprog-btn{width:100%;justify-content:center}
   .info-grid{grid-template-columns:1fr}
 }
 `;
@@ -682,6 +765,47 @@ const AssignmentCard = ({ assignment, index, onOpen }) => {
         <DeadlineRow assignment={assignment} />
         {actionBtn}
       </div>
+    </div>
+  );
+};
+
+const InProgressCard = ({ item, onContinue }) => {
+  const remainingLabel = getInProgressRemainingLabel(
+    item?.remainingSeconds,
+    item?.deadline,
+  );
+
+  return (
+    <div className="inprog-card">
+      <div className="inprog-main">
+        <div className="inprog-card-title">{item.title}</div>
+        <div className="inprog-meta">
+          <span>
+            <Ic.Clock width={12} height={12} /> {remainingLabel}
+          </span>
+          <span>
+            <Ic.File width={12} height={12} /> Bắt đầu:{" "}
+            {toDisplayDateTime(item.startTime)}
+          </span>
+          <span>
+            <Ic.Warn width={12} height={12} /> Hạn nộp:{" "}
+            {toDisplayDateTime(item.deadline)}
+          </span>
+          {Number.isFinite(item.attemptNumber) && item.attemptNumber > 0 ? (
+            <span>Lần làm: {item.attemptNumber}</span>
+          ) : null}
+          {Number.isFinite(item.tabSwitchCount) && item.tabSwitchCount > 0 ? (
+            <span>Chuyển tab: {item.tabSwitchCount}</span>
+          ) : null}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="inprog-btn"
+        onClick={() => onContinue(item)}
+      >
+        <Ic.Send width={12} height={12} /> {IN_PROGRESS_UI.continue}
+      </button>
     </div>
   );
 };
@@ -1074,6 +1198,9 @@ const StudentAssignmentListPage = () => {
 
   const [classInfo, setClassInfo] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [inProgressItems, setInProgressItems] = useState([]);
+  const [inProgressLoading, setInProgressLoading] = useState(false);
+  const [inProgressError, setInProgressError] = useState("");
   const [categoryMeta, setCategoryMeta] = useState(createDefaultCategoryMeta);
   const [pageByCategory, setPageByCategory] = useState(
     createDefaultPageByCategory,
@@ -1098,6 +1225,8 @@ const StudentAssignmentListPage = () => {
     }
 
     setAssignments([]);
+    setInProgressItems([]);
+    setInProgressError("");
     setCategoryMeta(createDefaultCategoryMeta());
     setPageByCategory(createDefaultPageByCategory());
     setActiveCategory("todo");
@@ -1147,6 +1276,43 @@ const StudentAssignmentListPage = () => {
         return next;
       });
     });
+
+    return () => {
+      alive = false;
+    };
+  }, [classId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(classId) || classId <= 0) return;
+
+    let alive = true;
+
+    setInProgressLoading(true);
+    setInProgressError("");
+
+    assignmentApi
+      .getInProgressSubmissions(classId)
+      .then((response) => {
+        if (!alive) return;
+
+        const normalized = (
+          Array.isArray(response?.result) ? response.result : []
+        )
+          .map(normalizeInProgressSubmission)
+          .filter(Boolean);
+
+        setInProgressItems(normalized);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setInProgressItems([]);
+        setInProgressError(
+          err?.response?.data?.message || IN_PROGRESS_UI.error,
+        );
+      })
+      .finally(() => {
+        if (alive) setInProgressLoading(false);
+      });
 
     return () => {
       alive = false;
@@ -1249,6 +1415,8 @@ const StudentAssignmentListPage = () => {
       );
     });
   }, [assignments, search]);
+
+  const inProgressCount = inProgressItems.length;
 
   const counts = {
     pending: categoryMeta.todo.totalElements,
@@ -1439,6 +1607,58 @@ const StudentAssignmentListPage = () => {
               );
             })}
           </div>
+        </div>
+
+        <div className="inprog-wrap">
+          <div className="inprog-head">
+            <div className="inprog-title">
+              <div className="inprog-bar" />
+              <span>{IN_PROGRESS_UI.title}</span>
+            </div>
+            <div className="inprog-count">{inProgressCount} bài đang làm</div>
+          </div>
+
+          {inProgressLoading ? (
+            <div className="state-box">{IN_PROGRESS_UI.loading}</div>
+          ) : inProgressError ? (
+            <div className="inprog-empty error">{inProgressError}</div>
+          ) : inProgressItems.length === 0 ? (
+            <div className="inprog-empty">{IN_PROGRESS_UI.empty}</div>
+          ) : (
+            <div className="inprog-list">
+              {inProgressItems.map((it) => (
+                <InProgressCard
+                  key={it.submissionId || `${it.assignmentId}`}
+                  item={it}
+                  onContinue={(item) => {
+                    const safeAssignmentId = Number(item.assignmentId || 0);
+                    if (
+                      !Number.isFinite(safeAssignmentId) ||
+                      safeAssignmentId <= 0
+                    ) {
+                      showToast(
+                        "Không tìm thấy mã bài tập để tiếp tục.",
+                        "error",
+                      );
+                      return;
+                    }
+
+                    navigate(
+                      PATH_STUDENT.classroom.assignmentDo(
+                        classId,
+                        safeAssignmentId,
+                      ),
+                      {
+                        state: {
+                          resumeSubmissionId: item.submissionId || null,
+                        },
+                      },
+                    );
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {loading ? (

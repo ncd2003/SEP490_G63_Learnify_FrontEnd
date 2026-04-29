@@ -154,6 +154,13 @@ const getAssignments = (params = {}) => {
 const getStudentAssignments = (params = {}) =>
   apiRequest.get("/student/assignments", { params });
 
+const getInProgressSubmissions = (classroomId) => {
+  const safeClassroomId = normalizeId(classroomId, "classroomId");
+  return apiRequest.get("/student/assignments/submissions/in-progress", {
+    params: { classroomId: safeClassroomId },
+  });
+};
+
 const getAssignmentsForClassroom = (classroomId) => {
   const safeClassroomId = normalizeId(classroomId, "classroomId");
   return apiRequest.get(`${ASSIGNMENT_BASE}/classrooms/${safeClassroomId}`);
@@ -917,6 +924,7 @@ export const assignmentApi = {
   createAssignment,
   getAssignments,
   getStudentAssignments,
+  getInProgressSubmissions,
   getAssignmentsForClassroom,
   startStudentAssignment,
   saveStudentAssignmentDraft,
