@@ -12,6 +12,10 @@ export const ENROLLMENT_STATUS = Object.freeze({
 const joinClass = (classroomId) =>
 	apiRequest.post(`${BASE}/${classroomId}/join`);
 
+/** @param {number} classroomId @param {string} emails */
+const inviteStudents = (classroomId, emails) =>
+	apiRequest.post(`${BASE}/${classroomId}/invite`, { emails });
+
 /** @param {number} classroomId */
 const leaveClass = (classroomId) =>
 	apiRequest.delete(`${BASE}/${classroomId}/leave`);
@@ -57,6 +61,7 @@ const getMyClassrooms = (enrollmentStatus = ENROLLMENT_STATUS.ACCEPTED) =>
 
 export const classroomMemberApi = {
 	joinClass,
+	inviteStudents,
 	leaveClass,
 	getClassroomMembers,
 	getAcceptedMembers,

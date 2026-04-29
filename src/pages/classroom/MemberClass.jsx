@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   CheckCircle,
@@ -9,6 +9,7 @@ import {
   UserPlus,
   List,
   ListFilter,
+  X,
 } from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import { classroomApi } from '@/apis/classroom.api';
@@ -18,7 +19,6 @@ import { reportApi } from '@/apis/report.api';
 import { useAuth } from '@/contexts/AuthContext';
 import ApproveRequestsModal from './ApproveRequestsModal';
 import RejectRequestsModal from './RejectRequestsModal';
-import { copyToClipboard } from '@/lib/utils';
 import '@/assets/css/pages/classroom/pendingRequests.css';
 
 const REPORT_REASON_OPTIONS = [
@@ -27,6 +27,10 @@ const REPORT_REASON_OPTIONS = [
   { value: 'HARASSMENT', label: 'Quấy rối' },
   { value: 'INAPPROPRIATE_CONTENT', label: 'Nội dung phản cảm' },
 ];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const normalizeEmail = (value = '') => value.trim().toLowerCase();
 
 const getRequestActionId = (request) =>
   request?.studentId ?? request?.student?.id ?? request?.memberId ?? request?.id;
@@ -93,6 +97,15 @@ const MemberClass = () => {
   const [reportError, setReportError] = useState('');
   const [reportSuccess, setReportSuccess] = useState('');
   const [activeTeacherTab, setActiveTeacherTab] = useState('members');
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteInput, setInviteInput] = useState('');
+  const [inviteEmails, setInviteEmails] = useState([]);
+  const [inviteInputFocused, setInviteInputFocused] = useState(false);
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteLookupResults, setInviteLookupResults] = useState([]);
+  const [inviteLookupLoading, setInviteLookupLoading] = useState(false);
+  const [inviteLookupError, setInviteLookupError] = useState('');
 
   const fetchClassroomInfo = useCallback(async () => {
     try {
@@ -267,6 +280,264 @@ const MemberClass = () => {
     return 'Người dùng';
   };
 
+  const emailDirectory = useMemo(() => {
+    const source = [...members, ...pendingRequests]
+      .map((item) => {
+        const email = normalizeEmail(item.studentEmail || '');
+        if (!email) return null;
+
+        return {
+          email,
+          label: item.studentName || email,
+          subtitle: item.status === ENROLLMENT_STATUS.PENDING ? 'Đang chờ duyệt' : 'Thành viên lớp',
+        };
+      })
+      .filter(Boolean);
+
+    const unique = new Map();
+    source.forEach((item) => {
+      if (!unique.has(item.email)) unique.set(item.email, item);
+    });
+
+    return [...unique.values()];
+  }, [members, pendingRequests]);
+
+  useEffect(() => {
+    if (!isInviteModalOpen) {
+      setInviteLookupResults([]);
+      setInviteLookupLoading(false);
+      setInviteLookupError('');
+      return;
+    }
+
+    const keyword = normalizeEmail(inviteInput);
+
+    if (!keyword) {
+      setInviteLookupResults([]);
+      setInviteLookupLoading(false);
+      setInviteLookupError('');
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setInviteLookupLoading(true);
+      setInviteLookupError('');
+
+      try {
+        const response = await userApi.searchStudentsByEmail(keyword);
+
+        const users = response?.result ?? [];
+        const normalizedUsers = (Array.isArray(users) ? users : [])
+          .map((item) => {
+            const email = normalizeEmail(item?.email ?? '');
+            if (!email) return null;
+
+            return {
+              email,
+              label: item?.fullName || email,
+              subtitle: 'Người dùng trong hệ thống',
+            };
+          })
+          .filter(Boolean);
+
+        if (!cancelled) {
+          setInviteLookupResults(normalizedUsers);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setInviteLookupResults([]);
+          setInviteLookupError(err?.response?.data?.message || 'Không thể tải gợi ý người dùng.');
+        }
+      } finally {
+        if (!cancelled) {
+          setInviteLookupLoading(false);
+        }
+      }
+    }, 280);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [inviteInput, isInviteModalOpen]);
+
+  const inviteSuggestions = useMemo(() => {
+    const keyword = normalizeEmail(inviteInput);
+    const selectedSet = new Set(inviteEmails.map((email) => normalizeEmail(email)));
+
+    const combined = new Map();
+
+    const addSuggestion = (item, fallbackSubtitle = '', disabled = false) => {
+      const email = normalizeEmail(item?.email || '');
+      if (!email || selectedSet.has(email) || combined.has(email)) return;
+
+      combined.set(email, {
+        email,
+        label: item?.label || email,
+        subtitle: item?.subtitle || fallbackSubtitle,
+        disabled: disabled,
+      });
+    };
+
+    const classMatches = keyword
+      ? emailDirectory.filter((item) => item.email.includes(keyword) || item.label.toLowerCase().includes(keyword))
+      : emailDirectory;
+
+    classMatches.forEach((item) => {
+      addSuggestion(item, item.subtitle || 'Đã có trong lớp', true);
+    });
+
+    inviteLookupResults.forEach((item) => {
+      addSuggestion(item, 'Người dùng trong hệ thống', false);
+    });
+
+    const filtered = [...combined.values()];
+
+    if (keyword && EMAIL_REGEX.test(keyword) && !selectedSet.has(keyword)) {
+      return [
+        {
+          email: keyword,
+          label: keyword,
+          subtitle: 'Nhập để gửi lời mời nếu chưa có tài khoản',
+        },
+        ...filtered,
+      ];
+    }
+
+    return filtered;
+  }, [emailDirectory, inviteEmails, inviteInput, inviteLookupResults]);
+
+  const addInviteEmails = useCallback((values) => {
+    const nextEmails = [];
+    const seen = new Set(inviteEmails.map((email) => normalizeEmail(email)));
+
+    values.forEach((rawValue) => {
+      const email = normalizeEmail(rawValue);
+      if (!email || seen.has(email)) return;
+      seen.add(email);
+      nextEmails.push(email);
+    });
+
+    if (!nextEmails.length) return;
+
+    setInviteEmails((prev) => [...prev, ...nextEmails]);
+    setInviteInput('');
+    setInviteError('');
+  }, [inviteEmails]);
+
+  const commitInviteDraft = useCallback(() => {
+    const values = inviteInput
+      .split(/[,;\n\t ]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (!values.length) return;
+
+    const invalidEmails = values.filter((value) => !EMAIL_REGEX.test(normalizeEmail(value)));
+    if (invalidEmails.length) {
+      setInviteError('Vui lòng nhập địa chỉ email hợp lệ.');
+      return;
+    }
+
+    addInviteEmails(values);
+  }, [addInviteEmails, inviteInput]);
+
+  const openInviteModal = () => {
+    setInviteError('');
+    setInviteInput('');
+    setInviteEmails([]);
+    setInviteInputFocused(false);
+    setIsInviteModalOpen(true);
+  };
+
+  const closeInviteModal = () => {
+    if (inviteSubmitting) return;
+    setIsInviteModalOpen(false);
+    setInviteInput('');
+    setInviteEmails([]);
+    setInviteInputFocused(false);
+    setInviteError('');
+  };
+
+  const handleInviteSubmit = async () => {
+    const draftEmails = inviteInput
+      .split(/[,;\n\t ]+/)
+      .map((value) => normalizeEmail(value))
+      .filter(Boolean);
+
+    const candidateEmails = [...inviteEmails, ...draftEmails];
+    const uniqueEmails = [...new Set(candidateEmails.map((email) => normalizeEmail(email)))].filter(Boolean);
+
+    if (!uniqueEmails.length) {
+      setInviteError('Vui lòng nhập ít nhất một email.');
+      return;
+    }
+
+    const invalidEmails = uniqueEmails.filter((email) => !EMAIL_REGEX.test(email));
+    if (invalidEmails.length) {
+      setInviteError('Vui lòng nhập địa chỉ email hợp lệ.');
+      return;
+    }
+
+    try {
+      setInviteSubmitting(true);
+      setInviteError('');
+      const response = await classroomMemberApi.inviteStudents(Number(id), uniqueEmails.join(','));
+
+      if (response.code === 1000) {
+        setSuccess(response.message || 'Đã gửi lời mời tham gia lớp học thành công.');
+        setIsInviteModalOpen(false);
+        setInviteInput('');
+        setInviteEmails([]);
+        setInviteInputFocused(false);
+        setTimeout(() => setSuccess(''), 4000);
+      } else {
+        setInviteError(response.message || 'Không thể gửi lời mời.');
+      }
+    } catch (err) {
+      setInviteError(err.response?.data?.message || 'Không thể gửi lời mời. Vui lòng thử lại sau.');
+    } finally {
+      setInviteSubmitting(false);
+    }
+  };
+
+  const handleInviteKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ',' || event.key === 'Tab') {
+      if (inviteInput.trim()) {
+        event.preventDefault();
+        commitInviteDraft();
+      }
+      return;
+    }
+
+    if (event.key === 'Backspace' && !inviteInput && inviteEmails.length > 0) {
+      setInviteEmails((prev) => prev.slice(0, -1));
+    }
+  };
+
+  const handleInvitePaste = (event) => {
+    const pastedText = event.clipboardData.getData('text');
+    if (!pastedText) return;
+
+    const values = pastedText
+      .split(/[,;\n\t ]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (!values.length) return;
+
+    event.preventDefault();
+
+    const invalidEmails = values.filter((value) => !EMAIL_REGEX.test(normalizeEmail(value)));
+    if (invalidEmails.length) {
+      setInviteError('Vui lòng nhập địa chỉ email hợp lệ.');
+      return;
+    }
+
+    addInviteEmails(values);
+  };
+
   const openReportUser = () => {
     if (!selectedMember?.studentId) return;
     setReportReason('');
@@ -352,9 +623,8 @@ const MemberClass = () => {
     return name.includes(keyword) || email.includes(keyword) || phone.includes(keyword);
   });
 
-  const handleCopyClassCode = async () => {
-    if (!classroomInfo?.code) return;
-    await copyToClipboard(classroomInfo.code, 'Mã lớp');
+  const handleCopyClassCode = () => {
+    openInviteModal();
   };
 
   const handlePrintMembers = () => {
@@ -705,6 +975,120 @@ const MemberClass = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {isInviteModalOpen && (
+          <div className="member-detail-modal-overlay invite-modal-overlay" onClick={closeInviteModal}>
+            <div className="member-detail-modal invite-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="member-detail-modal-header">
+                <div>
+                  <h3>Thêm học sinh</h3>
+                  <p className="invite-modal-subtitle">Tìm và chọn email, hoặc nhập trực tiếp nhiều email cùng lúc.</p>
+                </div>
+                <button type="button" className="member-detail-close" onClick={closeInviteModal} disabled={inviteSubmitting}>
+                  Đóng
+                </button>
+              </div>
+
+              <div className="invite-modal-summary">
+                <span>Lớp học</span>
+                <strong>{classroomInfo?.className || classroomInfo?.name || '—'}</strong>
+                <span>Mã lớp: {classroomInfo?.code || '—'}</span>
+              </div>
+
+              <label className="invite-field">
+                <span>Tìm kiếm theo email</span>
+                <div className={`invite-picker ${inviteInputFocused ? 'focused' : ''}`}>
+                  <div className="invite-chip-row">
+                    {inviteEmails.map((email) => (
+                      <span key={email} className="invite-chip">
+                        <span className="invite-chip-text">{email}</span>
+                        <button
+                          type="button"
+                          className="invite-chip-remove"
+                          onClick={() => setInviteEmails((prev) => prev.filter((item) => item !== email))}
+                          aria-label={`Xóa ${email}`}
+                          disabled={inviteSubmitting}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+
+                    <input
+                      type="text"
+                      value={inviteInput}
+                      onChange={(e) => {
+                        setInviteInput(e.target.value.toLowerCase());
+                        setInviteError('');
+                      }}
+                      onKeyDown={handleInviteKeyDown}
+                      onPaste={handleInvitePaste}
+                      onFocus={() => setInviteInputFocused(true)}
+                      onBlur={() => setInviteInputFocused(false)}
+                      placeholder="Nhập email và nhấn Enter hoặc dấu phẩy"
+                      autoComplete="off"
+                      disabled={inviteSubmitting}
+                    />
+                  </div>
+
+                  {inviteInputFocused && inviteInput.trim() && (
+                    <div className="invite-suggestions" role="listbox" aria-label="Gợi ý email">
+                      {inviteSuggestions.length > 0 ? (
+                        inviteSuggestions.slice(0, 8).map((item) => (
+                          <button
+                            key={item.email}
+                            type="button"
+                            className="invite-suggestion-item"
+                            onMouseDown={(e) => {
+                              if (item.disabled) return;
+                              e.preventDefault();
+                            }}
+                            onClick={() => {
+                              if (item.disabled) return;
+                              addInviteEmails([item.email]);
+                              setInviteInputFocused(true);
+                            }}
+                            disabled={inviteSubmitting || item.disabled}
+                          >
+                            <span className="invite-suggestion-email">{item.email}</span>
+                            <span className="invite-suggestion-name">{item.label}</span>
+                            <span className="invite-suggestion-meta">{item.subtitle || 'Nhấn để chọn'}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <button
+                          type="button"
+                          className="invite-suggestion-item invite-suggestion-item--manual"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => addInviteEmails([inviteInput])}
+                          disabled={inviteSubmitting || !EMAIL_REGEX.test(normalizeEmail(inviteInput))}
+                        >
+                          <span className="invite-suggestion-email">{normalizeEmail(inviteInput)}</span>
+                          <span className="invite-suggestion-name">Chưa tìm thấy tài khoản trùng khớp</span>
+                          <span className="invite-suggestion-meta">Nhấn để thêm email này</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <small className="invite-field-hint">Có thể dán nhiều email cùng lúc, cách nhau bằng dấu phẩy, khoảng trắng hoặc xuống dòng.</small>
+              </label>
+
+              {inviteError && <div className="pending-requests-alert alert-error sidebar-alert">{inviteError}</div>}
+
+              <div className="invite-modal-actions">
+                <button type="button" className="member-detail-close" onClick={closeInviteModal} disabled={inviteSubmitting}>
+                  Hủy
+                </button>
+                <button type="button" className="member-report-btn invite-submit-btn" onClick={handleInviteSubmit} disabled={inviteSubmitting}>
+                  {inviteSubmitting ? <Loader2 size={14} className="spin" /> : null}
+                  Gửi lời mời
+                </button>
+              </div>
             </div>
           </div>
         )}
