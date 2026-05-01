@@ -1277,6 +1277,19 @@ const CreateAssignmentAiPage = () => {
   );
   const userAvatarUrl = String(user?.avatarUrl || "").trim();
 
+  const handlePreviewClick = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    const safeSessionId = toPositiveId(draftSessionId);
+
+    if (safeSessionId) {
+      nextParams.set("sessionId", String(safeSessionId));
+    }
+
+    navigate(
+      `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${nextParams.toString()}`,
+    );
+  };
+
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, typing]);
@@ -3094,6 +3107,9 @@ const CreateAssignmentAiPage = () => {
             </div>
           </div>
           <div className="top-r">
+            <button className="btn btn-g" onClick={handlePreviewClick}>
+              Xem preview
+            </button>
             {phase === "results" && (
               <>
                 <button

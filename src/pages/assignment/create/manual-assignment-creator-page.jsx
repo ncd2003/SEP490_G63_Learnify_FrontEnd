@@ -932,6 +932,7 @@ const ManualAssignmentCreatorPage = () => {
   const draggedSectionKeyRef = useRef(null);
   const initPromiseRef = useRef(null);
   const initScopeKeyRef = useRef("");
+  const previewAnchorRef = useRef(null);
   const isDraftHydratedRef = useRef(false);
 
   const [draggingQuestionId, setDraggingQuestionId] = useState(null);
@@ -1587,6 +1588,15 @@ const ManualAssignmentCreatorPage = () => {
     }
   };
 
+  const handlePreviewClick = () => {
+    const query = searchParams.toString();
+    navigate(
+      query
+        ? `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${query}`
+        : PATH_TEACHER.assignmentCreateManualQuestionsPreview,
+    );
+  };
+
   const addOpt = (qId) => {
     const q = qs.find((x) => x.id === qId);
     if (!q) return;
@@ -2227,10 +2237,13 @@ const ManualAssignmentCreatorPage = () => {
 
     if (!initPromiseRef.current) {
       initPromiseRef.current = (async () => {
-        const initResp = await assignmentApi.initManualDraftSession(
-          scope,
-          SESSION_TYPE.MANUAL_CREATION,
-        );
+        const initResp =
+          !isBankMode && Number.isFinite(scope.assignmentId)
+            ? await assignmentApi.initAssignmentWorkspace(scope.assignmentId)
+            : await assignmentApi.initManualDraftSession(
+                scope,
+                SESSION_TYPE.MANUAL_CREATION,
+              );
         const result = initResp?.result;
         const sid = result?.sessionId || result;
         const hasPending =
@@ -3172,6 +3185,15 @@ const ManualAssignmentCreatorPage = () => {
           </div>
           <div className="top-r">
             <button
+              type="button"
+              className="btn btn-g"
+              onClick={handlePreviewClick}
+              disabled={publishing || !qs.length}
+            >
+              <Ic.Eye /> Xem Preview
+            </button>
+            <button
+              type="button"
               className="btn btn-g"
               onClick={handleSaveAndBackToAssignments}
               disabled={publishing}
@@ -3179,6 +3201,7 @@ const ManualAssignmentCreatorPage = () => {
               <Ic.Eye /> Lưu
             </button>
             <button
+              type="button"
               className="btn btn-p"
               onClick={handlePublish}
               disabled={publishing}
@@ -3238,6 +3261,8 @@ const ManualAssignmentCreatorPage = () => {
               </div>
             </div>
           )}
+
+          <div ref={previewAnchorRef} />
 
           {groupedQuestions.map((group) => (
             <div key={group.key} className="section-wrap">

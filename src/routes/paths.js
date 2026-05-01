@@ -78,6 +78,10 @@ export const PATH_TEACHER = {
     ROOTS_TEACHER,
     "/assignments/create/manual/questions",
   ),
+  assignmentCreateManualQuestionsPreview: path(
+    ROOTS_TEACHER,
+    "/assignments/create/manual/questions/preview",
+  ),
   assignmentDetail: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}`),
   assignmentSubmissions: (assignmentId) =>

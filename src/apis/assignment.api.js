@@ -475,6 +475,45 @@ const importQuestionsFromBank = (assignmentId, payload = {}) => {
 };
 
 /**
+ * @param {number|string} sessionId
+ * @param {number|string} assignmentId
+ * @param {number|string|null|undefined} sectionId
+ * @param {Array<number|string>} questionIds
+ */
+const addFromBankToSession = (
+  sessionId,
+  assignmentId,
+  sectionId,
+  questionIds = [],
+) => {
+  const safeSessionId = normalizeId(sessionId, "sessionId");
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  const normalizedQuestionIds = Array.isArray(questionIds)
+    ? questionIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    : [];
+
+  const safeSectionId = normalizeOptionalId(sectionId, "sectionId");
+
+  const params = {
+    assignmentId: safeAssignmentId,
+  };
+
+  if (safeSectionId !== undefined) {
+    params.sectionId = safeSectionId;
+  }
+
+  return apiRequest.post(
+    `${DRAFT_SESSION_BASE}/${safeSessionId}/add-from-bank`,
+    normalizedQuestionIds,
+    {
+      params,
+    },
+  );
+};
+
+/**
  * @param {number|string} assignmentId
  * @param {{ title: string, sectionType: string, questions?: Array<object> }} payload
  */
@@ -637,6 +676,13 @@ const initManualDraftSession = (
   return apiRequest.post(`${DRAFT_SESSION_BASE}/manual/init`, null, {
     params,
   });
+};
+
+const initAssignmentWorkspace = (assignmentId) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  return apiRequest.post(
+    `${DRAFT_SESSION_BASE}/assignment/${safeAssignmentId}/init-workspace`,
+  );
 };
 
 const createFreshManualDraftSession = (scope = {}) => {
@@ -946,6 +992,7 @@ export const assignmentApi = {
   confirmAndPublishAssignment,
   addQuestionsFromBank,
   importQuestionsFromBank,
+  addFromBankToSession,
   createSection,
   updateSection,
   deleteSection,
@@ -957,6 +1004,7 @@ export const assignmentApi = {
   getPendingSession,
   getPendingSessionsSummary,
   initManualDraftSession,
+  initAssignmentWorkspace,
   createFreshManualDraftSession,
   generateAiDraftSession,
   refineAiQuestions,

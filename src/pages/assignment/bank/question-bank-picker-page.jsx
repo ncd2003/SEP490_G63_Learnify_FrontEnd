@@ -694,6 +694,7 @@ const QuestionBankPickerPage = () => {
   };
 
   const isMixedAssignment = assignmentFormat === ASSIGNMENT_FORMAT.MIXED;
+  const hasAssignmentSections = assignmentSections.length > 0;
 
   const fetchBanks = useCallback(async () => {
     try {
@@ -754,9 +755,12 @@ const QuestionBankPickerPage = () => {
 
                 return {
                   id: sectionId,
-                  title: String(section?.title || "").trim() || "Phần chưa đặt tên",
+                  title:
+                    String(section?.title || "").trim() || "Phần chưa đặt tên",
                   sectionType: normalizeSectionType(section?.sectionType),
-                  questions: Array.isArray(section.questions) ? section.questions : [],
+                  questions: Array.isArray(section.questions)
+                    ? section.questions
+                    : [],
                 };
               })
               .filter(Boolean)
@@ -799,9 +803,12 @@ const QuestionBankPickerPage = () => {
               if (!sectionId) return null;
               return {
                 id: sectionId,
-                title: String(section?.title || "").trim() || "Phần chưa đặt tên",
+                title:
+                  String(section?.title || "").trim() || "Phần chưa đặt tên",
                 sectionType: normalizeSectionType(section?.sectionType),
-                questions: Array.isArray(section.questions) ? section.questions : [],
+                questions: Array.isArray(section.questions)
+                  ? section.questions
+                  : [],
               };
             })
             .filter(Boolean)
@@ -1041,10 +1048,31 @@ const QuestionBankPickerPage = () => {
     );
   };
 
+  const goToPreview = () => {
+    const params = new URLSearchParams();
+
+    if (assignmentId) {
+      params.set("assignmentId", String(assignmentId));
+    }
+
+    if (activeBankId) {
+      params.set("bankId", String(activeBankId));
+    }
+
+    const query = params.toString();
+    navigate(
+      query
+        ? `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${query}`
+        : PATH_TEACHER.assignmentCreateManualQuestionsPreview,
+    );
+  };
+
   const handleAddToAssignment = async () => {
     if (!selected.size) return;
 
-    if (isMixedAssignment && !toPositiveId(targetSectionId)) {
+    const resolvedSectionId = toPositiveId(targetSectionId);
+
+    if (isMixedAssignment && !resolvedSectionId) {
       showToast("Vui lòng chọn section để import câu hỏi.", "error");
       return;
     }
@@ -1057,16 +1085,45 @@ const QuestionBankPickerPage = () => {
         .filter((id) => Number.isFinite(id) && id > 0);
 
       if (assignmentId) {
-        const payload = {
-          questionIds,
-          sectionId: isMixedAssignment ? targetSectionId : undefined,
-        };
+        let sessionId = toPositiveId(searchParams.get("sessionId"));
 
-        await assignmentApi.importQuestionsFromBank(assignmentId, payload);
-        showToast(`Đã import ${questionIds.length} câu hỏi vào bài tập!`);
-        await refreshAssignment();
-        setRightTab("imported");
-        setSelected(new Map());
+        // Nếu chưa có sessionId, tạo session mới
+        if (!sessionId) {
+          const initResp =
+            await assignmentApi.initAssignmentWorkspace(assignmentId);
+          sessionId = toPositiveId(
+            initResp?.result?.sessionId ||
+              initResp?.result?.id ||
+              initResp?.result,
+          );
+
+          if (!sessionId) {
+            throw new Error("Không thể tạo session workspace.");
+          }
+        }
+
+        // Gọi addFromBankToSession để thêm câu hỏi vào session
+        await assignmentApi.addFromBankToSession(
+          sessionId,
+          assignmentId,
+          resolvedSectionId,
+          questionIds,
+        );
+
+        showToast(`Đã thêm ${questionIds.length} câu hỏi vào bản nháp!`);
+
+        // Navigate tới preview với sessionId
+        const next = new URLSearchParams();
+        next.set("assignmentId", String(assignmentId));
+        next.set("sessionId", String(sessionId));
+        if (activeBankId) {
+          next.set("bankId", String(activeBankId));
+        }
+
+        navigate(
+          `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${next.toString()}`,
+        );
+        return;
       } else {
         const next = new URLSearchParams();
         if (activeBankId) next.set("bankId", String(activeBankId));
@@ -1182,6 +1239,14 @@ const QuestionBankPickerPage = () => {
               disabled={loading}
             >
               <Ic.Refresh width={12} height={12} /> Làm mới
+            </button>
+            <button
+              className="bk-btn"
+              onClick={goToPreview}
+              disabled={!assignmentId}
+              title={assignmentId ? "Xem Preview" : "Thiếu assignmentId"}
+            >
+              <Ic.Eye width={12} height={12} /> Xem Preview
             </button>
           </div>
         </div>
@@ -1337,7 +1402,7 @@ const QuestionBankPickerPage = () => {
                   color: "var(--text)",
                 }}
               >
-                Cấu hình phần cho đề hỗn hợp
+                Chọn section để thêm câu hỏi
               </div>
 
               <input
@@ -1405,7 +1470,7 @@ const QuestionBankPickerPage = () => {
                   ))}
                 </select>
 
-                {assignmentSections.length === 0 && (
+                {!assignmentSections.length && (
                   <div style={{ fontSize: 12, color: "var(--text3)" }}>
                     Chưa có section nào. Hãy tạo section trước khi import câu
                     hỏi.

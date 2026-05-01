@@ -114,6 +114,11 @@ const ManualAssignmentCreatorPage = Loadable(
     () => import("@/pages/assignment/create/manual-assignment-creator-page"),
   ),
 );
+const ManualAssignmentPreviewPage = Loadable(
+  lazy(
+    () => import("@/pages/assignment/create/manual-assignment-preview-page"),
+  ),
+);
 const AssignToClassesPage = Loadable(
   lazy(() => import("@/pages/assignment/assign/assign-to-classes-page")),
 );
@@ -368,6 +373,10 @@ const AppRoutes = () =>
         {
           path: PATH_TEACHER.assignmentCreateManualQuestions,
           element: <ManualAssignmentCreatorPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateManualQuestionsPreview,
+          element: <ManualAssignmentPreviewPage />,
         },
         {
           path: PATH_TEACHER.assignmentAssignClasses(":assignmentId"),
