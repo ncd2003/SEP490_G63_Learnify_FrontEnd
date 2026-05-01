@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { assignmentApi } from "@/apis/assignment.api";
+import { useAuth } from "@/contexts/AuthContext";
 import { PATH_TEACHER } from "@/routes/paths";
 
 const CSS = `
@@ -27,7 +28,7 @@ const CSS = `
 }
 *{box-sizing:border-box;margin:0;padding:0}
 
-.page{display:flex;min-height:100vh;overflow:hidden;background:var(--bg);color:var(--t);font-family:var(--f)}
+.page{display:flex;height:100vh;overflow:hidden;background:var(--bg);color:var(--t);font-family:var(--f)}
 
 .side{width:230px;min-width:230px;display:flex;flex-direction:column;background:var(--card);border-right:1px solid var(--b);overflow:hidden;flex-shrink:0;padding:14px 12px}
 .side-group{display:flex;flex-direction:column;gap:6px}
@@ -166,14 +167,14 @@ const CSS = `
 
 .ai-refine{margin-top:0;border:none;border-radius:0;overflow:hidden;background:var(--card);box-shadow:none;flex:1;display:flex;flex-direction:column}
 .ch-h{height:54px;border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 18px;gap:9px;flex-shrink:0;background:var(--plr)}
-.ch-ic{width:30px;height:30px;border-radius:50%;background:var(--gr);color:var(--inv);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.ch-ic{width:30px;height:30px;border-radius:50%;background:var(--gr);color:var(--inv);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ch-hi h3{font-size:13px;font-weight:700;line-height:1.2}
 .ch-hi p{font-size:9px;color:var(--t3);line-height:1.2}
 .ch-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
-.ch-m{display:flex;gap:8px;max-width:90%;animation:fu .2s ease both}
+.ch-m{display:flex;gap:8px;max-width:90%;animation:fu .2s ease both;font-size:12px;line-height:1.6}
 .ch-m.usr{align-self:flex-end;flex-direction:row-reverse}
 .ch-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.ch-av.bt{background:transparent}
+.ch-av.bt{background:var(--gr);color:var(--inv)}
 .ch-av.hm{background:var(--b);color:var(--t2)}
 .ch-bb{padding:9px 12px;border-radius:var(--rm);font-size:12px;line-height:1.6;font-weight:500;white-space:pre-line}
 .ch-m.bot .ch-bb{background:var(--card);border:1px solid var(--b);border-top-left-radius:3px}
@@ -191,7 +192,12 @@ const CSS = `
 .ch-sd:hover{transform:translateY(-1px)}
 .ch-sd:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .ch-ht{font-size:9px;color:var(--t3);margin-top:4px;text-align:center}
-.ch-ht.left{text-align:left}
+.typing{display:flex;gap:3px;padding:6px 12px}
+.td{width:5px;height:5px;border-radius:50%;background:var(--t3);animation:tb 1.4s infinite both}
+.td:nth-child(2){animation-delay:.15s}
+.td:nth-child(3){animation-delay:.3s}
+@keyframes tb{0%,80%,100%{transform:scale(0);opacity:.4}40%{transform:scale(1);opacity:1}}
+
 
 .ws-success{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:14px;text-align:center;padding:2rem}
 
@@ -655,20 +661,73 @@ const QTYPES = [
 const DEFAULT_CHAT_MESSAGES = [
   {
     role: "bot",
-    text: "Chào thầy/cô! Chọn các câu cần tinh chỉnh rồi nhập yêu cầu AI bên dưới.",
+    text: "Chào thầy/cô! Tôi là trợ lý AI Learnify. Sau khi tạo câu hỏi, thầy/cô có thể nhờ tôi chỉnh sửa hoặc bấm ✏️ để sửa thủ công.",
     time: "Bây giờ",
   },
 ];
+
+const formatChatMessageTime = (value) => {
+  if (!value) return "Vừa xong";
+  try {
+    const d = new Date(value);
+    const h = String(d.getHours()).padStart(2, "0");
+    const m = String(d.getMinutes()).padStart(2, "0");
+    return `${h}:${m}`;
+  } catch {
+    return "Vừa xong";
+  }
+};
 
 const AI_CHAT_LOGO_PATH = "/logo/image.png";
 
 let nid = 200;
 
-function ChkIcon() {
-  return (
+const I = {
+  Send: () => (
     <svg
-      width="11"
-      height="11"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>
+  ),
+  Sparkles: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M12 3l1.912 5.813a2 2 0 001.272 1.272L21 12l-5.813 1.912a2 2 0 00-1.272 1.272L12 21l-1.912-5.813a2 2 0 00-1.272-1.272L3 12l5.813-1.912a2 2 0 001.272-1.272L12 3z" />
+    </svg>
+  ),
+  User: () => (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  Check: () => (
+    <svg
+      width="13"
+      height="13"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -677,10 +736,19 @@ function ChkIcon() {
     >
       <polyline points="20 6 9 17 4 12" />
     </svg>
+  ),
+};
+
+function ChkIcon() {
+  return (
+    <I.Check />
   );
 }
 
 export default function ManualAssignmentPreviewPage() {
+  const { user } = useAuth();
+  const userAvatarUrl = user?.profilePicture || user?.avatarUrl || null;
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [assignmentTitle, setAssignmentTitle] = useState("");
@@ -708,6 +776,13 @@ export default function ManualAssignmentPreviewPage() {
   const [msgs, setMsgs] = useState(DEFAULT_CHAT_MESSAGES);
   const [chatIn, setChatIn] = useState("");
   const [typing, setTyping] = useState(false);
+
+  const sugs = [
+    "Sửa câu 1 cho khó hơn",
+    "Thêm 3 câu nữa",
+    "Đổi câu 3 sang tự luận",
+    "Xóa câu cuối",
+  ];
 
   const totalQ = sections.reduce((a, s) => a + s.questions.length, 0);
   const totalPts = sections.reduce(
@@ -1174,7 +1249,11 @@ export default function ManualAssignmentPreviewPage() {
 
     setMsgs((prev) => [
       ...prev,
-      { role: "user", text: message, time: "Vừa xong" },
+      {
+        role: "user",
+        text: message,
+        time: formatChatMessageTime(new Date()),
+      },
     ]);
     setChatIn("");
     setTyping(true);
@@ -1229,7 +1308,7 @@ export default function ManualAssignmentPreviewPage() {
         {
           role: "bot",
           text: `Đã refine theo yêu cầu của thầy/cô.${normalizedSelectedQuestionIds.length ? `\nPhạm vi: ${normalizedSelectedQuestionIds.length} câu được chọn.` : "\nPhạm vi: toàn bộ section."}${warnings.length ? `\nCảnh báo: ${warnings.join("; ")}` : ""}`,
-          time: "Vừa xong",
+          time: formatChatMessageTime(new Date()),
         },
       ]);
     } catch (error) {
@@ -1241,7 +1320,7 @@ export default function ManualAssignmentPreviewPage() {
             error?.response?.data?.message ||
             error?.message ||
             "Không thể refine câu hỏi lúc này. Vui lòng thử lại.",
-          time: "Vừa xong",
+          time: formatChatMessageTime(new Date()),
         },
       ]);
     } finally {
@@ -1984,11 +2063,11 @@ export default function ManualAssignmentPreviewPage() {
           <div className="workspace-chat">
             <div className="ai-refine">
               <div className="ch-h">
-                <div className="ch-ic">
+                <div className="ch-ic" style={{ background: "transparent" }}>
                   <img
                     src={AI_CHAT_LOGO_PATH}
                     alt="Learnify AI"
-                    style={{ width: 40, height: 40, objectFit: "contain" }}
+                    style={{ width: 48, height: 48, objectFit: "contain" }}
                   />
                 </div>
                 <div className="ch-hi">
@@ -1998,14 +2077,32 @@ export default function ManualAssignmentPreviewPage() {
               </div>
 
               <div className="ch-msgs">
-                {msgs.map((msg, index) => (
+                {msgs.map((m, i) => (
                   <div
-                    key={`${msg.role}-${index}`}
-                    className={`ch-m${msg.role === "user" ? " usr" : " bot"}`}
+                    key={i}
+                    className={`ch-m ${m.role === "user" ? "usr" : "bot"}`}
                   >
-                    <div className={`ch-av ${msg.role === "user" ? "hm" : "bt"}`}>
-                      {msg.role === "user" ? (
-                        "T"
+                    <div
+                      className={`ch-av ${m.role === "user" ? "hm" : "bt"}`}
+                      style={
+                        m.role === "user" ? undefined : { background: "transparent" }
+                      }
+                    >
+                      {m.role === "user" ? (
+                        userAvatarUrl ? (
+                          <img
+                            src={userAvatarUrl}
+                            alt={user?.fullName || "User"}
+                            style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <I.User />
+                        )
                       ) : (
                         <img
                           src={AI_CHAT_LOGO_PATH}
@@ -2016,9 +2113,9 @@ export default function ManualAssignmentPreviewPage() {
                     </div>
                     <div>
                       <div className="ch-bb" style={{ whiteSpace: "pre-line" }}>
-                        {msg.text}
+                        {m.text}
                       </div>
-                      <div className="ch-tm">{msg.time}</div>
+                      <div className="ch-tm">{m.time}</div>
                     </div>
                   </div>
                 ))}
@@ -2044,20 +2141,14 @@ export default function ManualAssignmentPreviewPage() {
               </div>
 
               <div className="ch-sug">
-                {[
-                  "Sửa câu đã chọn",
-                  "Làm rõ hơn",
-                  "Tăng độ khó",
-                  "Rút gọn đáp án",
-                  "Đổi câu hỏi thành tự luận",
-                ].map((suggestion, index) => (
+                {sugs.map((s, i) => (
                   <button
-                    key={`suggestion-${index}`}
+                    key={i}
                     type="button"
                     className="ch-sg"
-                    onClick={() => setChatIn(suggestion)}
+                    onClick={() => setChatIn(s)}
                   >
-                    {suggestion}
+                    {s}
                   </button>
                 ))}
               </div>
@@ -2126,11 +2217,7 @@ export default function ManualAssignmentPreviewPage() {
                     onClick={sendChat}
                     disabled={!chatIn.trim() || typing || isLoadingWorkspace}
                   >
-                    <img
-                      src="/logo/image.png"
-                      alt="Send"
-                      style={{ width: 14, height: 14, objectFit: "contain" }}
-                    />
+                    <I.Send />
                   </button>
                 </div>
                 <div className="ch-ht">Enter gửi · Shift+Enter xuống dòng</div>
