@@ -147,13 +147,25 @@ const normalizeQuestionResult = (item, idx) => {
     type === "essay" || type === "fb"
       ? rawStudentAnswer
       : item.essayAnswer || item.submittedText || "";
-  const sampleAns = item.sampleAnswer || item.correctAnswer || "";
+
+  // Với câu điền khuyết (FB), nếu sampleAnswer trống, thử lấy từ danh sách correctOptions
+  const sampleAns =
+    item.sampleAnswer ||
+    item.correctAnswer ||
+    (type === "fb" && correctOptions.length > 0
+      ? correctOptions.map((o) => o.text).join(", ")
+      : "");
+
   const teacherNote = item.teacherComment || item.feedback || "";
 
   const myPts = Number(item.earnedPoints ?? item.myPoints ?? 0);
   const totalPts = Number(item.defaultPoints ?? item.points ?? 1);
   const isCorrectByFlag =
-    typeof item.correct === "boolean" ? item.correct : null;
+    typeof item.isCorrect === "boolean"
+      ? item.isCorrect
+      : typeof item.correct === "boolean"
+        ? item.correct
+        : null;
   const isCorrect =
     isCorrectByFlag === null
       ? myPts >= totalPts && totalPts > 0
@@ -618,14 +630,8 @@ const QuestionReviewCard = ({ q, index, isOpen, onToggle }) => {
                 <div className="opt-letter">{LETTERS[oi]}</div>
                 <span style={{ flex: 1 }}>{o.text || "(trong)"}</span>
                 <div className="opt-tags">
-                  {isMine ? (
-                    <span className="opt-tag tag-mine">Bạn chọn</span>
-                  ) : null}
                   {isCorrect ? (
                     <span className="opt-tag tag-correct-ans">Đúng</span>
-                  ) : null}
-                  {isMine && !isCorrect ? (
-                    <span className="opt-tag tag-wrong-ans">Sai</span>
                   ) : null}
                 </div>
               </div>
@@ -654,7 +660,6 @@ const QuestionReviewCard = ({ q, index, isOpen, onToggle }) => {
             return (
               <div key={oi} className={`tf-opt${cls}`}>
                 {o.text}
-                {isMine ? " (bạn chọn)" : ""}
                 {isCorrect && !isMine ? " ✓" : ""}
               </div>
             );
@@ -666,7 +671,7 @@ const QuestionReviewCard = ({ q, index, isOpen, onToggle }) => {
     if (q.type === "fb") {
       return (
         <>
-          {q.myEssayText ? (
+          {q.myEssayText && q.status !== "wrong" ? (
             <div className="essay-block mine">
               <div className="essay-label" style={{ color: "var(--text3)" }}>
                 Bạn điền

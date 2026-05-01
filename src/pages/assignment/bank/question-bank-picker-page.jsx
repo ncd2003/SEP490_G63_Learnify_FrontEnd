@@ -1116,9 +1116,6 @@ const QuestionBankPickerPage = () => {
         const next = new URLSearchParams();
         next.set("assignmentId", String(assignmentId));
         next.set("sessionId", String(sessionId));
-        if (activeBankId) {
-          next.set("bankId", String(activeBankId));
-        }
 
         navigate(
           `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${next.toString()}`,

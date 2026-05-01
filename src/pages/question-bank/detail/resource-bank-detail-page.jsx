@@ -1550,7 +1550,9 @@ export default function ResourceBankDetailPage() {
             <button
               className="btn-action btn-p"
               onClick={() =>
-                navigate(`/assignments/create/manual?source=question-bank`)
+                navigate(
+                  `/assignments/create/manual?source=question-bank&bankId=${safeBankId}`,
+                )
               }
             >
               <Ic.Plus /> Tạo bài tập từ ngân hàng

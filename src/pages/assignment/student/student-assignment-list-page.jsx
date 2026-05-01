@@ -93,6 +93,19 @@ const getInProgressRemainingLabel = (remainingSeconds, deadline) => {
   return `Còn ${days} ngày`;
 };
 
+const getDurationLabel = (start, end) => {
+  if (!start || !end) return "-";
+  const diff = new Date(end).getTime() - new Date(start).getTime();
+  if (Number.isNaN(diff) || diff <= 0) return "-";
+
+  const totalMinutes = Math.floor(diff / (60 * 1000));
+  if (totalMinutes < 60) return `${totalMinutes} phút`;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours} giờ ${minutes} phút` : `${hours} giờ`;
+};
+
 const normalizeFormat = (format) => {
   const normalized = String(format || "").toUpperCase();
   if (normalized === "MULTIPLE_CHOICE" || normalized === "MC") return "mc";
@@ -162,15 +175,15 @@ const toUiAssignment = (item, fallbackStatus = "pending", classInfo = null) => {
     submissionId:
       Number(
         item?.submissionId ??
-          item?.mySubmissionId ??
-          item?.latestSubmissionId ??
-          item?.submission?.id ??
-          item?.latestSubmission?.id,
+        item?.mySubmissionId ??
+        item?.latestSubmissionId ??
+        item?.submission?.id ??
+        item?.latestSubmission?.id,
       ) || null,
     title: String(
       item?.title ||
-        item?.assignmentTitle ||
-        `Bài tập #${item?.assignmentId ?? item?.id ?? ""}`,
+      item?.assignmentTitle ||
+      `Bài tập #${item?.assignmentId ?? item?.id ?? ""}`,
     ),
     subject: String(
       item?.subject || item?.subjectName || classInfo?.subject || "",
@@ -180,9 +193,9 @@ const toUiAssignment = (item, fallbackStatus = "pending", classInfo = null) => {
     totalScore: Number(item?.totalPoints ?? item?.totalScore ?? 10),
     questions: Number(
       item?.totalQuestions ??
-        item?.numberOfQuestions ??
-        item?.questionCount ??
-        0,
+      item?.numberOfQuestions ??
+      item?.questionCount ??
+      0,
     ),
     duration: item?.effectiveDuration ?? item?.setting?.durationMinutes ?? null,
     start:
@@ -202,6 +215,9 @@ const toUiAssignment = (item, fallbackStatus = "pending", classInfo = null) => {
           : null,
     urgency,
     timeLabel: getTimeLeftLabel(deadline, urgency),
+    attemptLimit:
+      item?.attemptLimit ?? item?.setting?.maxAttempts ?? item?.maxAttempts ?? null,
+    attemptsUsed: Number(item?.attemptsUsed ?? item?.attemptCount ?? 0),
   };
 };
 
@@ -546,17 +562,26 @@ const DeadlineRow = ({ assignment }) => {
     assignment;
 
   if (myStatus === "done") {
+    const { attemptsUsed, attemptLimit } = assignment;
     const safeMyScore = Number(myScore || 0);
     const pct =
       totalScore > 0 ? Math.round((safeMyScore / totalScore) * 100) : 0;
+
+    const hasAttemptsLeft =
+      attemptLimit === null || attemptLimit === undefined || attemptsUsed < attemptLimit;
+
     return (
       <>
         <div className="dl-row">
           <div className="dl-label done">
-            <Ic.Check width={11} height={11} /> Đã nộp thành công
+            <Ic.Check width={11} height={11} />
+            {attemptsUsed > 1
+              ? `Đã làm ${attemptsUsed} lần`
+              : "Đã nộp thành công"}
           </div>
           <div style={{ flex: 1 }} />
           <span className="score-chip">
+            {attemptsUsed > 1 ? "Cao nhất: " : ""}
             {safeMyScore}/{totalScore} đ
           </span>
         </div>
@@ -575,6 +600,24 @@ const DeadlineRow = ({ assignment }) => {
             {pct}%
           </span>
         </div>
+        {hasAttemptsLeft && (
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--primary)",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            🔄{" "}
+            {attemptLimit === null || attemptLimit === undefined
+              ? "Có thể làm lại không giới hạn"
+              : `Còn ${attemptLimit - attemptsUsed} lần làm lại`}
+          </div>
+        )}
       </>
     );
   }
@@ -624,7 +667,16 @@ const AssignmentCard = ({ assignment, index, onOpen }) => {
     subject,
     myStatus,
     urgency,
+    attemptLimit,
+    attemptsUsed,
   } = assignment;
+
+  const attemptsLabel = (() => {
+    if (attemptLimit === null || attemptLimit === undefined) {
+      return attemptsUsed > 0 ? `Đã làm ${attemptsUsed} lần` : null;
+    }
+    return `${attemptsUsed}/${attemptLimit} lần`;
+  })();
 
   const catBadge =
     category === "exam" ? (
@@ -680,16 +732,38 @@ const AssignmentCard = ({ assignment, index, onOpen }) => {
 
   const actionBtn = (() => {
     if (myStatus === "done") {
+      const hasAttemptsLeft =
+        attemptLimit === null || attemptLimit === undefined || attemptsUsed < attemptLimit;
+
       return (
-        <button
-          className="btn btn-result"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen(assignment, "result");
-          }}
+        <div
+          style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}
         >
-          <Ic.Eye width={12} height={12} /> Xem kết quả
-        </button>
+          <button
+            className="btn btn-result"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(assignment, "result");
+            }}
+          >
+            <Ic.Eye width={12} height={12} /> Xem kết quả
+          </button>
+          {hasAttemptsLeft && (
+            <button
+              className="btn btn-start"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen(assignment, "start");
+              }}
+            >
+              <Ic.Send width={12} height={12} /> Làm lại (
+              {attemptLimit === null || attemptLimit === undefined
+                ? `lần ${attemptsUsed + 1}`
+                : `còn ${attemptLimit - attemptsUsed} lần`}
+              )
+            </button>
+          )}
+        </div>
       );
     }
 
@@ -759,6 +833,20 @@ const AssignmentCard = ({ assignment, index, onOpen }) => {
           <span style={{ color: "var(--primary-dark)", fontWeight: 600 }}>
             {subject || "-"}
           </span>
+          {attemptsLabel && (
+            <span
+              style={{
+                color:
+                  attemptsUsed >= attemptLimit &&
+                    attemptLimit !== null &&
+                    attemptLimit !== undefined
+                    ? "var(--red)"
+                    : "var(--text3)",
+              }}
+            >
+              🔄 {attemptsLabel}
+            </span>
+          )}
         </div>
 
         <div className="acard-divider" />
@@ -810,7 +898,12 @@ const InProgressCard = ({ item, onContinue }) => {
   );
 };
 
-const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
+const DetailModal = ({
+  assignment,
+  onClose,
+  onStartAssignment,
+  onOpen, // Thêm prop này
+}) => {
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
@@ -831,7 +924,15 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
     requirePassword,
     myScore,
     urgency,
+    attemptLimit,
+    attemptsUsed,
   } = assignment;
+
+  const hasAttemptsLeft =
+    attemptLimit === null ||
+    attemptLimit === undefined ||
+    attemptsUsed < attemptLimit;
+
 
   const catBadge =
     category === "exam" ? (
@@ -885,11 +986,15 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
                 gap: 5,
               }}
             >
-              <Ic.Check width={12} height={12} /> Đã nộp thành công
+              <Ic.Check width={12} height={12} />{" "}
+              {attemptsUsed > 1
+                ? `Đã làm ${attemptsUsed} lần`
+                : "Đã nộp thành công"}
             </span>
             <span
               style={{ fontSize: 18, fontWeight: 800, color: "var(--green)" }}
             >
+              {attemptsUsed > 1 ? "Cao nhất: " : ""}
               {safeMyScore}/{totalScore} đ
             </span>
           </div>
@@ -910,6 +1015,26 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
               }}
             />
           </div>
+          {attemptLimit !== 1 && (
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--primary)",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              🔄{" "}
+              {attemptLimit === null || attemptLimit === undefined
+                ? "Có thể làm lại không giới hạn"
+                : attemptsUsed < attemptLimit
+                  ? `Còn ${attemptLimit - attemptsUsed} lần làm lại`
+                  : "Đã hết lượt làm lại"}
+            </div>
+          )}
         </div>
       );
     }
@@ -1024,10 +1149,10 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
             ))}
           </div>
 
-          {requirePassword && !isDone && !isLate ? (
+          {requirePassword && !isLate && (isDone ? hasAttemptsLeft : true) ? (
             <div className="pw-row">
               <label className="pw-lbl" htmlFor="assignment-start-password">
-                Mật khẩu bài thi (bắt buộc)
+                Mật khẩu làm lại bài thi (bắt buộc)
               </label>
               <input
                 id="assignment-start-password"
@@ -1035,7 +1160,7 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
                 type="password"
                 name="assignment-start-password"
                 autoComplete="new-password"
-                placeholder="Nhập mật khẩu trước khi bắt đầu làm bài"
+                placeholder="Nhập mật khẩu để làm lại bài"
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -1043,8 +1168,7 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
                 }}
               />
               <div className="pw-note">
-                Bài thi này có cài mật khẩu. Học sinh cần nhập đúng để vào làm
-                bài.
+                Bài thi này có mật khẩu. Bạn cần nhập đúng mật khẩu để bắt đầu lượt làm mới.
               </div>
               {passwordError ? (
                 <div className="pw-err">{passwordError}</div>
@@ -1054,15 +1178,57 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
 
           <div className="modal-actions">
             {isDone ? (
-              <button
-                className="modal-btn modal-btn-p"
-                onClick={() => {
-                  onClose();
-                  onStartAssignment(assignment, "result");
-                }}
-              >
-                <Ic.Eye width={13} height={13} /> Xem kết quả chi tiết
-              </button>
+              <>
+                <button
+                  className="modal-btn modal-btn-g"
+                  onClick={() => {
+                    onClose();
+                    // Gọi handleOpenModal (thông qua prop mới hoặc callback) 
+                    // để xử lý logic: 1 lần -> xem luôn, n lần -> xem lịch sử
+                    if (onOpen) {
+                      onOpen(assignment, "result");
+                    } else {
+                      onStartAssignment(assignment, "result");
+                    }
+                  }}
+                >
+                  <Ic.Eye width={13} height={13} /> Xem kết quả chi tiết
+                </button>
+                {/* Nút làm lại nếu còn lượt */}
+                {hasAttemptsLeft && (
+                  <button
+                    className="modal-btn modal-btn-p"
+                    onClick={() => {
+                      if (requirePassword && !String(password || "").trim()) {
+                        setPasswordError("Vui lòng nhập mật khẩu để làm lại.");
+                        return;
+                      }
+
+                      const promise = onStartAssignment(
+                        assignment,
+                        "start",
+                        String(password || "").trim(),
+                      );
+
+                      if (promise && typeof promise.then === "function") {
+                        promise
+                          .then(() => onClose())
+                          .catch(() => {
+                            // keep modal open on error
+                          });
+                      } else {
+                        onClose();
+                      }
+                    }}
+                  >
+                    <Ic.Send width={13} height={13} /> Làm lại (
+                    {attemptLimit === null || attemptLimit === undefined
+                      ? `lần ${attemptsUsed + 1}`
+                      : `còn ${attemptLimit - attemptsUsed} lần`}
+                    )
+                  </button>
+                )}
+              </>
             ) : !isLate ? (
               <button
                 className="modal-btn modal-btn-p"
@@ -1103,6 +1269,257 @@ const DetailModal = ({ assignment, onClose, onStartAssignment }) => {
   );
 };
 
+const AttemptHistoryModal = ({
+  assignment,
+  classroomId,
+  onClose,
+  navigate,
+}) => {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const { id: assignmentId } = assignment;
+
+  useEffect(() => {
+    setLoading(true);
+    assignmentApi
+      .getSubmissionHistory(assignmentId, classroomId)
+      .then((res) => setHistory(res.result || []))
+      .finally(() => setLoading(false));
+  }, [assignmentId, classroomId]);
+
+  const bestScore =
+    history.length > 0
+      ? Math.max(...history.map((h) => h.totalEarnedScore || 0))
+      : 0;
+
+  return (
+    <div className="modal-ov" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-hdr">
+          <div className="modal-title">Lịch sử làm bài</div>
+          <button className="modal-close" onClick={onClose}>
+            <Ic.X width={14} height={14} />
+          </button>
+        </div>
+
+        <div className="modal-body" style={{ minHeight: 120 }}>
+          {loading ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px 0",
+                fontSize: 13,
+                color: "var(--text3)",
+              }}
+            >
+              Đang tải lịch sử...
+            </div>
+          ) : history.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px 0",
+                fontSize: 13,
+                color: "var(--text3)",
+              }}
+            >
+              Không tìm thấy lịch sử làm bài.
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  marginBottom: 16,
+                  fontSize: 12,
+                  color: "var(--text3)",
+                  fontWeight: 600,
+                }}
+              >
+                {history.length} lần làm — Điểm cao nhất: {bestScore}/
+                {assignment.totalScore}
+              </div>
+
+              <div style={{ display: "grid", gap: 10 }}>
+                {history.map((attempt) => {
+                  const isBest = attempt.totalEarnedScore === bestScore;
+                  const statusLabel =
+                    attempt.status === "GRADED"
+                      ? "Đã chấm"
+                      : attempt.status === "SUBMITTED"
+                        ? "Đã nộp"
+                        : attempt.status === "DOING"
+                          ? "Đang làm"
+                          : attempt.status === "ABANDONED"
+                            ? "Bỏ thi"
+                            : "Chưa bắt đầu";
+
+                  return (
+                    <div
+                      key={attempt.submissionId}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "14px 16px",
+                        border: isBest
+                          ? "1.5px solid rgba(5,150,105,.3)"
+                          : "1.5px solid var(--border)",
+                        borderRadius: "var(--r-m)",
+                        background: isBest ? "var(--green-l)" : "var(--card)",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: "var(--text)",
+                            marginBottom: 4,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          Lần {attempt.attemptNumber}
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                              background:
+                                attempt.status === "GRADED"
+                                  ? "var(--green-l)"
+                                  : "var(--border-l)",
+                              color:
+                                attempt.status === "GRADED"
+                                  ? "var(--green)"
+                                  : "var(--text3)",
+                              border: "1px solid currentColor",
+                            }}
+                          >
+                            {statusLabel}
+                          </span>
+                          {isBest && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                background: "var(--green)",
+                                color: "#fff",
+                                padding: "2px 8px",
+                                borderRadius: 20,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.02em",
+                              }}
+                            >
+                              Cao nhất
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text3)",
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "8px 16px",
+                            fontWeight: 500,
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <Ic.Clock width={11} height={11} />{" "}
+                            {toDisplayDateTime(attempt.submitTime)}
+                          </span>
+                          <span
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <Ic.File width={11} height={11} />{" "}
+                            {getDurationLabel(
+                              attempt.startTime,
+                              attempt.submitTime,
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 800,
+                            color: isBest ? "var(--green)" : "var(--text)",
+                          }}
+                        >
+                          {attempt.totalEarnedScore}/
+                          {assignment.totalScore}
+                        </span>
+                        <button
+                          onClick={() => {
+                            onClose();
+                            navigate(
+                              PATH_STUDENT.assignmentResult(
+                                attempt.submissionId,
+                              ),
+                              {
+                                state: {
+                                  classId: classroomId,
+                                  assignmentId: assignment.id,
+                                },
+                              },
+                            );
+                          }}
+                          style={{
+                            padding: "7px 16px",
+                            border: "none",
+                            borderRadius: "var(--r-m)",
+                            cursor: "pointer",
+                            background: isBest
+                              ? "var(--green)"
+                              : "var(--primary)",
+                            color: "#fff",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            fontFamily: "var(--font)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          Xem
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const STUDENT_TABS = [
   { key: "assignments", label: "Bài tập" },
   { key: "materials", label: "Tài liệu" },
@@ -1138,6 +1555,7 @@ const ASSIGNMENT_CATEGORY_TO_API = {
   todo: "TODO",
   completed: "COMPLETED",
   overdue: "OVERDUE",
+  all: "ALL",
 };
 
 const EMPTY_PAGE_META = {
@@ -1404,8 +1822,14 @@ const StudentAssignmentListPage = () => {
 
   const visibleAssignments = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
+    const inProgressIds = new Set(
+      inProgressItems.map((it) => Number(it.assignmentId)),
+    );
 
     return assignments.filter((item) => {
+      // Ẩn bài tập đang làm dở khỏi danh sách chính để tránh lặp lại
+      if (inProgressIds.has(item.id)) return false;
+
       if (!normalizedSearch) return true;
       const title = (item?.title || "").toString().toLowerCase();
       const subject = (item?.subject || "").toString().toLowerCase();
@@ -1414,16 +1838,20 @@ const StudentAssignmentListPage = () => {
         title.includes(normalizedSearch) || subject.includes(normalizedSearch)
       );
     });
-  }, [assignments, search]);
+  }, [assignments, search, inProgressItems]);
 
   const inProgressCount = inProgressItems.length;
 
   const counts = {
-    pending: categoryMeta.todo.totalElements,
+    pending: Math.max(0, categoryMeta.todo.totalElements - inProgressItems.length),
     done: categoryMeta.completed.totalElements,
     late: categoryMeta.overdue.totalElements,
   };
-  counts.total = counts.pending + counts.done + counts.late;
+
+  // Ưu tiên dùng tổng số bài từ API 'ALL' để tránh lặp (ví dụ bài đang làm lại hiện cả ở TODO và DONE)
+  counts.total =
+    categoryMeta.all?.totalElements ??
+    counts.pending + counts.done + counts.late;
 
   const progressPct =
     counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0;
@@ -1436,10 +1864,34 @@ const StudentAssignmentListPage = () => {
 
   const classInitials = classInfo
     ? (classInfo.name || "").replace(/\d/g, "").substring(0, 2).toUpperCase() ||
-      (classInfo.name || "").substring(0, 2).toUpperCase()
+    (classInfo.name || "").substring(0, 2).toUpperCase()
     : "CL";
 
-  const handleOpenModal = (assignment, mode) => setModal({ assignment, mode });
+  const handleOpenModal = (assignment, mode) => {
+    console.log("[handleOpenModal]", { mode, assignment });
+
+    if (mode === "result") {
+      const attemptsUsed = Number(assignment?.attemptsUsed || 0);
+      const attemptLimit = assignment?.attemptLimit;
+      const isMultiAttempt =
+        attemptLimit === null ||
+        attemptLimit === undefined ||
+        Number(attemptLimit) > 1;
+
+      // Nếu là bài tập nhiều lần làm và đã có ít nhất 1 lần nộp -> mở lịch sử
+      // Điều này đảm bảo gọi API getSubmissionHistory như yêu cầu
+      if (isMultiAttempt && attemptsUsed > 0) {
+        setModal({ assignment, mode: "history" });
+        return;
+      }
+
+      // Trường hợp bài tập chỉ có 1 lần làm duy nhất -> vào thẳng kết quả
+      handleStartAssignment(assignment, "result");
+      return;
+    }
+
+    setModal({ assignment, mode });
+  };
 
   const handleStartAssignment = (assignment, mode, password = "") => {
     if (mode === "result") {
@@ -1566,23 +2018,6 @@ const StudentAssignmentListPage = () => {
           </div>
         </div>
 
-        <div className="filter-bar">
-          <div className="search-wrap">
-            <Ic.Search width={13} height={13} />
-            <input
-              className="search-inp"
-              name="assignment-search"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              placeholder="Tìm kiếm bài tập..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
-        </div>
-
         <div className="assignment-segment-wrap">
           <div className="assignment-segment">
             {ASSIGNMENT_CATEGORY_OPTIONS.map((item) => {
@@ -1609,57 +2044,84 @@ const StudentAssignmentListPage = () => {
           </div>
         </div>
 
-        <div className="inprog-wrap">
-          <div className="inprog-head">
-            <div className="inprog-title">
-              <div className="inprog-bar" />
-              <span>{IN_PROGRESS_UI.title}</span>
-            </div>
-            <div className="inprog-count">{inProgressCount} bài đang làm</div>
+        <div className="filter-bar">
+          <div className="search-wrap">
+            <Ic.Search width={13} height={13} />
+            <input
+              className="search-inp"
+              name="assignment-search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="Tìm kiếm bài tập..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
           </div>
-
-          {inProgressLoading ? (
-            <div className="state-box">{IN_PROGRESS_UI.loading}</div>
-          ) : inProgressError ? (
-            <div className="inprog-empty error">{inProgressError}</div>
-          ) : inProgressItems.length === 0 ? (
-            <div className="inprog-empty">{IN_PROGRESS_UI.empty}</div>
-          ) : (
-            <div className="inprog-list">
-              {inProgressItems.map((it) => (
-                <InProgressCard
-                  key={it.submissionId || `${it.assignmentId}`}
-                  item={it}
-                  onContinue={(item) => {
-                    const safeAssignmentId = Number(item.assignmentId || 0);
-                    if (
-                      !Number.isFinite(safeAssignmentId) ||
-                      safeAssignmentId <= 0
-                    ) {
-                      showToast(
-                        "Không tìm thấy mã bài tập để tiếp tục.",
-                        "error",
-                      );
-                      return;
-                    }
-
-                    navigate(
-                      PATH_STUDENT.classroom.assignmentDo(
-                        classId,
-                        safeAssignmentId,
-                      ),
-                      {
-                        state: {
-                          resumeSubmissionId: item.submissionId || null,
-                        },
-                      },
-                    );
-                  }}
-                />
-              ))}
-            </div>
-          )}
         </div>
+
+        {(inProgressLoading || inProgressError || inProgressItems.length > 0) && (
+          <div className="inprog-wrap">
+            <div className="inprog-head">
+              <div className="inprog-title">
+                <div className="inprog-bar" />
+                <span>{IN_PROGRESS_UI.title}</span>
+              </div>
+              <div className="inprog-count">{inProgressCount} bài đang làm</div>
+            </div>
+
+            {inProgressLoading ? (
+              <div className="state-box">{IN_PROGRESS_UI.loading}</div>
+            ) : inProgressError ? (
+              <div className="inprog-empty error">{inProgressError}</div>
+            ) : (
+              <div className="inprog-list">
+                {inProgressItems.map((it) => (
+                  <InProgressCard
+                    key={it.submissionId || `${it.assignmentId}`}
+                    item={it}
+                    onContinue={(item) => {
+                      const safeAssignmentId = Number(item.assignmentId || 0);
+                      if (
+                        !Number.isFinite(safeAssignmentId) ||
+                        safeAssignmentId <= 0
+                      ) {
+                        showToast(
+                          "Không tìm thấy mã bài tập để tiếp tục.",
+                          "error",
+                        );
+                        return;
+                      }
+
+                      // Tìm thông tin đầy đủ của bài tập để hiển thị Modal
+                      const fullAssignment = assignments.find(
+                        (a) => a.id === safeAssignmentId,
+                      );
+
+                      if (fullAssignment) {
+                        handleOpenModal(fullAssignment, "detail");
+                      } else {
+                        // Fallback: nếu không tìm thấy trong danh sách hiện tại thì mới navigate thẳng
+                        navigate(
+                          PATH_STUDENT.classroom.assignmentDo(
+                            classId,
+                            safeAssignmentId,
+                          ),
+                          {
+                            state: {
+                              resumeSubmissionId: item.submissionId || null,
+                            },
+                          },
+                        );
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="state-box">
@@ -1741,11 +2203,21 @@ const StudentAssignmentListPage = () => {
         ) : null}
 
         {modal ? (
-          <DetailModal
-            assignment={modal.assignment}
-            onClose={() => setModal(null)}
-            onStartAssignment={handleStartAssignment}
-          />
+          modal.mode === "history" ? (
+            <AttemptHistoryModal
+              assignment={modal.assignment}
+              classroomId={classId}
+              onClose={() => setModal(null)}
+              navigate={navigate}
+            />
+          ) : (
+            <DetailModal
+              assignment={modal.assignment}
+              onClose={() => setModal(null)}
+              onStartAssignment={handleStartAssignment}
+              onOpen={handleOpenModal}
+            />
+          )
         ) : null}
 
         {toast ? (

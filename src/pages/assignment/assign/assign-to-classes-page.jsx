@@ -16,6 +16,8 @@ const defaultSettings = () => ({
   shuffleQuestions: false,
   limitTabs: "",
   requireFullScreen: false,
+  maxAttempts: 1,
+  maxAttemptsType: "UNLIMITED",
 });
 
 const SETTINGS_PANEL_CSS = `
@@ -93,6 +95,12 @@ const toOverridePayload = (config = {}, category = "HOMEWORK") => {
           ? Math.max(0, Math.round(limitTabs))
           : null,
     requireFullScreen: isTest ? Boolean(config.requireFullScreen) : false,
+    maxAttempts:
+      config.maxAttemptsType === "UNLIMITED"
+        ? null
+        : Number.isFinite(Number(config.maxAttempts))
+          ? Math.max(1, Math.round(Number(config.maxAttempts)))
+          : 1,
   };
 };
 
@@ -315,6 +323,8 @@ const AssignToClassesPage = () => {
               ? ""
               : String(setting.limitTabs),
           requireFullScreen: Boolean(setting.requireFullScreen),
+          maxAttemptsType: setting.maxAttempts ? "LIMITED" : "UNLIMITED",
+          maxAttempts: Number(setting.maxAttempts || 1),
         };
 
         setAssignmentCategory(category === "TEST" ? "TEST" : "HOMEWORK");
@@ -1076,6 +1086,84 @@ const AssignToClassesPage = () => {
                                 </button>
                               </div>
                             </div>
+
+                            {!isTestCategory && (
+                              <div className="assign-toggle-item">
+                                <label className="assign-label">
+                                  Số lần làm bài tối đa
+                                </label>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <div
+                                    className="assign-pill-group"
+                                    style={{ flex: 1 }}
+                                  >
+                                    <button
+                                      type="button"
+                                      className={`assign-pill${settings[id]?.maxAttemptsType === "UNLIMITED" ? " active" : ""}`}
+                                      onClick={() =>
+                                        updateSetting(
+                                          id,
+                                          "maxAttemptsType",
+                                          "UNLIMITED",
+                                        )
+                                      }
+                                    >
+                                      Vô hạn
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`assign-pill${settings[id]?.maxAttemptsType === "LIMITED" ? " active" : ""}`}
+                                      onClick={() =>
+                                        updateSetting(
+                                          id,
+                                          "maxAttemptsType",
+                                          "LIMITED",
+                                        )
+                                      }
+                                    >
+                                      Giới hạn
+                                    </button>
+                                  </div>
+                                  {settings[id]?.maxAttemptsType ===
+                                    "LIMITED" && (
+                                    <div
+                                      style={{ position: "relative", width: 85 }}
+                                    >
+                                      <input
+                                        className="assign-input"
+                                        type="number"
+                                        min={1}
+                                        value={settings[id]?.maxAttempts ?? ""}
+                                        onChange={(event) =>
+                                          updateSetting(
+                                            id,
+                                            "maxAttempts",
+                                            event.target.value,
+                                          )
+                                        }
+                                        style={{
+                                          paddingRight: 32,
+                                          textAlign: "center",
+                                        }}
+                                      />
+                                      <span
+                                        style={{
+                                          position: "absolute",
+                                          right: 8,
+                                          top: "50%",
+                                          transform: "translateY(-50%)",
+                                          fontSize: 11,
+                                          color: "#64748B",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        lần
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
 
                             {isTestCategory ? (
                               <div className="assign-toggle-item">

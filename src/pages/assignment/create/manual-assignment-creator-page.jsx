@@ -1589,7 +1589,10 @@ const ManualAssignmentCreatorPage = () => {
   };
 
   const handlePreviewClick = () => {
-    const query = searchParams.toString();
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("bankId");
+    const query = next.toString();
+
     navigate(
       query
         ? `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${query}`

@@ -101,7 +101,8 @@ const CSS = `
 @keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 .qc-main{padding:18px 20px}
-.qc-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.qc-top{display:flex;flex-direction:column;gap:16px;margin-bottom:14px}
+.qc-top-meta-row{display:flex;align-items:center;gap:12px}
 .qc-top-meta{display:flex;align-items:flex-start;gap:8px;flex-shrink:0}
 .drag-handle{color:var(--t3);font-size:13px;flex-shrink:0;cursor:grab;padding-top:2px;line-height:1;user-select:none}
 .qc-num{min-width:26px;height:26px;border-radius:50%;background:var(--p);color:var(--inv);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
@@ -130,13 +131,13 @@ const CSS = `
 .qc-opt-lbl{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--b);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;color:var(--t3);flex-shrink:0;margin-top:1px}
 .qc-opt.correct .qc-opt-lbl{border-color:var(--gn);background:var(--gn);color:var(--inv)}
 
-.qc-tf{margin-top:8px;font-size:12px;font-weight:600;color:var(--t2)}
+.qc-tf{font-size:12px;font-weight:600;color:var(--t2)}
 .ctag{color:var(--gnd);background:var(--gnl);padding:2px 8px;border-radius:8px;font-size:11px;font-weight:800;border:1px solid rgba(16,185,129,.25)}
 
-.qc-fb{margin-top:7px;font-size:11px;color:var(--t3);font-weight:600}
+.qc-fb{font-size:11px;color:var(--t3);font-weight:600}
 .qc-fb span{color:var(--p);font-weight:800;background:var(--pl);padding:2px 8px;border-radius:6px;margin-left:4px;font-family:var(--fm);font-size:12px}
 
-.qc-essay{margin-top:7px;font-size:11px;color:var(--t3);font-style:italic;font-weight:600}
+.qc-essay{font-size:11px;color:var(--t3);font-style:italic;font-weight:600}
 
 .qc-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid var(--bl);background:var(--bg)}
 .qc-bar-l,.qc-bar-r{display:flex;gap:3px;align-items:center}
@@ -154,17 +155,17 @@ const CSS = `
 
 .ed-prompt{width:100%;padding:8px 12px;border:1.5px solid var(--or);border-radius:var(--rs);font-size:13px;font-family:var(--f);font-weight:600;color:var(--t);background:#FFFDF7;min-height:48px;resize:vertical;line-height:1.6;outline:none}
 .ed-prompt:focus{box-shadow:0 0 0 3px rgba(245,158,11,.1)}
-.ed-lbl{font-size:10px;font-weight:800;color:var(--t3);margin:8px 0 5px 36px;text-transform:uppercase;letter-spacing:.04em}
+.ed-lbl{font-size:10px;font-weight:800;color:var(--t3);margin:8px 0 5px 0;text-transform:uppercase;letter-spacing:.04em}
 .ed-opt-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
 .ed-opt-input{flex:1;padding:7px 10px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:12px;font-family:var(--f);color:var(--t);background:var(--inp);outline:none}
 .ed-opt-input:focus{border-color:var(--or)}
 .ed-opt-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--b);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s var(--e)}
 .ed-opt-radio.on{border-color:var(--gn);background:var(--gn);color:var(--inv)}
 .ed-opt-radio:hover{border-color:var(--gn)}
-.ed-tf{display:flex;gap:8px;margin-left:36px}
+.ed-tf{display:flex;gap:8px;margin-left:0}
 .ed-tfb{flex:1;padding:9px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:12px;font-weight:700;text-align:center;cursor:pointer;background:var(--card);color:var(--t3);font-family:var(--f);transition:all .15s var(--e)}
 .ed-tfb.on{border-color:var(--gn);background:var(--gnl);color:var(--gnd)}
-.ed-ans{margin-left:36px;width:calc(100% - 36px);padding:7px 10px;border:1.5px solid var(--or);border-radius:var(--rs);font-size:12px;font-family:var(--fm);color:var(--t);background:#FFFDF7;outline:none}
+.ed-ans{margin-left:0;width:100%;padding:7px 10px;border:1.5px solid var(--or);border-radius:var(--rs);font-size:12px;font-family:var(--fm);color:var(--t);background:#FFFDF7;outline:none}
 .ed-ans:focus{box-shadow:0 0 0 3px rgba(245,158,11,.1)}
 
 .q-empty{border:1.5px dashed var(--b);border-radius:var(--rl);padding:20px;text-align:center;color:var(--t3);font-size:13px;font-weight:500;font-family:var(--f)}
@@ -365,6 +366,7 @@ const readQuestionContent = (question) =>
 const readQuestionPoints = (question) => {
   const parsed = Number(
     question?.questionData?.defaultPoints ??
+      question?.defaultPoints ??
       question?.points ??
       question?.score ??
       1,
@@ -1651,7 +1653,7 @@ export default function ManualAssignmentPreviewPage() {
 
   const getCog = (l) => COG_UI[l] || COG_UI.APPLYING;
 
-  const renderQ = (q, num, sid) => {
+  const renderQ = (q, displayNum, localIndex, sid) => {
     const isEd = editId === q.id;
     const d = isEd ? editData : q;
     const cog = getCog(d?.cognitiveLevel);
@@ -1676,29 +1678,29 @@ export default function ManualAssignmentPreviewPage() {
       >
         <div className="qc-main">
           <div className="qc-top">
-            {!isEd && (
-              <div className="qc-top-meta">
-                <button
-                  type="button"
-                  className={`qc-select${isQuestionSelected ? " on" : ""}`}
-                  onClick={() => toggleQuestionSelection(safeQuestionId)}
-                  title={isQuestionSelected ? "Bỏ chọn câu hỏi" : "Chọn câu hỏi để refine"}
-                >
-                  ✓
-                </button>
-                <div
-                  className="drag-handle"
-                  draggable
-                  onDragStart={handleQuestionDragStart(sid, q)}
-                  onDragEnd={handleQuestionDragEnd}
-                  title="Kéo để đổi vị trí"
-                >
-                  ⋮⋮
+            <div className="qc-top-meta-row">
+              {!isEd && (
+                <div className="qc-top-meta">
+                  <button
+                    type="button"
+                    className={`qc-select${isQuestionSelected ? " on" : ""}`}
+                    onClick={() => toggleQuestionSelection(safeQuestionId)}
+                    title={isQuestionSelected ? "Bỏ chọn câu hỏi" : "Chọn câu hỏi để refine"}
+                  >
+                    ✓
+                  </button>
+                  <div
+                    className="drag-handle"
+                    draggable
+                    onDragStart={handleQuestionDragStart(sid, q)}
+                    onDragEnd={handleQuestionDragEnd}
+                    title="Kéo để đổi vị trí"
+                  >
+                    ⋮⋮
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className="qc-num">{num}</div>
-            <div className="qc-body">
+              )}
+              <div className="qc-num">{displayNum}</div>
               <div className="qc-badges">
                 <span className={`qc-type-badge ${TC[d.type] || "mc"}`}>
                   {TL[d.type]}
@@ -1720,6 +1722,9 @@ export default function ManualAssignmentPreviewPage() {
                   {src.icon} {src.label}
                 </span>
               </div>
+            </div>
+
+            <div className="qc-body">
 
               {isEd ? (
                 <>
@@ -1794,7 +1799,7 @@ export default function ManualAssignmentPreviewPage() {
               {d.type === "MULTIPLE_CHOICE" &&
                 d.opts &&
                 (isEd ? (
-                  <div style={{ marginLeft: 36 }}>
+                  <div>
                     <div className="ed-lbl">Đáp án (bấm ○ chọn đúng)</div>
                     {d.opts.map((o, oi) => (
                       <div key={oi} className="ed-opt-row">
@@ -1981,7 +1986,7 @@ export default function ManualAssignmentPreviewPage() {
                 <button
                   type="button"
                   className="ab sv"
-                  onClick={() => saveEdit(q, sid, num - 1)}
+                  onClick={() => saveEdit(q, sid, localIndex)}
                 >
                   <ChkIcon /> Lưu
                 </button>
@@ -2158,38 +2163,42 @@ export default function ManualAssignmentPreviewPage() {
               </div>
             </div>
           ) : (
-            sections.map((section) => (
-              <div key={section.id} className="section-wrap">
-                <div className="section-hdr">
-                  <div className="section-title">{section.title}</div>
-                  <div className="section-hdr-right">
-                    <span className={`sec-type-badge ${section.sectionType}`}>
-                      {section.sectionType === "OBJECTIVE"
-                        ? "Trắc nghiệm"
-                        : section.sectionType === "ESSAY"
-                          ? "Tự luận"
-                          : "Hỗn hợp"}
-                    </span>
-                    <span className="section-meta">
-                      {section.questions.length} câu ·{" "}
-                      {section.questions.reduce((sum, q) => sum + q.points, 0)}{" "}
-                      điểm
-                    </span>
+            (() => {
+              let globalNum = 0;
+              return sections.map((section) => (
+                <div key={section.id} className="section-wrap">
+                  <div className="section-hdr">
+                    <div className="section-title">{section.title}</div>
+                    <div className="section-hdr-right">
+                      <span className={`sec-type-badge ${section.sectionType}`}>
+                        {section.sectionType === "OBJECTIVE"
+                          ? "Trắc nghiệm"
+                          : section.sectionType === "ESSAY"
+                            ? "Tự luận"
+                            : "Hỗn hợp"}
+                      </span>
+                      <span className="section-meta">
+                        {section.questions.length} câu ·{" "}
+                        {section.questions.reduce((sum, q) => sum + q.points, 0)}{" "}
+                        điểm
+                      </span>
+                    </div>
+                  </div>
+                  <div className="section-body">
+                    {section.questions.length === 0 ? (
+                      <div className="q-empty">
+                        Chưa có câu hỏi — thêm từ các công cụ ở topbar
+                      </div>
+                    ) : (
+                      section.questions.map((question, idx) => {
+                        globalNum++;
+                        return renderQ(question, globalNum, idx, section.id);
+                      })
+                    )}
                   </div>
                 </div>
-                <div className="section-body">
-                  {section.questions.length === 0 ? (
-                    <div className="q-empty">
-                      Chưa có câu hỏi — thêm từ sidebar bên trái
-                    </div>
-                  ) : (
-                    section.questions.map((question, index) =>
-                      renderQ(question, index + 1, section.id),
-                    )
-                  )}
-                </div>
-              </div>
-            ))
+              ));
+            })()
           )}
 
           <div className="preview-footer">

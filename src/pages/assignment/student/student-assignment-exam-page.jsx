@@ -888,10 +888,12 @@ const formatSeconds = (seconds) => {
 
 const VIOLATION_EVENT_TYPE = {
   TAB_SWITCH: "TAB_SWITCH",
+  FOCUS_LOST: "FOCUS_LOST",
 };
 
 const VIOLATION_EVENT_LABEL = {
   TAB_SWITCH: "chuyển tab hoặc ẩn trình duyệt",
+  FOCUS_LOST: "rời khỏi cửa sổ làm bài",
 };
 
 const isPasswordStartError = (err) => {
@@ -1336,6 +1338,32 @@ const StudentAssignmentExamPage = () => {
       return;
     }
 
+    let blurTimeout = null;
+    let lastViolationTime = 0;
+    const MIN_INTERVAL_MS = 3000; // Tối thiểu 3 giây giữa 2 lần đếm
+
+    const onWindowBlur = () => {
+      // Debounce — chờ 500ms xem có focus lại không (tránh false positive khi click address bar/devtools)
+      blurTimeout = window.setTimeout(() => {
+        const now = Date.now();
+        if (now - lastViolationTime < MIN_INTERVAL_MS) return;
+        lastViolationTime = now;
+
+        recordViolation(
+          VIOLATION_EVENT_TYPE.FOCUS_LOST,
+          "Học sinh đã rời khỏi cửa sổ làm bài.",
+        );
+      }, 500);
+    };
+
+    const onWindowFocus = () => {
+      // Nếu focus lại nhanh trong 500ms -> không tính vi phạm
+      if (blurTimeout) {
+        window.clearTimeout(blurTimeout);
+        blurTimeout = null;
+      }
+    };
+
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         recordViolation(
@@ -1345,9 +1373,14 @@ const StudentAssignmentExamPage = () => {
       }
     };
 
+    window.addEventListener("blur", onWindowBlur);
+    window.addEventListener("focus", onWindowFocus);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
+      if (blurTimeout) window.clearTimeout(blurTimeout);
+      window.removeEventListener("blur", onWindowBlur);
+      window.removeEventListener("focus", onWindowFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [submitted, examData?.submissionId, examData?.limitTabs, recordViolation]);

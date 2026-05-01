@@ -254,6 +254,14 @@ const getSubmissionResult = (submissionId) => {
   );
 };
 
+const getSubmissionHistory = (assignmentId, classroomId) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  const safeClassroomId = normalizeId(classroomId, "classroomId");
+  return apiRequest.get(`/student/assignments/${safeAssignmentId}/history`, {
+    params: { classroomId: safeClassroomId },
+  });
+};
+
 const getAssignment = (assignmentId) => {
   const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
   return apiRequest.get(`${ASSIGNMENT_BASE}/${safeAssignmentId}`);
@@ -1015,4 +1023,5 @@ export const assignmentApi = {
   batchAutoSaveDraftItems,
   deleteDraftItem,
   confirmDraftSession,
+  getSubmissionHistory,
 };
