@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
@@ -1754,7 +1754,9 @@ const ManualAssignmentCreatorPage = () => {
       prevQuestionSnapshotsRef.current = buildSnapshotMap(qs);
       prevOrderSignatureRef.current = buildOrderSignature(qs);
       setAutoSaveStatus("saved");
-      showToast("Đã lưu");
+      showToast(
+        isBankMode ? "Đã lưu bản nháp thành công" : "Đã lưu thành công",
+      );
       return true;
     } catch (error) {
       console.error("Batch save failed", error?.response?.data || error);
@@ -1776,6 +1778,11 @@ const ManualAssignmentCreatorPage = () => {
     }
 
     navigate(PATH_TEACHER.assignments);
+  };
+
+  const handleSaveOnly = async () => {
+    if (publishing) return;
+    await saveAllToDraftByBatch();
   };
 
   const collectSelectedQuestionIds = () => {
@@ -3184,21 +3191,23 @@ const ManualAssignmentCreatorPage = () => {
             </div>
           </div>
           <div className="top-r">
+            {!isBankMode && (
+              <button
+                type="button"
+                className="btn btn-g"
+                onClick={handlePreviewClick}
+                disabled={publishing || !qs.length}
+              >
+                <Ic.Eye /> Xem Preview
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-g"
-              onClick={handlePreviewClick}
-              disabled={publishing || !qs.length}
-            >
-              <Ic.Eye /> Xem Preview
-            </button>
-            <button
-              type="button"
-              className="btn btn-g"
-              onClick={handleSaveAndBackToAssignments}
+              onClick={handleSaveOnly}
               disabled={publishing}
             >
-              <Ic.Eye /> Lưu
+              <Ic.Save /> Lưu
             </button>
             <button
               type="button"

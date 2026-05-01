@@ -1539,9 +1539,6 @@ export default function ResourceBankDetailPage() {
             </div>
           </div>
           <div className="top-r">
-            <button className="btn-action btn-g">
-              <Ic.Download /> Xuất Excel
-            </button>
             <button
               className="btn-action btn-g"
               onClick={() =>

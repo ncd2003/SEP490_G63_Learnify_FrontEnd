@@ -65,6 +65,11 @@ const CSS = `
 .sep{width:1px;height:18px;background:var(--b)}
 .page-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px;font-family:var(--f)}
 .stat-pill{display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--bl);color:var(--t2);font-family:var(--f)}
+.add-qs-grp{display:flex;align-items:center;gap:6px;margin-left:8px}
+.tb-add-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;font-size:11px;font-weight:700;font-family:var(--f);cursor:pointer;border:1.5px solid var(--b);background:var(--card);color:var(--t2);transition:all .15s var(--e)}
+.tb-add-btn:hover:not(:disabled){border-color:var(--p);color:var(--p);background:var(--hov)}
+.tb-add-btn:disabled{opacity:.4;cursor:not-allowed}
+.tb-add-btn span{font-size:13px}
 .topbar-r{display:flex;gap:6px}
 
 .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:var(--rm);font-size:11px;font-weight:700;font-family:var(--f);cursor:pointer;border:none;transition:all .2s var(--e)}
@@ -279,6 +284,15 @@ const COG_UI = {
   },
 };
 
+const QUESTION_COGNITIVE_OPTIONS = [
+  { value: "REMEMBERING", label: "Nhớ" },
+  { value: "UNDERSTANDING", label: "Hiểu" },
+  { value: "APPLYING", label: "Vận dụng" },
+  { value: "ANALYZING", label: "Phân tích" },
+  { value: "EVALUATING", label: "Đánh giá" },
+  { value: "CREATING", label: "Sáng tạo" },
+];
+
 const SRC_CFG = {
   MANUAL: { label: "Thủ công", icon: "✎", cls: "MANUAL" },
   AI: { label: "AI", icon: "✦", cls: "AI" },
@@ -339,7 +353,8 @@ const normalizeQuestionType = (rawType) => {
 
 const readQuestionContent = (question) =>
   String(
-    question?.prompt ||
+    question?.questionData?.content ||
+      question?.prompt ||
       question?.content ||
       question?.questionContent ||
       question?.question?.content ||
@@ -348,7 +363,12 @@ const readQuestionContent = (question) =>
   );
 
 const readQuestionPoints = (question) => {
-  const parsed = Number(question?.points ?? question?.score ?? 1);
+  const parsed = Number(
+    question?.questionData?.defaultPoints ??
+      question?.points ??
+      question?.score ??
+      1,
+  );
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 };
 
@@ -374,7 +394,8 @@ const getMcCorrectIndexes = (correct) => {
 
 const readQuestionSource = (question) =>
   String(
-    question?.sourceType ||
+    question?.questionData?.sourceType ||
+      question?.sourceType ||
       question?.source ||
       question?.origin ||
       question?.question?.sourceType ||
@@ -385,6 +406,7 @@ const readQuestionSource = (question) =>
 
 const readOptions = (question) => {
   const rawOptions =
+    question?.questionData?.options ||
     question?.opts ||
     question?.options ||
     question?.answers ||
@@ -466,9 +488,13 @@ const readCorrectIndex = (question, options = [], rawOptions = []) => {
 
 const mapWorkspaceQuestion = (question) => {
   const type = normalizeQuestionType(
-    question?.type || question?.questionType || question?.question?.type,
+    question?.questionData?.questionType ||
+      question?.type ||
+      question?.questionType ||
+      question?.question?.type,
   );
   const rawOptions =
+    question?.questionData?.options ||
     question?.opts ||
     question?.options ||
     question?.answers ||
@@ -479,7 +505,8 @@ const mapWorkspaceQuestion = (question) => {
   const sourceType = readQuestionSource(question);
   const points = readQuestionPoints(question);
   const cognitiveLevel = String(
-    question?.cognitiveLevel ||
+    question?.questionData?.cognitiveLevel ||
+      question?.cognitiveLevel ||
       question?.cogLevel ||
       question?.question?.cognitiveLevel ||
       "APPLYING",
@@ -508,6 +535,8 @@ const mapWorkspaceQuestion = (question) => {
     cognitiveLevel,
     sourceType,
     points,
+    status: question?.status || "SUCCESS",
+    errors: Array.isArray(question?.errors) ? question.errors : [],
   };
 
   if (type === "MULTIPLE_CHOICE") {
@@ -517,28 +546,35 @@ const mapWorkspaceQuestion = (question) => {
   } else if (type === "TRUE_FALSE") {
     // Try to read from new backend structure first (rawOptions with correct flags)
     if (Array.isArray(rawOptions) && rawOptions.length > 0) {
-      const correctOpt = rawOptions.find(opt => Boolean(opt?.correct ?? false));
+      const correctOpt = rawOptions.find((opt) =>
+        Boolean(opt?.correct ?? false),
+      );
       // correctOpt at index 0 = "Đúng" (true), at index 1 = "Sai" (false)
       mapped.cor = rawOptions.indexOf(correctOpt) === 0;
     } else {
       // Fallback to old logic
-      const rawCorrect = question?.cor ?? question?.correct ?? question?.answer;
+      const rawCorrect =
+        question?.questionData?.options?.find((o) => o.correct)?.content ===
+          "Đúng" || (question?.cor ?? question?.correct ?? question?.answer);
       mapped.cor = Boolean(
         rawCorrect === true ||
-        rawCorrect === "true" ||
-        rawCorrect === 1 ||
-        rawCorrect === "1",
+          rawCorrect === "true" ||
+          rawCorrect === 1 ||
+          rawCorrect === "1",
       );
     }
   } else if (type === "FILL_IN_THE_BLANK") {
     // Try to read from new backend structure first
     if (Array.isArray(rawOptions) && rawOptions.length > 0) {
-      const correctOpt = rawOptions.find(opt => Boolean(opt?.correct ?? false));
+      const correctOpt = rawOptions.find((opt) =>
+        Boolean(opt?.correct ?? false),
+      );
       mapped.ans = correctOpt?.content || options[0] || "";
     } else {
       // Fallback to old logic
       mapped.ans = String(
-        question?.ans ||
+        question?.questionData?.options?.[0]?.content ||
+          question?.ans ||
           question?.answer ||
           question?.correctAnswer ||
           options[0] ||
@@ -547,7 +583,11 @@ const mapWorkspaceQuestion = (question) => {
     }
   } else if (type === "ESSAY") {
     mapped.sampleAnswer = String(
-      question?.sampleAnswer || question?.answer || question?.guidance || "",
+      question?.questionData?.sampleAnswer ||
+        question?.sampleAnswer ||
+        question?.answer ||
+        question?.guidance ||
+        "",
     );
   }
 
@@ -676,6 +716,24 @@ const formatChatMessageTime = (value) => {
   } catch {
     return "Vừa xong";
   }
+};
+
+const toChatUiRole = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+  return normalized === "USER" ? "user" : "bot";
+};
+
+const mapChatHistoryToUiMessage = (item) => {
+  const content = String(item?.content || "").trim();
+  if (!content) return null;
+
+  return {
+    role: toChatUiRole(item?.role),
+    text: content,
+    time: formatChatMessageTime(item?.createdAt),
+  };
 };
 
 const AI_CHAT_LOGO_PATH = "/logo/image.png";
@@ -1107,6 +1165,42 @@ export default function ManualAssignmentPreviewPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    const safeSessionId = toPositiveId(workspaceSessionId);
+    if (!safeSessionId) {
+      setMsgs(DEFAULT_CHAT_MESSAGES);
+      return undefined;
+    }
+
+    let alive = true;
+
+    const loadChatHistory = async () => {
+      try {
+        const response =
+          await assignmentApi.getDraftSessionChatHistory(safeSessionId);
+        if (!alive) return;
+
+        const history = Array.isArray(response?.result) ? response.result : [];
+        const mappedHistory = history
+          .map(mapChatHistoryToUiMessage)
+          .filter(Boolean);
+
+        setMsgs(
+          mappedHistory.length > 0 ? mappedHistory : DEFAULT_CHAT_MESSAGES,
+        );
+      } catch {
+        if (!alive) return;
+        setMsgs((prev) => (prev.length > 0 ? prev : DEFAULT_CHAT_MESSAGES));
+      }
+    };
+
+    loadChatHistory();
+
+    return () => {
+      alive = false;
+    };
+  }, [workspaceSessionId]);
+
+  useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current) {
         window.clearTimeout(autoSaveTimerRef.current);
@@ -1285,8 +1379,8 @@ export default function ManualAssignmentPreviewPage() {
           filterBySectionOnly: normalizedSelectedQuestionIds.length === 0,
         },
         {
-          bankId: safeBankId || undefined,
-          assignmentId: safeAssignmentId,
+          bankId: safeAssignmentId ? undefined : (safeBankId || undefined),
+          assignmentId: safeAssignmentId || undefined,
         },
       );
 
@@ -1303,11 +1397,13 @@ export default function ManualAssignmentPreviewPage() {
         ? result.warnings.filter(Boolean)
         : [];
 
+      const botMsg = result?.botMessage || `Đã refine theo yêu cầu của thầy/cô.${normalizedSelectedQuestionIds.length ? `\nPhạm vi: ${normalizedSelectedQuestionIds.length} câu được chọn.` : "\nPhạm vi: toàn bộ section."}${warnings.length ? `\nCảnh báo: ${warnings.join("; ")}` : ""}`;
+
       setMsgs((prev) => [
         ...prev,
         {
           role: "bot",
-          text: `Đã refine theo yêu cầu của thầy/cô.${normalizedSelectedQuestionIds.length ? `\nPhạm vi: ${normalizedSelectedQuestionIds.length} câu được chọn.` : "\nPhạm vi: toàn bộ section."}${warnings.length ? `\nCảnh báo: ${warnings.join("; ")}` : ""}`,
+          text: botMsg,
           time: formatChatMessageTime(new Date()),
         },
       ]);
@@ -1626,17 +1722,73 @@ export default function ManualAssignmentPreviewPage() {
               </div>
 
               {isEd ? (
-                <textarea
-                  className="ed-prompt"
-                  rows={3}
-                  value={d.prompt}
-                  onChange={(e) =>
-                    setEditData({ ...d, prompt: e.target.value })
-                  }
-                  autoFocus
-                />
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 12,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div>
+                      <div className="ed-lbl" style={{ margin: "0 0 6px 0" }}>
+                        Mức độ nhận thức
+                      </div>
+                      <select
+                        className="ed-opt-input"
+                        style={{ width: "100%", height: 38 }}
+                        value={d.cognitiveLevel}
+                        onChange={(e) =>
+                          setEditData({ ...d, cognitiveLevel: e.target.value })
+                        }
+                      >
+                        {QUESTION_COGNITIVE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="ed-lbl" style={{ margin: "0 0 6px 0" }}>
+                        Điểm câu hỏi
+                      </div>
+                      <input
+                        type="number"
+                        className="ed-opt-input"
+                        style={{ width: "100%", height: 38 }}
+                        min="0"
+                        step="0.5"
+                        value={d.points}
+                        onChange={(e) =>
+                          setEditData({
+                            ...d,
+                            points: Number(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="ed-lbl" style={{ margin: "0 0 6px 0" }}>
+                    Nội dung câu hỏi
+                  </div>
+                  <textarea
+                    className="ed-prompt"
+                    rows={3}
+                    value={d.prompt}
+                    onChange={(e) =>
+                      setEditData({ ...d, prompt: e.target.value })
+                    }
+                    autoFocus
+                  />
+                </>
               ) : (
-                <div className="qc-prompt">{d.prompt}</div>
+                <div
+                  className="qc-prompt"
+                  dangerouslySetInnerHTML={{ __html: d.prompt }}
+                />
               )}
 
               {d.type === "MULTIPLE_CHOICE" &&
@@ -1699,7 +1851,7 @@ export default function ManualAssignmentPreviewPage() {
                         <div className="qc-opt-lbl">
                           {oi === d.cor ? <ChkIcon /> : LT[oi]}
                         </div>
-                        {o}
+                        <span dangerouslySetInnerHTML={{ __html: o }} />
                       </div>
                     ))}
                   </div>
@@ -1780,6 +1932,43 @@ export default function ManualAssignmentPreviewPage() {
                     }
                   />
                 </>
+              )}
+              {Array.isArray(q.errors) && q.errors.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: "8px 12px",
+                    borderRadius: "var(--rs)",
+                    background: "var(--rdl)",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: "var(--rd)",
+                      marginBottom: 4,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Lỗi xác thực:
+                  </div>
+                  {q.errors.map((err, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        fontSize: 11,
+                        color: "var(--rd)",
+                        fontWeight: 500,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      • {err}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -1873,55 +2062,6 @@ export default function ManualAssignmentPreviewPage() {
     <div className="page">
       <style>{CSS}</style>
 
-      <div className="side">
-        <div className="side-group">
-          <div className="side-section-head">CÁC PHẦN</div>
-          <div className="side-nav">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                className={`nav-dot${section.id === active ? " active" : ""}`}
-                onClick={() => setActive(section.id)}
-                title={section.title}
-              >
-                <span>{section.title}</span>
-                <span>{section.questions.length}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="side-group">
-          <div className="side-section-head">THÊM CÂU HỎI</div>
-          <div className="side-actions">
-            <button
-              type="button"
-              className="side-action-btn manual"
-              onClick={goToManualEditor}
-              disabled={isLoadingWorkspace || !workspaceSessionId}
-            >
-              <span>✎</span> Tạo thủ công
-            </button>
-            <button
-              type="button"
-              className="side-action-btn ai"
-              onClick={goToAiEditor}
-              disabled={isLoadingWorkspace || !workspaceSessionId}
-            >
-              <span>✦</span> Tạo với AI
-            </button>
-            <button
-              type="button"
-              className="side-action-btn bank"
-              onClick={goToQuestionBankPicker}
-              disabled={isLoadingWorkspace || !workspaceSessionId}
-            >
-              <span>◈</span> Từ ngân hàng
-            </button>
-          </div>
-        </div>
-      </div>
 
       <div className="main">
         <div className="topbar">
@@ -1931,6 +2071,33 @@ export default function ManualAssignmentPreviewPage() {
             </button>
             <div className="sep" />
             <div className="page-title">{pageLabel}</div>
+            
+            <div className="add-qs-grp">
+              <button
+                type="button"
+                className="tb-add-btn"
+                onClick={goToManualEditor}
+                disabled={isLoadingWorkspace || !workspaceSessionId}
+              >
+                <span>✎</span> Thủ công
+              </button>
+              <button
+                type="button"
+                className="tb-add-btn"
+                onClick={goToAiEditor}
+                disabled={isLoadingWorkspace || !workspaceSessionId}
+              >
+                <span>✦</span> Với AI
+              </button>
+              <button
+                type="button"
+                className="tb-add-btn"
+                onClick={goToQuestionBankPicker}
+                disabled={isLoadingWorkspace || !workspaceSessionId}
+              >
+                <span>◈</span> Ngân hàng
+              </button>
+            </div>
           </div>
           <div className="topbar-r">
             <span className="stat-pill">

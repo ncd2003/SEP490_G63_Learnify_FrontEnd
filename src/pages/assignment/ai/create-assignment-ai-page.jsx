@@ -2664,11 +2664,13 @@ const CreateAssignmentAiPage = () => {
         setWorkspaceRefreshTick((prev) => prev + 1);
       }
 
+      const botMsg = result?.botMessage || `Đã refine theo yêu cầu của thầy/cô.${normalizedSelectedQuestionIds.length ? `\nPhạm vi: ${normalizedSelectedQuestionIds.length} câu được chọn.` : "\nPhạm vi: toàn bộ câu hỏi."}${mappedQuestions.length ? `\nCập nhật ${mappedQuestions.length} câu hỏi.` : ""}${warnings.length ? `\nCảnh báo: ${warnings.join("; ")}` : ""}`;
+
       setMsgs((p) => [
         ...p,
         {
           role: "bot",
-          text: `Đã refine theo yêu cầu của thầy/cô.${normalizedSelectedQuestionIds.length ? `\nPhạm vi: ${normalizedSelectedQuestionIds.length} câu được chọn.` : "\nPhạm vi: toàn bộ câu hỏi."}${mappedQuestions.length ? `\nCập nhật ${mappedQuestions.length} câu hỏi.` : ""}${warnings.length ? `\nCảnh báo: ${warnings.join("; ")}` : ""}`,
+          text: botMsg,
           time: "Vừa xong",
         },
       ]);
@@ -2943,7 +2945,10 @@ const CreateAssignmentAiPage = () => {
                   />
                 </>
               ) : (
-                <div className="qc-pr">{d.prompt}</div>
+                <div
+                  className="qc-pr"
+                  dangerouslySetInnerHTML={{ __html: d.prompt }}
+                />
               )}
             </div>
           </div>
@@ -2997,7 +3002,7 @@ const CreateAssignmentAiPage = () => {
                     className={`qc-opt${oi === d.cor ? " ok" : ""}`}
                   >
                     <div className="qc-ol">{LT[oi]}</div>
-                    {o}
+                    <span dangerouslySetInnerHTML={{ __html: o }} />
                   </div>
                 ))}
               </div>
@@ -3107,20 +3112,24 @@ const CreateAssignmentAiPage = () => {
             </div>
           </div>
           <div className="top-r">
-            <button className="btn btn-g" onClick={handlePreviewClick}>
-              Xem preview
-            </button>
+            {!isBankMode && (
+              <button className="btn btn-g" onClick={handlePreviewClick}>
+                Xem preview
+              </button>
+            )}
             {phase === "results" && (
               <>
-                <button
-                  className="btn btn-g"
-                  onClick={() => {
-                    setPhase("config");
-                    setPg(1);
-                  }}
-                >
-                  <I.Refresh /> Tạo lại
-                </button>
+                {!isBankMode && (
+                  <button
+                    className="btn btn-g"
+                    onClick={() => {
+                      setPhase("config");
+                      setPg(1);
+                    }}
+                  >
+                    <I.Refresh /> Tạo lại
+                  </button>
+                )}
                 <button
                   className="btn btn-p"
                   onClick={handlePublish}

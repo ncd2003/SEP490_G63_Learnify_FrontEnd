@@ -333,7 +333,7 @@ const confirmImportQuestions = (bankId, validRequests) => {
  * @param {{
  *   content: string,
  *   questionType: string,
- *   difficulty: string,
+ *   cognitiveLevel: string,
  *   defaultPoints: number,
  *   sampleAnswer: string | null,
  *   options: Array<{ content: string, isCorrect: boolean }> | null,
@@ -343,7 +343,7 @@ const confirmImportQuestions = (bankId, validRequests) => {
  *   questionBankId: number,
  *   content: string,
  *   questionType: string,
- *   difficulty: string,
+ *   cognitiveLevel: string,
  *   defaultPoints: number,
  *   sampleAnswer: string | null,
  *   options: Array<{ id?: number, content: string, isCorrect?: boolean, correct?: boolean }> | null,
@@ -351,7 +351,7 @@ const confirmImportQuestions = (bankId, validRequests) => {
  */
 const createQuestion = (bankId, payload) => {
   const safeBankId = normalizeBankId(bankId);
-  return apiRequest.post(`${BASE}/${safeBankId}/questions`, payload);
+  return apiRequest.post(`${LIST_BANK_BASE}/${safeBankId}/questions`, payload);
 };
 
 /**
@@ -377,7 +377,10 @@ const createQuestion = (bankId, payload) => {
  */
 const createQuestionsBatch = (bankId, payload) => {
   const safeBankId = normalizeBankId(bankId);
-  return apiRequest.post(`${BASE}/${safeBankId}/questions/batch`, payload);
+  return apiRequest.post(
+    `${LIST_BANK_BASE}/${safeBankId}/questions/batch`,
+    payload,
+  );
 };
 
 /**
@@ -505,7 +508,7 @@ const cancelAiSession = (bankId, sessionId) => {
  * @param {{
  *   content: string,
  *   questionType: string,
- *   difficulty: string,
+ *   cognitiveLevel: string,
  *   defaultPoints: number,
  *   sampleAnswer: string | null,
  *   options: Array<{ content: string, isCorrect: boolean }> | null,
@@ -515,7 +518,7 @@ const cancelAiSession = (bankId, sessionId) => {
  *   questionBankId: number,
  *   content: string,
  *   questionType: string,
- *   difficulty: string,
+ *   cognitiveLevel: string,
  *   defaultPoints: number,
  *   sampleAnswer: string | null,
  *   options: Array<{ id?: number, content: string, isCorrect?: boolean, correct?: boolean }> | null,
@@ -525,7 +528,7 @@ const updateQuestion = (bankId, questionId, payload) => {
   const safeBankId = normalizeBankId(bankId);
   const safeQuestionId = normalizeBankId(questionId);
   return apiRequest.put(
-    `${BASE}/${safeBankId}/questions/${safeQuestionId}`,
+    `${LIST_BANK_BASE}/${safeBankId}/questions/${safeQuestionId}`,
     payload,
   );
 };
@@ -538,7 +541,9 @@ const updateQuestion = (bankId, questionId, payload) => {
 const deleteQuestion = (bankId, questionId) => {
   const safeBankId = normalizeBankId(bankId);
   const safeQuestionId = normalizeBankId(questionId);
-  return apiRequest.delete(`${BASE}/${safeBankId}/questions/${safeQuestionId}`);
+  return apiRequest.delete(
+    `${LIST_BANK_BASE}/${safeBankId}/questions/${safeQuestionId}`,
+  );
 };
 
 /**
