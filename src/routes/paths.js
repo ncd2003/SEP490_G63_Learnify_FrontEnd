@@ -68,6 +68,7 @@ export const PATH_TEACHER = {
     attendance: (id) => `/classrooms/${id}/attendance`,
     attendanceSession: (id, sessionId) =>
       `/classrooms/${id}/attendance/${sessionId}`,
+    gradebook: (id) => `/classrooms/${id}/gradebook`,
   },
   assignments: path(ROOTS_TEACHER, "/assignments"),
   assignmentCreateMethod: path(ROOTS_TEACHER, "/assignments/create-method"),

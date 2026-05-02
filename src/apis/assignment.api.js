@@ -309,11 +309,32 @@ const getSubmissionDetail = (submissionId) => {
   );
 };
 
+const getStudentSubmissions = (assignmentId, studentId, classroomId) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  const safeStudentId = normalizeId(studentId, "studentId");
+  const params = classroomId ? { classroomId } : {};
+  return apiRequest.get(
+    `${TEACHER_GRADING_BASE}/assignments/${safeAssignmentId}/students/${safeStudentId}/submissions`,
+    { params },
+  );
+};
+
+const getSubmissionForGrading = (submissionId) => getSubmissionDetail(submissionId);
+
+
 const gradeSubmission = (submissionId, payload = {}) => {
   const safeSubmissionId = normalizeId(submissionId, "submissionId");
   return apiRequest.put(
     `${TEACHER_GRADING_BASE}/submissions/${safeSubmissionId}/grade-essay`,
     payload,
+  );
+};
+
+const getGradebook = (assignmentId, classroomId) => {
+  const safeAssignmentId = normalizeId(assignmentId, "assignmentId");
+  const safeClassroomId = normalizeId(classroomId, "classroomId");
+  return apiRequest.get(
+    `/student/assignments/${safeAssignmentId}/classrooms/${safeClassroomId}/gradebook`,
   );
 };
 
@@ -990,6 +1011,13 @@ export const assignmentApi = {
   getClassroomAssignments,
   getSubmissions,
   getSubmissionDetail,
+  getStudentSubmissions,
+  getSubmissionForGrading,
+  getGradebook,
+  getAssignmentsForClassroom: (classroomId) => {
+    const safeId = normalizeId(classroomId, "classroomId");
+    return apiRequest.get(`${ASSIGNMENT_BASE}/classrooms/${safeId}`);
+  },
   gradeSubmission,
   getAssignmentById,
   deleteAssignment,

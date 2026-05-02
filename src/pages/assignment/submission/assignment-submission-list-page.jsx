@@ -695,13 +695,18 @@ const GradingPanel = ({
   ).length;
   const allEssayGraded =
     gradedCount === Number((submission?.essayAnswers || []).length);
-  const essayScoreNow = (submission?.essayAnswers || []).reduce(
-    (sum, answer) => sum + (grades[answer.questionId] || 0),
-    0,
-  );
-  const totalNow = submission
-    ? submission.autoScore + (allEssayGraded ? essayScoreNow : 0)
-    : 0;
+  const totalNow = useMemo(() => {
+    if (!submission) return 0;
+    const initialEssaySum = (submission.essayAnswers || []).reduce(
+      (sum, a) => sum + (a.earnedPoints || 0),
+      0,
+    );
+    const currentEssaySum = (submission.essayAnswers || []).reduce(
+      (sum, a) => sum + (grades[a.questionId] || 0),
+      0,
+    );
+    return (submission.totalScore || 0) + (currentEssaySum - initialEssaySum);
+  }, [submission, grades]);
   const mcCorrect = (submission?.mcAnswers || []).filter(
     (answer) => answer.earnedPoints >= answer.maxPoints,
   ).length;
@@ -754,7 +759,7 @@ const GradingPanel = ({
                 color: allEssayGraded ? "var(--green)" : "var(--amber)",
               }}
             >
-              {allEssayGraded ? totalNow.toFixed(2) : "—"}
+              {totalNow.toFixed(2)}
             </div>
             <div className="grade-score-sub">
               / {assignmentInfo?.totalScore || 10} điểm
@@ -778,9 +783,12 @@ const GradingPanel = ({
         </div>
         <div className="ov-item">
           <div className="ov-val" style={{ color: "var(--purple)" }}>
-            {allEssayGraded ? essayScoreNow.toFixed(2) : "—"}
+            {((submission?.essayAnswers || []).reduce(
+              (sum, a) => sum + (grades[a.questionId] || 0),
+              0,
+            )).toFixed(2)}
           </div>
-          <div className="ov-label">Điểm essay</div>
+          <div className="ov-label">Điểm tự luận</div>
         </div>
         <div className="ov-item">
           <div className="ov-val" style={{ color: "var(--green)" }}>
@@ -793,9 +801,9 @@ const GradingPanel = ({
             className="ov-val"
             style={{ color: allEssayGraded ? "var(--green)" : "var(--amber)" }}
           >
-            {gradedCount}/{(submission.essayAnswers || []).length}
+            {gradedCount}/{(submission?.essayAnswers || []).length}
           </div>
-          <div className="ov-label">Essay chấm</div>
+          <div className="ov-label">Tự luận đã chấm</div>
         </div>
       </div>
 
@@ -1052,6 +1060,12 @@ export default function AssignmentSubmissionListPage() {
           data?.submitTime,
         );
 
+        const autoScore = mcAnswers.reduce((sum, a) => sum + (a.earnedPoints || 0), 0);
+        const essayScoreNow = essayAnswers.reduce(
+          (sum, a) => sum + (a.earnedPoints || 0),
+          0,
+        );
+
         setSubDetail({
           ...basic,
           id: Number(data?.submissionId ?? basic?.id ?? activeSubId),
@@ -1062,10 +1076,12 @@ export default function AssignmentSubmissionListPage() {
           submittedAt: data?.submitTime || basic?.submittedAt || null,
           usedMinutes:
             usedMinutesFromTimeline ?? Number(basic?.usedMinutes ?? 0),
+          autoScore,
+          essayScore: essayScoreNow,
           totalScore:
             data?.totalEarnedScore != null
               ? Number(data.totalEarnedScore)
-              : (basic?.totalScore ?? null),
+              : autoScore + essayScoreNow,
           maxScore:
             data?.totalScore != null
               ? Number(data.totalScore)

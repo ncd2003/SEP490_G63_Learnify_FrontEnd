@@ -563,6 +563,12 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
     ? questionData.options
     : [];
 
+  const errors = Array.isArray(item?.errors) ? item.errors : [];
+  let status = String(item?.status || "").toUpperCase();
+  if (!status || status === "UNDEFINED") {
+    status = errors.length > 0 ? "INVALID" : "VALID";
+  }
+
   if (type === "TRUE_FALSE") {
     const trueOption = rawOptions.find(
       (option) =>
@@ -574,8 +580,8 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
     return {
       id: Number(item?.id || item?.rowNumber || index + 1),
       rowNumber: Number(item?.rowNumber || index + 1),
-      status: String(item?.status || "VALID").toUpperCase(),
-      errors: Array.isArray(item?.errors) ? item.errors : [],
+      status,
+      errors,
       type,
       prompt: String(questionData?.content || ""),
       cor: Boolean(trueOption?.isCorrect ?? trueOption?.correct),
@@ -589,8 +595,8 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
     return {
       id: Number(item?.id || item?.rowNumber || index + 1),
       rowNumber: Number(item?.rowNumber || index + 1),
-      status: String(item?.status || "VALID").toUpperCase(),
-      errors: Array.isArray(item?.errors) ? item.errors : [],
+      status,
+      errors,
       type,
       prompt: String(questionData?.content || ""),
       ans: String(rawOptions?.[0]?.content || ""),
@@ -603,8 +609,8 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
     return {
       id: Number(item?.id || item?.rowNumber || index + 1),
       rowNumber: Number(item?.rowNumber || index + 1),
-      status: String(item?.status || "VALID").toUpperCase(),
-      errors: Array.isArray(item?.errors) ? item.errors : [],
+      status,
+      errors,
       type,
       prompt: String(questionData?.content || ""),
       ans: String(questionData?.sampleAnswer || ""),
@@ -623,8 +629,8 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
   return {
     id: Number(item?.id || item?.rowNumber || index + 1),
     rowNumber: Number(item?.rowNumber || index + 1),
-    status: String(item?.status || "VALID").toUpperCase(),
-    errors: Array.isArray(item?.errors) ? item.errors : [],
+    status,
+    errors,
     type,
     prompt: String(questionData?.content || ""),
     opts: opts.length > 0 ? opts : ["", "", "", ""],
@@ -837,7 +843,17 @@ const ImportAssignmentFilePage = ({
             draftResult?.aiExcelData?.questions ||
             draftResult?.questions;
           if (Array.isArray(draftItems) && draftItems.length > 0) {
-            previewItems = draftItems;
+            // Merge status and errors from import response if draft response is missing them
+            previewItems = draftItems.map((dItem) => {
+              const matchedImportItem = previewItems.find(
+                (p) => p.rowNumber === dItem.rowNumber,
+              );
+              return {
+                ...dItem,
+                status: dItem.status || matchedImportItem?.status,
+                errors: dItem.errors || matchedImportItem?.errors,
+              };
+            });
           }
         } catch {
           // Fall back to import response items — IDs will be rowNumbers
@@ -1092,13 +1108,6 @@ const ImportAssignmentFilePage = ({
                 >
                   <I.Download /> .XLSX
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-g"
-                  style={{ fontSize: 10, padding: "6px 12px" }}
-                >
-                  <I.Download /> .DOCX
-                </button>
               </div>
             </div>
 
@@ -1108,7 +1117,7 @@ const ImportAssignmentFilePage = ({
               accept={
                 isBankMode
                   ? ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                  : ".xlsx,.xls,.doc,.docx,.csv"
+                  : ".xlsx,.xls"
               }
               style={{ display: "none" }}
               onChange={(e) => {
@@ -1148,8 +1157,6 @@ const ImportAssignmentFilePage = ({
                   <div className="uz-fmts">
                     <span className="uz-fmt">XLSX</span>
                     <span className="uz-fmt">XLS</span>
-                    {!isBankMode && <span className="uz-fmt">DOCX</span>}
-                    {!isBankMode && <span className="uz-fmt">CSV</span>}
                   </div>
                 </>
               )}

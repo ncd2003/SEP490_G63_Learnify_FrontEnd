@@ -1361,13 +1361,13 @@ const AddQuestionMethodPage = () => {
 
           <div className="mc-title">Tạo bằng import file</div>
           <div className="mc-desc">
-            Tải lên file Word hoặc Excel để import câu hỏi hàng loạt theo mẫu có
-            sẵn. Phù hợp khi đã có sẵn dữ liệu câu hỏi.
+            Tải lên file Excel để import câu hỏi hàng loạt theo mẫu có sẵn. Phù
+            hợp khi đã có sẵn dữ liệu câu hỏi.
           </div>
 
           <div className="mc-bullets">
             <div className="mc-bullet">
-              <div className="mc-bullet-dot sky" /> Hỗ trợ .docx, .xlsx, .csv
+              <div className="mc-bullet-dot sky" /> Hỗ trợ .xlsx, .xls
             </div>
             <div className="mc-bullet">
               <div className="mc-bullet-dot sky" /> Import hàng loạt nhanh chóng
