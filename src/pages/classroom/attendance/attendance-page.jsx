@@ -140,16 +140,7 @@ const AttendancePage = () => {
         setClassroomLoading(true);
         setClassroomError("");
 
-        // Ưu tiên API attendance theo class (mới) để đồng bộ dữ liệu điểm danh.
-        const attendanceResponse = await attendanceApi.getAttendanceByClass(classroomId, 1, 500);
-        const attendanceContent = attendanceResponse?.result?.content ?? [];
-
-        if (attendanceContent.length > 0) {
-          setClassroom({ members: attendanceContent });
-          return;
-        }
-
-        // Fallback: nếu lớp chưa có lịch sử điểm danh thì lấy roster từ classroom members.
+        // Fetch the roster from classroom members to build the student list for attendance.
         const membersResponse = await classroomMemberApi.getClassroomMembers(classroomId);
         setClassroom({ members: membersResponse?.result ?? [] });
       } catch (err) {

@@ -299,7 +299,7 @@ const ClassroomLecturePage = () => {
     if (!joinConfig || !containerRef.current) return undefined;
 
     let disposed = false;
-    let cleanupListeners = () => {};
+    let cleanupListeners = () => { };
 
     const clearAutoStopTimer = () => {
       if (autoStopRecordingTimerRef.current) {
