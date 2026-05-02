@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
   XCircle,
@@ -17,6 +17,7 @@ import { classroomMemberApi, ENROLLMENT_STATUS } from '@/apis/classroom-member.a
 import { userApi } from '@/apis/user.api';
 import { reportApi } from '@/apis/report.api';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import ApproveRequestsModal from './ApproveRequestsModal';
 import RejectRequestsModal from './RejectRequestsModal';
 import '@/assets/css/pages/classroom/pendingRequests.css';
@@ -69,6 +70,7 @@ const mapClassroomMember = (item) => {
 
 const MemberClass = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isTeacher = (user?.role || '').toUpperCase() === 'ROLE_TEACHER';
 
@@ -149,7 +151,8 @@ const MemberClass = () => {
         } else {
           setMembers([]);
           setPendingRequests([]);
-          setError(response.message || 'Không thể tải danh sách thành viên');
+          setError(response.message || 'Không thể tải danh sách thành viên lớp học lúc này. Vui lòng thử lại sau.');
+          toast.error('Không thể tải danh sách thành viên lớp học lúc này. Vui lòng thử lại sau.');
         }
 
         return;
@@ -163,14 +166,21 @@ const MemberClass = () => {
         setMembers(nextMembers);
       } else {
         setMembers([]);
-        setError(response.message || 'Không thể tải danh sách thành viên');
+        setError(response.message || 'Không thể tải danh sách thành viên lớp học lúc này. Vui lòng thử lại sau.');
+        toast.error('Không thể tải danh sách thành viên lớp học lúc này. Vui lòng thử lại sau.');
       }
 
       setPendingRequests([]);
     } catch (err) {
       setMembers([]);
       setPendingRequests([]);
-      setError(err.response?.data?.message || 'Đã xảy ra lỗi khi tải dữ liệu');
+      if (err.response?.status === 403) {
+        toast.error('Bạn không có quyền truy cập tài nguyên này');
+        navigate(`/classrooms/${id}/feed`);
+      } else {
+        setError(err.response?.data?.message || 'Không thể tải danh sách thành viên lớp học lúc này. Vui lòng thử lại sau.');
+        toast.error('Không thể tải danh sách thành viên lớp học lúc này. Vui lòng thử lại sau.');
+      }
       console.error('Error fetching classroom members:', err);
     } finally {
       setMembersLoading(false);
@@ -634,6 +644,29 @@ const MemberClass = () => {
   const classSize = members.length || classroomInfo?.studentCount || 0;
   const pendingCount = pendingRequests.length;
 
+  const showContactDetails = isTeacher;
+
+  // Separate teachers and students
+  const teacherMembers = filteredMembers.filter(m => (m.roleName || '').toUpperCase().includes('TEACHER'));
+  
+  // Add from classroomInfo if not found in list (fallback)
+  if (teacherMembers.length === 0 && classroomInfo?.teacher?.id) {
+    const t = classroomInfo.teacher;
+    teacherMembers.push({
+      studentId: t.id,
+      studentName: t.fullName || 'Giáo viên',
+      studentEmail: t.email,
+      phoneNumber: t.phoneNumber,
+      avatarUrl: t.avatarUrl,
+      roleName: 'ROLE_TEACHER',
+      joinedAt: null,
+    });
+  }
+
+  // To prevent duplicates and keep students
+  const studentMembers = filteredMembers.filter(m => !teacherMembers.some(t => t.studentId === m.studentId))
+    .sort((a, b) => (a.studentName || '').localeCompare(b.studentName || ''));
+
   return (
     <ClassroomDetailLayout>
       <div className="pending-requests-page">
@@ -717,55 +750,109 @@ const MemberClass = () => {
                   <Loader2 size={20} className="spin" />
                   <span>Đang tải thành viên lớp học...</span>
                 </div>
-              ) : filteredMembers.length === 0 ? (
+              ) : filteredMembers.length === 0 && teacherMembers.length === 0 ? (
                 <div className="class-members-empty">
-                  {memberSearch.trim() ? 'Không tìm thấy thành viên phù hợp.' : 'Chưa có học sinh nào trong lớp.'}
+                  {memberSearch.trim() ? 'Không tìm thấy thành viên phù hợp.' : 'Chưa có thành viên nào trong lớp.'}
                 </div>
               ) : (
-                <div className="class-members-table-wrapper">
-                  <table className="class-members-table">
-                    <thead>
-                      <tr>
-                        <th>Họ và tên</th>
-                        <th>Vai trò</th>
-                        <th>Email</th>
-                        <th>SĐT</th>
-                        <th>Tham gia lúc</th>
-                        <th>Hành động</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredMembers.map((member) => (
-                        <tr key={`${member.memberId || 'u'}-${member.studentId}`}>
-                          <td>
-                            <div className="student-cell">
-                              <div className="student-avatar">
-                                {member.avatarUrl ? (
-                                  <img src={member.avatarUrl} alt={member.studentName} />
-                                ) : (
-                                  <span>{getInitials(member.studentName)}</span>
-                                )}
-                              </div>
-                              <span className="student-name">{member.studentName}</span>
-                            </div>
-                          </td>
-                          <td>{formatRoleLabel(member.roleName)}</td>
-                          <td className="cell-email">{member.studentEmail || '—'}</td>
-                          <td>{member.phoneNumber || '—'}</td>
-                          <td className="cell-date">{formatDateTime(member.joinedAt)}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className="member-view-btn"
-                              onClick={() => openMemberDetail(member)}
-                            >
-                              Xem
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="class-members-roster">
+                  {teacherMembers.length > 0 && (
+                    <div className="roster-section" style={{ marginBottom: '24px' }}>
+                      <h3 style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '16px' }}>Giáo viên</h3>
+                      <div className="class-members-table-wrapper">
+                        <table className="class-members-table">
+                          <thead>
+                            <tr>
+                              <th>Họ và tên</th>
+                              {showContactDetails && <th>Email</th>}
+                              {showContactDetails && <th>SĐT</th>}
+                              <th>Hành động</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {teacherMembers.map((member) => (
+                              <tr key={`teacher-${member.studentId}`}>
+                                <td>
+                                  <div className="student-cell">
+                                    <div className="student-avatar">
+                                      {member.avatarUrl ? (
+                                        <img src={member.avatarUrl} alt={member.studentName} />
+                                      ) : (
+                                        <span>{getInitials(member.studentName)}</span>
+                                      )}
+                                    </div>
+                                    <span className="student-name">{member.studentName}</span>
+                                  </div>
+                                </td>
+                                {showContactDetails && <td className="cell-email">{member.studentEmail || '—'}</td>}
+                                {showContactDetails && <td>{member.phoneNumber || '—'}</td>}
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="member-view-btn"
+                                    onClick={() => openMemberDetail(member)}
+                                  >
+                                    Xem
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="roster-section">
+                    <h3 style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '16px' }}>Học sinh ({studentMembers.length})</h3>
+                    {studentMembers.length === 0 ? (
+                      <p style={{ color: '#6b7280' }}>Chưa có học sinh nào.</p>
+                    ) : (
+                      <div className="class-members-table-wrapper">
+                        <table className="class-members-table">
+                          <thead>
+                            <tr>
+                              <th>Họ và tên</th>
+                              {showContactDetails && <th>Email</th>}
+                              {showContactDetails && <th>SĐT</th>}
+                              {showContactDetails && <th>Tham gia lúc</th>}
+                              <th>Hành động</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {studentMembers.map((member) => (
+                              <tr key={`student-${member.studentId}`}>
+                                <td>
+                                  <div className="student-cell">
+                                    <div className="student-avatar">
+                                      {member.avatarUrl ? (
+                                        <img src={member.avatarUrl} alt={member.studentName} />
+                                      ) : (
+                                        <span>{getInitials(member.studentName)}</span>
+                                      )}
+                                    </div>
+                                    <span className="student-name">{member.studentName}</span>
+                                  </div>
+                                </td>
+                                {showContactDetails && <td className="cell-email">{member.studentEmail || '—'}</td>}
+                                {showContactDetails && <td>{member.phoneNumber || '—'}</td>}
+                                {showContactDetails && <td className="cell-date">{formatDateTime(member.joinedAt)}</td>}
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="member-view-btn"
+                                    onClick={() => openMemberDetail(member)}
+                                  >
+                                    Xem
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -902,24 +989,26 @@ const MemberClass = () => {
                     <div className="member-profile-meta">
                       <strong>{selectedProfile?.fullName || selectedMember.studentName || '—'}</strong>
                       <span>{formatRoleLabel(selectedMember.roleName)}</span>
-                      <span>{selectedProfile?.email || selectedMember.studentEmail || '—'}</span>
+                      {showContactDetails && <span>{selectedProfile?.email || selectedMember.studentEmail || '—'}</span>}
                     </div>
                   </div>
 
-                  <div className="member-profile-grid">
-                    <div>
-                      <small>Số điện thoại</small>
-                      <p>{selectedProfile?.phoneNumber || selectedMember.phoneNumber || '—'}</p>
+                  {showContactDetails && (
+                    <div className="member-profile-grid">
+                      <div>
+                        <small>Số điện thoại</small>
+                        <p>{selectedProfile?.phoneNumber || selectedMember.phoneNumber || '—'}</p>
+                      </div>
+                      <div>
+                        <small>Ngày sinh</small>
+                        <p>{selectedProfile?.birthDate || '—'}</p>
+                      </div>
+                      <div className="member-profile-address">
+                        <small>Địa chỉ</small>
+                        <p>{selectedProfile?.address || '—'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <small>Ngày sinh</small>
-                      <p>{selectedProfile?.birthDate || '—'}</p>
-                    </div>
-                    <div className="member-profile-address">
-                      <small>Địa chỉ</small>
-                      <p>{selectedProfile?.address || '—'}</p>
-                    </div>
-                  </div>
+                  )}
 
                   <button
                     type="button"
