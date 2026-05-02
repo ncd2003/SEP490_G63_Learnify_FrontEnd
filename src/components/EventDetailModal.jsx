@@ -1,4 +1,4 @@
-import { X, Edit, Trash2, MapPin, Video, Calendar, Clock, Users } from 'lucide-react';
+import { X, Edit, Trash2, MapPin, Video, Calendar, Clock, Users, AlignLeft } from 'lucide-react';
 import { SESSION_TYPE } from '@/schema/scheduleSchema';
 import '@/assets/css/components/eventDetailModal.css';
 
@@ -100,18 +100,20 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, canJoinSession, ge
             </div>
           </div>
 
-          <div className="event-detail-section">
-            <Users size={20} className="event-detail-icon" />
-            <div className="event-detail-section-content">
-              <div className="event-detail-label">Điểm danh</div>
-              <div className="event-detail-value">{session.attendanceTaken ? 'Đã điểm danh' : 'Chưa điểm danh'}</div>
-              {canOpenAttendance && session.id && (
-                <button type="button" className="event-detail-link event-detail-link-btn" onClick={handleOpenAttendance}>
-                  {session.attendanceTaken ? 'Xem điểm danh' : 'Mở trang điểm danh'}
-                </button>
-              )}
+          {canOpenAttendance && (
+            <div className="event-detail-section">
+              <Users size={20} className="event-detail-icon" />
+              <div className="event-detail-section-content">
+                <div className="event-detail-label">Điểm danh</div>
+                <div className="event-detail-value">{session.attendanceTaken ? 'Đã điểm danh' : 'Chưa điểm danh'}</div>
+                {session.id && (
+                  <button type="button" className="event-detail-link event-detail-link-btn" onClick={handleOpenAttendance}>
+                    {session.attendanceTaken ? 'Xem điểm danh' : 'Mở trang điểm danh'}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {session.type === SESSION_TYPE.OFFLINE && session.location && (
             <div className="event-detail-section">
@@ -160,7 +162,8 @@ const EventDetailModal = ({ isOpen, onClose, session, onJoin, canJoinSession, ge
 
           {session.description && (
             <div className="event-detail-section">
-              <div className="event-detail-section-content event-detail-section-content--full">
+              <AlignLeft size={20} className="event-detail-icon" />
+              <div className="event-detail-section-content">
                 <div className="event-detail-label">Mô tả</div>
                 <div className="event-detail-description">{session.description}</div>
               </div>

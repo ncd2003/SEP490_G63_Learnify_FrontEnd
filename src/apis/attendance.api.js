@@ -27,8 +27,10 @@ export const attendanceApi = {
   /**
    * @param {number} classId
    */
-  getAttendanceSessionsByClass: (classId) =>
-    apiRequest.get(`/classrooms/${classId}/attendance/sessions`),
+  getAttendanceSessionsByClass: (classId, page = 1, size = 10, sortBy = "sessionDate", sortDirection = "ASC") =>
+    apiRequest.get(`/classrooms/${classId}/attendance/sessions`, {
+      params: { page, size, sortBy, sortDirection },
+    }),
 
   /**
    * Auto mark the authenticated student as PRESENT when joining a lesson.

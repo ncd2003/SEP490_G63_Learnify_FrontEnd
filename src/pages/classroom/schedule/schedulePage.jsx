@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Video, AlignLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
@@ -555,7 +555,10 @@ const SchedulePage = () => {
                           </div>
                         </div>
                         {s.description && (
-                          <div className="day-detail-event-description">{s.description}</div>
+                          <div className="day-detail-event-description">
+                            <AlignLeft size={14} style={{ marginRight: '6px', verticalAlign: 'middle', display: 'inline-block', color: '#6b7280' }} />
+                            {s.description}
+                          </div>
                         )}
                         {s.type === SESSION_TYPE.OFFLINE && s.location && (
                           <div className="day-detail-event-location">
