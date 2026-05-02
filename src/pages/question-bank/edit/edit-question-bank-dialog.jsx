@@ -145,7 +145,7 @@ const EditQuestionBankDialog = ({
             <div className="qb-edit-header-icon">
               <PencilLine size={16} />
             </div>
-            <h2 className="modal-title">Chỉnh sửa ngân hàng đề</h2>
+            <h2 className="modal-title">Chỉnh sửa ngân hàng câu hỏi</h2>
           </div>
           <button
             onClick={handleCancel}
@@ -213,7 +213,7 @@ const EditQuestionBankDialog = ({
                 className="form-input"
               />
               <p className="form-hint-text qb-edit-hint-text">
-                Trường này bị khóa sau khi tạo ngân hàng đề.
+                Trường này bị khóa sau khi tạo ngân hàng câu hỏi.
               </p>
             </div>
 
@@ -231,7 +231,7 @@ const EditQuestionBankDialog = ({
                 className="form-input"
               />
               <p className="form-hint-text qb-edit-hint-text">
-                Trường này bị khóa sau khi tạo ngân hàng đề.
+                Trường này bị khóa sau khi tạo ngân hàng câu hỏi.
               </p>
             </div>
           </div>

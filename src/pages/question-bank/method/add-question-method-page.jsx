@@ -1,12 +1,109 @@
-import { useState } from "react";
-import {
-  Link,
-  useParams,
-  useSearchParams,
-  useNavigate,
-} from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { questionBankApi } from "@/apis/question-bank.api";
 import { PATH_TEACHER } from "@/routes/paths";
+
+const SESSION_TYPE = {
+  AI_GENERATION: "AI_GENERATION",
+  MANUAL_CREATION: "MANUAL_CREATION",
+  EXCEL_IMPORT: "EXCEL_IMPORT",
+};
+
+const TARGET_TYPE = "BANK";
+const DRAFT_LAST_SAVED_STORAGE_PREFIX = "learnify:draft:last-saved-at:";
+
+const toPositiveId = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
+const normalizeSessionType = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === SESSION_TYPE.AI_GENERATION) {
+    return SESSION_TYPE.AI_GENERATION;
+  }
+
+  if (normalized === SESSION_TYPE.MANUAL_CREATION) {
+    return SESSION_TYPE.MANUAL_CREATION;
+  }
+
+  if (normalized === SESSION_TYPE.EXCEL_IMPORT) {
+    return SESSION_TYPE.EXCEL_IMPORT;
+  }
+
+  return null;
+};
+
+const toTimestamp = (value) => {
+  if (!value) {
+    return 0;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const getDraftLastSavedFromStorage = (sessionId) => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const safeSessionId = toPositiveId(sessionId);
+  if (!safeSessionId) {
+    return null;
+  }
+
+  const storageKey = `${DRAFT_LAST_SAVED_STORAGE_PREFIX}${safeSessionId}`;
+
+  try {
+    const value = window.localStorage.getItem(storageKey);
+    return toTimestamp(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const resolveLatestLastSavedAt = (session) => {
+  const apiLastSavedAt = session?.lastSavedAt || null;
+  const localLastSavedAt = getDraftLastSavedFromStorage(session?.sessionId);
+
+  if (!localLastSavedAt) {
+    return apiLastSavedAt;
+  }
+
+  return toTimestamp(localLastSavedAt) > toTimestamp(apiLastSavedAt)
+    ? localLastSavedAt
+    : apiLastSavedAt;
+};
+
+const formatTimeAgo = (value) => {
+  const timestamp = toTimestamp(value);
+  if (!timestamp) {
+    return "không rõ thời gian";
+  }
+
+  const diffSeconds = Math.floor((Date.now() - timestamp) / 1000);
+
+  if (diffSeconds < 60) {
+    return "vừa xong";
+  }
+
+  if (diffSeconds < 3600) {
+    return `${Math.floor(diffSeconds / 60)} phút trước`;
+  }
+
+  if (diffSeconds < 86400) {
+    return `${Math.floor(diffSeconds / 3600)} giờ trước`;
+  }
+
+  return `${Math.floor(diffSeconds / 86400)} ngày trước`;
+};
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Lora:wght@600;700;800&display=swap');
@@ -98,6 +195,23 @@ const CSS = `
   color: var(--text);
   margin-bottom: 8px;
   line-height: 1.3;
+}
+
+.summary-state {
+  margin: -10px 0 20px;
+  padding: 10px 14px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.summary-state.error {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: #fff4f4;
+  color: #b42318;
 }
 
 .methods-grid {
@@ -317,6 +431,67 @@ const CSS = `
 
 .mc-bullet-dot.purple { background: var(--purple); }
 .mc-bullet-dot.sky { background: var(--sky); }
+
+.draft-inline {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  border: 1px solid #facc15;
+  background: #fffbeb;
+}
+
+.draft-inline-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.draft-inline-sub {
+  font-size: 11px;
+  color: #b45309;
+  margin-top: 2px;
+}
+
+.draft-inline-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.draft-inline-btn {
+  border: none;
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all .2s var(--ease);
+}
+
+.draft-inline-btn.continue {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.draft-inline-btn.continue:hover {
+  background: #d97706;
+}
+
+.draft-inline-btn.fresh {
+  background: transparent;
+  color: #92400e;
+  border: 1px solid #facc15;
+}
+
+.draft-inline-btn.fresh:hover {
+  background: #fef3c7;
+}
+
+.draft-inline-btn:disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
 
 .mc-cta {
   display: flex;
@@ -705,56 +880,320 @@ const AddQuestionMethodPage = () => {
   const { bankId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [loadingManual, setLoadingManual] = useState(false);
-  const [loadingAi, setLoadingAi] = useState(false);
+  const [pendingByType, setPendingByType] = useState({});
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+  const [actionLoading, setActionLoading] = useState({
+    sessionType: null,
+    mode: null,
+  });
+  const [actionError, setActionError] = useState({
+    sessionType: null,
+    message: "",
+  });
 
-  const safeBankId = Number(bankId);
-  const hasValidBankId = Number.isFinite(safeBankId) && safeBankId > 0;
+  const safeBankId = toPositiveId(bankId);
+  const hasValidBankId = Boolean(safeBankId);
 
-  const preservedQuery = searchParams.toString();
-  const withQuery = (path) =>
-    preservedQuery ? `${path}?${preservedQuery}` : path;
-  const withBankId = (pathFactory) =>
-    hasValidBankId ? pathFactory(safeBankId) : PATH_TEACHER.questionBank;
+  const resolvePathBySessionType = (sessionType) => {
+    if (!hasValidBankId) {
+      return PATH_TEACHER.questionBank;
+    }
 
-  const handleInitManualSession = async () => {
+    if (sessionType === SESSION_TYPE.AI_GENERATION) {
+      return PATH_TEACHER.questionBankAi(safeBankId);
+    }
+
+    if (sessionType === SESSION_TYPE.MANUAL_CREATION) {
+      return PATH_TEACHER.questionBankManual(safeBankId);
+    }
+
+    if (sessionType === SESSION_TYPE.EXCEL_IMPORT) {
+      return PATH_TEACHER.questionBankImport(safeBankId);
+    }
+
+    return PATH_TEACHER.questionBank;
+  };
+
+  const buildQuestionBankQuery = (sessionId = null, extraParams = {}) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("bankId", String(safeBankId));
+
+    if (sessionId) {
+      params.set("sessionId", String(sessionId));
+    } else {
+      params.delete("sessionId");
+    }
+
+    Object.entries(extraParams).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") {
+        params.delete(key);
+        return;
+      }
+
+      params.set(key, String(value));
+    });
+
+    return params.toString();
+  };
+
+  const navigateToSessionWorkspace = (sessionType, sessionId = null) => {
+    const path = resolvePathBySessionType(sessionType);
+
     if (!hasValidBankId) {
       navigate(PATH_TEACHER.questionBank);
       return;
     }
-    setLoadingManual(true);
-    try {
-      const response = await questionBankApi.initManualSession(safeBankId);
-      const sessionId = response?.result?.sessionId;
-      if (sessionId) {
-        const path = PATH_TEACHER.questionBankManual(safeBankId);
-        navigate(withQuery(path));
+
+    const query = buildQuestionBankQuery(
+      sessionId,
+      sessionType === SESSION_TYPE.MANUAL_CREATION
+        ? { format: "mixed", sectionId: null }
+        : {},
+    );
+
+    navigate(query ? `${path}?${query}` : path);
+  };
+
+  const getDraftByType = (sessionType) => pendingByType[sessionType] || null;
+
+  useEffect(() => {
+    if (!hasValidBankId) {
+      setPendingByType({});
+      setSummaryError("");
+      setSummaryLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
+    const fetchPendingSummary = async () => {
+      setSummaryLoading(true);
+      setSummaryError("");
+
+      try {
+        const response =
+          await questionBankApi.getPendingSessionsSummary(TARGET_TYPE);
+
+        if (!mounted) {
+          return;
+        }
+
+        const sessions = Array.isArray(response?.result) ? response.result : [];
+
+        const grouped = sessions.reduce((accumulator, session) => {
+          const targetId = toPositiveId(session?.targetId);
+          const sessionType = normalizeSessionType(session?.sessionType);
+          const sessionId = toPositiveId(session?.sessionId);
+          const itemCount = Number(session?.itemCount || 0);
+          const hasPending = Boolean(session?.hasPending) || itemCount > 0;
+          const normalizedSession = {
+            ...session,
+            lastSavedAt: resolveLatestLastSavedAt(session),
+          };
+
+          if (
+            targetId !== safeBankId ||
+            !sessionType ||
+            !sessionId ||
+            !hasPending ||
+            itemCount <= 0
+          ) {
+            return accumulator;
+          }
+
+          const current = accumulator[sessionType];
+          if (
+            !current ||
+            toTimestamp(normalizedSession?.lastSavedAt) >
+              toTimestamp(current?.lastSavedAt)
+          ) {
+            accumulator[sessionType] = normalizedSession;
+          }
+
+          return accumulator;
+        }, {});
+
+        setPendingByType(grouped);
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+
+        console.error("Failed to fetch pending summary:", error);
+        setPendingByType({});
+        setSummaryError(
+          error?.response?.data?.message ||
+            "Không thể tải trạng thái nháp. Bạn vẫn có thể tiếp tục thao tác.",
+        );
+      } finally {
+        if (mounted) {
+          setSummaryLoading(false);
+        }
       }
+    };
+
+    fetchPendingSummary();
+
+    return () => {
+      mounted = false;
+    };
+  }, [hasValidBankId, safeBankId]);
+
+  const runAction = async (sessionType, mode, fn) => {
+    if (!hasValidBankId) {
+      navigate(PATH_TEACHER.questionBank);
+      return;
+    }
+
+    setActionLoading({ sessionType, mode });
+    setActionError({ sessionType: null, message: "" });
+    try {
+      await fn();
     } catch (error) {
-      console.error("Failed to init manual session:", error);
+      console.error(`Action ${mode} failed for ${sessionType}:`, error);
+      const message =
+        error?.response?.data?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
+      setActionError({ sessionType, message });
     } finally {
-      setLoadingManual(false);
+      setActionLoading({ sessionType: null, mode: null });
     }
   };
 
-  const handleInitAiSession = async () => {
-    if (!hasValidBankId) {
-      navigate(PATH_TEACHER.questionBank);
+  const handleContinueSession = (sessionType) => {
+    runAction(sessionType, "continue", async () => {
+      const draft = getDraftByType(sessionType);
+      const sessionId = toPositiveId(draft?.sessionId);
+
+      if (sessionId) {
+        navigateToSessionWorkspace(sessionType, sessionId);
+        return;
+      }
+
+      if (sessionType === SESSION_TYPE.EXCEL_IMPORT) {
+        navigateToSessionWorkspace(sessionType, null);
+        return;
+      }
+
+      const response = await questionBankApi.initSession(
+        safeBankId,
+        undefined,
+        sessionType,
+      );
+
+      const nextSessionId = toPositiveId(
+        response?.result?.sessionId || response?.result,
+      );
+      navigateToSessionWorkspace(sessionType, nextSessionId);
+    });
+  };
+
+  const handleStartFreshSession = (sessionType) => {
+    runAction(sessionType, "fresh", async () => {
+      const response = await questionBankApi.startFreshSession(
+        safeBankId,
+        undefined,
+        sessionType,
+      );
+      const nextSessionId = toPositiveId(
+        response?.result?.sessionId || response?.result,
+      );
+      navigateToSessionWorkspace(sessionType, nextSessionId);
+    });
+  };
+
+  const handleInitSession = (sessionType) => {
+    runAction(sessionType, "init", async () => {
+      if (sessionType === SESSION_TYPE.EXCEL_IMPORT) {
+        navigateToSessionWorkspace(sessionType, null);
+        return;
+      }
+
+      const response = await questionBankApi.initSession(
+        safeBankId,
+        undefined,
+        sessionType,
+      );
+      const nextSessionId = toPositiveId(
+        response?.result?.sessionId || response?.result,
+      );
+      navigateToSessionWorkspace(sessionType, nextSessionId);
+    });
+  };
+
+  const handlePrimaryAction = (sessionType) => {
+    if (getDraftByType(sessionType)) {
+      handleContinueSession(sessionType);
       return;
     }
-    setLoadingAi(true);
-    try {
-      const response = await questionBankApi.initAiSession(safeBankId);
-      const sessionId = response?.result?.sessionId;
-      if (sessionId) {
-        const path = PATH_TEACHER.questionBankAi(safeBankId);
-        navigate(withQuery(path));
-      }
-    } catch (error) {
-      console.error("Failed to init AI session:", error);
-    } finally {
-      setLoadingAi(false);
+
+    handleInitSession(sessionType);
+  };
+
+  const isActionLoadingFor = (sessionType, mode) =>
+    actionLoading.sessionType === sessionType && actionLoading.mode === mode;
+
+  const isTypeBusy = (sessionType) => actionLoading.sessionType === sessionType;
+
+  const hasDraft = (sessionType) => Boolean(getDraftByType(sessionType));
+
+  const renderDraftNotice = (sessionType) => {
+    const draft = getDraftByType(sessionType);
+    if (!draft) {
+      return null;
     }
+
+    const hasActionError =
+      actionError.sessionType === sessionType && actionError.message;
+
+    return (
+      <div className="draft-inline">
+        <div className="draft-inline-head">
+          Bạn có {draft.itemCount} câu nháp
+        </div>
+        <div className="draft-inline-sub">
+          Lưu lần cuối: {formatTimeAgo(draft.lastSavedAt)}
+        </div>
+        {hasActionError && (
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              color: "#b42318",
+              fontWeight: 600,
+              background: "#fff4f4",
+              border: "1px solid rgba(239,68,68,0.25)",
+              borderRadius: 8,
+              padding: "5px 10px",
+            }}
+          >
+            {actionError.message}
+          </div>
+        )}
+        <div className="draft-inline-actions">
+          <button
+            type="button"
+            className="draft-inline-btn continue"
+            onClick={() => handleContinueSession(sessionType)}
+            disabled={isTypeBusy(sessionType)}
+          >
+            {isActionLoadingFor(sessionType, "continue")
+              ? "Đang mở..."
+              : "Tiếp tục phiên cũ"}
+          </button>
+          <button
+            type="button"
+            className="draft-inline-btn fresh"
+            onClick={() => handleStartFreshSession(sessionType)}
+            disabled={isTypeBusy(sessionType)}
+          >
+            {isActionLoadingFor(sessionType, "fresh")
+              ? "Đang tạo mới..."
+              : "Bắt đầu mới"}
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -768,6 +1207,16 @@ const AddQuestionMethodPage = () => {
       <div className="page-header fade-up">
         <h1 className="page-title">Chọn phương thức tạo câu hỏi</h1>
       </div>
+
+      {summaryLoading && (
+        <div className="summary-state">
+          Đang kiểm tra phiên nháp theo từng phương thức...
+        </div>
+      )}
+
+      {!summaryLoading && summaryError && (
+        <div className="summary-state error">{summaryError}</div>
+      )}
 
       <div className="methods-grid">
         <article className="method-card featured fade-up fade-up-1">
@@ -818,15 +1267,28 @@ const AddQuestionMethodPage = () => {
             </div>
           </div>
 
+          {renderDraftNotice(SESSION_TYPE.AI_GENERATION)}
+
           <button
-            onClick={handleInitAiSession}
-            disabled={loadingAi || !hasValidBankId}
+            type="button"
+            onClick={() => handlePrimaryAction(SESSION_TYPE.AI_GENERATION)}
+            disabled={isTypeBusy(SESSION_TYPE.AI_GENERATION) || !hasValidBankId}
             className="mc-cta primary"
             style={{
-              cursor: loadingAi || !hasValidBankId ? "not-allowed" : "pointer",
+              cursor:
+                isTypeBusy(SESSION_TYPE.AI_GENERATION) || !hasValidBankId
+                  ? "not-allowed"
+                  : "pointer",
             }}
           >
-            <Ic.Sparkles /> {loadingAi ? "Đang khởi tạo..." : "Bắt đầu với AI"}{" "}
+            <Ic.Sparkles />
+            {isActionLoadingFor(SESSION_TYPE.AI_GENERATION, "init")
+              ? "Đang khởi tạo..."
+              : isActionLoadingFor(SESSION_TYPE.AI_GENERATION, "continue")
+                ? "Đang mở phiên cũ..."
+                : hasDraft(SESSION_TYPE.AI_GENERATION)
+                  ? "Tiếp tục với AI"
+                  : "Bắt đầu với AI"}{" "}
             <Ic.ChevR />
           </button>
         </article>
@@ -862,16 +1324,30 @@ const AddQuestionMethodPage = () => {
             </div>
           </div>
 
+          {renderDraftNotice(SESSION_TYPE.MANUAL_CREATION)}
+
           <button
-            onClick={handleInitManualSession}
-            disabled={loadingManual || !hasValidBankId}
+            type="button"
+            onClick={() => handlePrimaryAction(SESSION_TYPE.MANUAL_CREATION)}
+            disabled={
+              isTypeBusy(SESSION_TYPE.MANUAL_CREATION) || !hasValidBankId
+            }
             className="mc-cta outline"
             style={{
               cursor:
-                loadingManual || !hasValidBankId ? "not-allowed" : "pointer",
+                isTypeBusy(SESSION_TYPE.MANUAL_CREATION) || !hasValidBankId
+                  ? "not-allowed"
+                  : "pointer",
             }}
           >
-            {loadingManual ? "Đang khởi tạo..." : "Tạo thủ công"} <Ic.ChevR />
+            {isActionLoadingFor(SESSION_TYPE.MANUAL_CREATION, "init")
+              ? "Đang khởi tạo..."
+              : isActionLoadingFor(SESSION_TYPE.MANUAL_CREATION, "continue")
+                ? "Đang mở phiên cũ..."
+                : hasDraft(SESSION_TYPE.MANUAL_CREATION)
+                  ? "Tiếp tục tạo thủ công"
+                  : "Tạo thủ công"}{" "}
+            <Ic.ChevR />
           </button>
         </article>
 
@@ -905,12 +1381,29 @@ const AddQuestionMethodPage = () => {
             </div>
           </div>
 
-          <Link
-            to={withQuery(withBankId(PATH_TEACHER.questionBankImport))}
+          {renderDraftNotice(SESSION_TYPE.EXCEL_IMPORT)}
+
+          <button
+            type="button"
+            onClick={() => handlePrimaryAction(SESSION_TYPE.EXCEL_IMPORT)}
+            disabled={isTypeBusy(SESSION_TYPE.EXCEL_IMPORT) || !hasValidBankId}
             className="mc-cta outline"
+            style={{
+              cursor:
+                isTypeBusy(SESSION_TYPE.EXCEL_IMPORT) || !hasValidBankId
+                  ? "not-allowed"
+                  : "pointer",
+            }}
           >
-            Import file <Ic.ChevR />
-          </Link>
+            {isActionLoadingFor(SESSION_TYPE.EXCEL_IMPORT, "init")
+              ? "Đang khởi tạo..."
+              : isActionLoadingFor(SESSION_TYPE.EXCEL_IMPORT, "continue")
+                ? "Đang mở phiên cũ..."
+                : hasDraft(SESSION_TYPE.EXCEL_IMPORT)
+                  ? "Tiếp tục import"
+                  : "Import file"}{" "}
+            <Ic.ChevR />
+          </button>
         </article>
       </div>
 
@@ -1069,13 +1562,22 @@ const AddQuestionMethodPage = () => {
           </div>
         </div>
         <div className="bottom-cta-actions">
-          <Link
-            to={withQuery(withBankId(PATH_TEACHER.questionBankAi))}
+          <button
+            type="button"
+            onClick={() => handlePrimaryAction(SESSION_TYPE.AI_GENERATION)}
+            disabled={isTypeBusy(SESSION_TYPE.AI_GENERATION) || !hasValidBankId}
             className="mc-cta primary"
-            style={{ width: "auto", padding: "13px 28px" }}
+            style={{
+              width: "auto",
+              padding: "13px 28px",
+              cursor:
+                isTypeBusy(SESSION_TYPE.AI_GENERATION) || !hasValidBankId
+                  ? "not-allowed"
+                  : "pointer",
+            }}
           >
             <Ic.Sparkles /> Thử tạo với AI <Ic.ChevR />
-          </Link>
+          </button>
         </div>
       </div>
     </div>

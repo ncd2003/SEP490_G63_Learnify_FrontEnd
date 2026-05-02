@@ -360,7 +360,16 @@ const MaterialRenameModal = ({ open, material, name, onChangeName, onClose, onCo
   );
 };
 
-const FolderFormModal = ({ open, title, name, onClose, onSubmit, submitting }) => {
+const FolderFormModal = ({
+  open,
+  title,
+  name,
+  nameError,
+  onNameChange,
+  onClose,
+  onSubmit,
+  submitting,
+}) => {
   if (!open) return null;
 
   return (
@@ -383,11 +392,13 @@ const FolderFormModal = ({ open, title, name, onClose, onSubmit, submitting }) =
               id="folder-name"
               name="folder-name"
               defaultValue={name}
+              onChange={onNameChange}
               className="input"
               maxLength={100}
-              required
+              aria-invalid={Boolean(nameError)}
               autoFocus
             />
+            {nameError && <p className="form-error-text">{nameError}</p>}
           </div>
 
           <div className="modal-actions">
@@ -456,6 +467,7 @@ const FoldersPage = () => {
 
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [formState, setFormState] = useState({ mode: null, targetId: null, parentId: null, name: "" });
+  const [folderNameError, setFolderNameError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [folderDeleteState, setFolderDeleteState] = useState({ open: false, folder: null });
   const [folderDeleteSubmitting, setFolderDeleteSubmitting] = useState(false);
@@ -516,16 +528,33 @@ const FoldersPage = () => {
     });
   };
 
-  const openCreateRoot = () => setFormState({ mode: "create", targetId: null, parentId: null, name: "" });
-  const openCreateChildFor = (folderId) => setFormState({ mode: "create", targetId: null, parentId: folderId, name: "" });
-  const openRename = (folder) => setFormState({ mode: "rename", targetId: folder.id, parentId: folder.parentId ?? null, name: folder.name });
-  const closeForm = () => setFormState({ mode: null, targetId: null, parentId: null, name: "" });
+  const openCreateRoot = () => {
+    setFolderNameError("");
+    setFormState({ mode: "create", targetId: null, parentId: null, name: "" });
+  };
+  const openCreateChildFor = (folderId) => {
+    setFolderNameError("");
+    setFormState({ mode: "create", targetId: null, parentId: folderId, name: "" });
+  };
+  const openRename = (folder) => {
+    setFolderNameError("");
+    setFormState({ mode: "rename", targetId: folder.id, parentId: folder.parentId ?? null, name: folder.name });
+  };
+  const closeForm = () => {
+    setFolderNameError("");
+    setFormState({ mode: null, targetId: null, parentId: null, name: "" });
+  };
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const name = (formData.get("folder-name") ?? "").toString().trim();
-    if (!name) return;
+    if (!name) {
+      setFolderNameError("Tên thư mục không được để trống");
+      return;
+    }
+
+    setFolderNameError("");
 
     setSubmitting(true);
     if (formState.mode === "create") {
@@ -1031,6 +1060,12 @@ const FoldersPage = () => {
         open={canManageFolders && Boolean(formState.mode)}
         title={formState.mode === "create" ? "Tạo thư mục" : "Đổi tên thư mục"}
         name={formState.name}
+        nameError={folderNameError}
+        onNameChange={() => {
+          if (folderNameError) {
+            setFolderNameError("");
+          }
+        }}
         onClose={closeForm}
         onSubmit={handleFormSubmit}
         submitting={submitting}

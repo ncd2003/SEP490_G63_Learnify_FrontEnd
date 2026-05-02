@@ -25,6 +25,7 @@ import {
  */
 
 const BASE = API_SUFFIX.QUESTION_BANK;
+const DRAFT_SESSION_BASE = API_SUFFIX.DRAFT_SESSION;
 const CREATE_BANK_BASE = "/banks";
 const LIST_BANK_BASE = "/banks";
 const DELETE_RESOURCE_BANK_TIMEOUT_MS = 4000;
@@ -224,7 +225,7 @@ const createQuestionBank = (data) => {
 const updateQuestionBank = (bankId, data) => {
   const safeBankId = normalizeBankId(bankId);
   const parsed = UpdateQuestionBankSchema.parse(data);
-  return apiRequest.put(`${BASE}/${safeBankId}`, parsed).then((response) => ({
+  return apiRequest.put(`${CREATE_BANK_BASE}/${safeBankId}`, parsed).then((response) => ({
     ...response,
     result: normalizeQuestionBank(response?.result),
   }));
@@ -236,7 +237,7 @@ const updateQuestionBank = (bankId, data) => {
  */
 const deleteQuestionBank = (bankId) => {
   const safeBankId = normalizeBankId(bankId);
-  return apiRequest.delete(`${BASE}/${safeBankId}`, {
+  return apiRequest.delete(`${CREATE_BANK_BASE}/${safeBankId}`, {
     timeout: DELETE_RESOURCE_BANK_TIMEOUT_MS,
   });
 };
@@ -266,6 +267,45 @@ const previewImportQuestions = (bankId, file) => {
     `${BASE}/${safeBankId}/questions/import/preview`,
     formData,
   );
+};
+
+/**
+ * Import câu hỏi từ Excel vào draft session
+ * @param {File} file
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @param {number|string} [sessionId]
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<{
+ *   sessionId: number,
+ *   questions: Array<any>,
+ *   warnings: string[],
+ *   currentPage?: number,
+ *   pageSize?: number,
+ *   totalPages?: number,
+ *   totalItems?: number,
+ * }>>}
+ */
+const importQuestionsFromExcelDraft = (
+  file,
+  bankId,
+  assignmentId,
+  sessionId,
+) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const params = {};
+  if (bankId !== undefined && bankId !== null) {
+    params.bankId = normalizeBankId(bankId);
+  }
+  if (assignmentId !== undefined && assignmentId !== null) {
+    params.assignmentId = normalizeBankId(assignmentId);
+  }
+  if (sessionId !== undefined && sessionId !== null) {
+    params.sessionId = normalizeBankId(sessionId);
+  }
+
+  return apiRequest.post("/draft-sessions/import", formData, { params });
 };
 
 /**
@@ -551,6 +591,60 @@ const initAiSession = (bankId, assignmentId) => {
 };
 
 /**
+ * Lấy danh sách phiên nháp đang dở theo target type
+ * @param {"ASSIGNMENT"|"BANK"|null} [targetType]
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<Array<{
+ *   sessionId: number,
+ *   hasPending: boolean,
+ *   itemCount: number,
+ *   lastSavedAt: string,
+ *   targetId: number,
+ *   targetName: string,
+ *   targetType: string,
+ *   sessionType: string,
+ * }>>>}
+ */
+const getPendingSessionsSummary = (targetType = null) => {
+  const params = {};
+  if (targetType) {
+    params.targetType = String(targetType).trim().toUpperCase();
+  }
+  return apiRequest.get(`${DRAFT_SESSION_BASE}/pending/summary`, { params });
+};
+
+/**
+ * Tạo phiên làm việc mới hoàn toàn, bỏ qua phiên nháp cũ
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @param {"MANUAL_CREATION"|"AI_GENERATION"|"EXCEL_IMPORT"} [sessionType]
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<number>>}
+ */
+const startFreshSession = (
+  bankId,
+  assignmentId,
+  sessionType = "MANUAL_CREATION",
+) => {
+  const params = { sessionType };
+  if (bankId !== undefined && bankId !== null) {
+    params.bankId = normalizeBankId(bankId);
+  }
+  if (assignmentId !== undefined && assignmentId !== null) {
+    params.assignmentId = normalizeBankId(assignmentId);
+  }
+  return apiRequest.post(`${DRAFT_SESSION_BASE}/fresh`, null, { params });
+};
+
+/**
+ * Xóa tất cả câu hỏi không hợp lệ trong phiên draft
+ * @param {number|string} sessionId
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<void>>}
+ */
+const deleteInvalidItems = (sessionId) => {
+  const safeSessionId = normalizeBankId(sessionId);
+  return apiRequest.delete(`${DRAFT_SESSION_BASE}/${safeSessionId}/items/invalid`);
+};
+
+/**
  * Tạo câu hỏi với AI (dành cho draft session)
  * @param {number|string} [bankId]
  * @param {number|string} [assignmentId]
@@ -673,6 +767,47 @@ const getDraftSession = (sessionId, bankId, assignmentId, params = {}) => {
   });
 };
 
+/**
+ * Xác nhận phiên draft và lưu các câu hỏi đã chọn
+ * @param {number|string} sessionId
+ * @param {number|string} [bankId]
+ * @param {number|string} [assignmentId]
+ * @param {Array<number|string>} selectedQuestionIds
+ * @returns {Promise<import("@/schema/type.schema").ApiResponse<{
+ *   sessionId: number,
+ *   confirmedCount: number,
+ *   removedCount: number,
+ *   status: string,
+ * }>>}
+ */
+const confirmDraftSession = (
+  sessionId,
+  bankId,
+  assignmentId,
+  selectedQuestionIds = [],
+) => {
+  const safeSessionId = normalizeBankId(sessionId);
+  const params = {};
+
+  if (bankId !== undefined && bankId !== null) {
+    params.bankId = normalizeBankId(bankId);
+  }
+
+  if (assignmentId !== undefined && assignmentId !== null) {
+    params.assignmentId = normalizeBankId(assignmentId);
+  }
+
+  const payload = Array.isArray(selectedQuestionIds)
+    ? selectedQuestionIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    : [];
+
+  return apiRequest.post(`/draft-sessions/${safeSessionId}/confirm`, payload, {
+    params,
+  });
+};
+
 export const questionBankApi = {
   getQuestionBanks,
   getQuestions,
@@ -680,6 +815,7 @@ export const questionBankApi = {
   updateQuestionBank,
   deleteQuestionBank,
   previewImportQuestions,
+  importQuestionsFromExcelDraft,
   confirmImportQuestions,
   createQuestion,
   createQuestionsBatch,
@@ -693,7 +829,11 @@ export const questionBankApi = {
   initSession,
   initManualSession,
   initAiSession,
+  getPendingSessionsSummary,
+  startFreshSession,
   generateAiDraft,
   refineAiDraft,
   getDraftSession,
+  confirmDraftSession,
+  deleteInvalidItems,
 };

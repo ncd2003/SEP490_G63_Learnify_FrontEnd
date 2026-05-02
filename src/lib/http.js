@@ -1,6 +1,7 @@
 import axios from "axios";
 import envConfig from "@/schema/config.schema";
 import { toast } from "sonner";
+import { PATH_AUTH } from "@/routes/paths";
 
 /* ─── Public endpoints (no auth token needed) ───────────────────────────── */
 const PUBLIC_ENDPOINTS = [
@@ -25,6 +26,16 @@ const isLockedOrInactiveError = (message = "") => {
     normalized.includes("không hoạt động") ||
     normalized.includes("bị cấm")
   );
+};
+
+const ACCESS_DENIED_CODE = 2003;
+
+const redirectToAccessDenied = (code = ACCESS_DENIED_CODE) => {
+  const targetPath = `${PATH_AUTH.accessDenied}?code=${code}`;
+
+  if (window.location.pathname !== PATH_AUTH.accessDenied) {
+    window.location.href = targetPath;
+  }
 };
 
 /* ─── Params serializer (supports array params) ─────────────────────────── */
@@ -146,15 +157,9 @@ const createHttp = () => {
           reqConfig?.url?.includes("/assignments") ||
           reqConfig?.url?.includes("/draft-sessions");
 
-        // Special-case: backend returns code 2003 -> user not allowed to access resource
-        if (data?.code === 2003) {
-          try {
-            // Navigate back to previous page
-            window.history.back();
-          } catch (e) {
-            // Fallback: redirect to home if history.back() fails
-            window.location.href = "/";
-          }
+        // Backend code 2003: user is not allowed to access requested resource.
+        if (data?.code === ACCESS_DENIED_CODE) {
+          redirectToAccessDenied(data.code);
           return Promise.reject(error);
         }
 

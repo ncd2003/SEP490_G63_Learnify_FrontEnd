@@ -219,6 +219,7 @@ const AssignToClassesPage = () => {
   const [openCards, setOpenCards] = useState({});
   const [toast, setToast] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [savingClassOverride, setSavingClassOverride] = useState({});
   const [baseSettings, setBaseSettings] = useState(defaultSettings());
   const [assignmentCategory, setAssignmentCategory] = useState("HOMEWORK");
 
@@ -422,13 +423,51 @@ const AssignToClassesPage = () => {
     }
   };
 
-  const handleSaveClassSetting = (classroomId) => {
-    if (submitting) return;
+  const handleSaveClassSetting = async (classroomId) => {
+    if (submitting || savingClassOverride[classroomId]) return;
+
+    if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
+      showToast("AssignmentId không hợp lệ.", "error");
+      return;
+    }
+
+    if (!Number.isFinite(classroomId) || classroomId <= 0) {
+      showToast("ClassroomId không hợp lệ.", "error");
+      return;
+    }
 
     const classInfo = classes.find((item) => item.id === classroomId);
+    const overridePayload = toOverridePayload(
+      settings[classroomId] || baseSettings,
+      assignmentCategory,
+    );
 
-    setOpenCards((prev) => ({ ...prev, [classroomId]: false }));
-    showToast(`Đã hoàn tất cấu hình lớp ${classInfo?.name || classroomId}.`);
+    setSavingClassOverride((prev) => ({
+      ...prev,
+      [classroomId]: true,
+    }));
+
+    try {
+      await assignmentApi.updateClassroomOverride(
+        assignmentId,
+        classroomId,
+        overridePayload,
+      );
+      setOpenCards((prev) => ({ ...prev, [classroomId]: false }));
+      showToast(`Đã cập nhật cài đặt lớp ${classInfo?.name || classroomId}.`);
+    } catch (error) {
+      showToast(
+        error?.response?.data?.message ||
+          `Không thể cập nhật cài đặt lớp ${classInfo?.name || classroomId}.`,
+        "error",
+      );
+    } finally {
+      setSavingClassOverride((prev) => {
+        const next = { ...prev };
+        delete next[classroomId];
+        return next;
+      });
+    }
   };
 
   return (
@@ -859,10 +898,12 @@ const AssignToClassesPage = () => {
                                 event.stopPropagation();
                                 handleSaveClassSetting(id);
                               }}
-                              disabled={submitting}
+                              disabled={
+                                submitting || Boolean(savingClassOverride[id])
+                              }
                             >
                               <Ic.Check width={12} height={12} />
-                              Xong
+                              {savingClassOverride[id] ? "Đang lưu..." : "Xong"}
                             </button>
                           </div>
 
