@@ -841,4 +841,56 @@ export const questionBankApi = {
   getDraftSession,
   confirmDraftSession,
   deleteInvalidItems,
+  /**
+   * Cập nhật một item trong draft session (Auto-save)
+   * @param {number|string} sessionId
+   * @param {any} payload - AutoSaveItemRequest (contains itemId)
+   * @param {{ bankId?: number|string, assignmentId?: number|string }} [params]
+   */
+  updateDraftItem: (sessionId, payload, params = {}) => {
+    const safeSessionId = Number(sessionId);
+    const queryParams = {};
+    if (params.bankId) queryParams.bankId = Number(params.bankId);
+    if (params.assignmentId)
+      queryParams.assignmentId = Number(params.assignmentId);
+
+    return apiRequest.put(
+      `/draft-sessions/${safeSessionId}/items/auto-save`,
+      payload,
+      { params: queryParams },
+    );
+  },
+
+  /**
+   * Lưu một mẻ các câu hỏi nháp
+   * @param {number|string} sessionId
+   * @param {any[]} items - List of AutoSaveItemRequest
+   * @param {{ bankId?: number|string, assignmentId?: number|string }} [params]
+   */
+  batchAutoSaveDraftItems: (sessionId, items, params = {}) => {
+    const safeSessionId = Number(sessionId);
+    const queryParams = {};
+    if (params.bankId) queryParams.bankId = Number(params.bankId);
+    if (params.assignmentId)
+      queryParams.assignmentId = Number(params.assignmentId);
+
+    return apiRequest.put(
+      `/draft-sessions/${safeSessionId}/items/batch-save`,
+      { items },
+      { params: queryParams },
+    );
+  },
+
+  /**
+   * Xóa một câu hỏi nháp cụ thể
+   * @param {number|string} sessionId
+   * @param {number|string} itemId
+   */
+  deleteDraftItem: (sessionId, itemId) => {
+    const safeSessionId = Number(sessionId);
+    const safeItemId = Number(itemId);
+    return apiRequest.delete(
+      `/draft-sessions/${safeSessionId}/items/${safeItemId}`,
+    );
+  },
 };

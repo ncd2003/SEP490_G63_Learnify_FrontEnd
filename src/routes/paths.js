@@ -84,6 +84,12 @@ export const PATH_TEACHER = {
   ),
   assignmentDetail: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}`),
+  assignmentEdit: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/setup`),
+  assignmentEditQuestions: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/questions`),
+  assignmentEditor: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/editor`),
   assignmentSubmissions: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}/submissions`),
   assignmentAssignClasses: (assignmentId) =>

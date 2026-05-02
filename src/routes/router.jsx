@@ -119,6 +119,9 @@ const ManualAssignmentPreviewPage = Loadable(
     () => import("@/pages/assignment/create/manual-assignment-preview-page"),
   ),
 );
+const EditQuestionsPage = Loadable(
+  lazy(() => import("@/pages/assignment/edit/assignment-edit-questions-page")),
+);
 const AssignToClassesPage = Loadable(
   lazy(() => import("@/pages/assignment/assign/assign-to-classes-page")),
 );
@@ -367,8 +370,20 @@ const AppRoutes = () =>
           element: <CreateAssignmentAiPage />,
         },
         {
+          path: PATH_TEACHER.assignmentEdit(":assignmentId"),
+          element: <ManualAssignmentSetupPage mode="manual" />,
+        },
+        {
+          path: PATH_TEACHER.assignmentEditQuestions(":id"),
+          element: <EditQuestionsPage />,
+        },
+        {
           path: PATH_TEACHER.assignmentCreateManual,
           element: <ManualAssignmentSetupPage mode="manual" />,
+        },
+        {
+          path: PATH_TEACHER.assignmentEditor(":assignmentId"),
+          element: <ManualAssignmentCreatorPage />,
         },
         {
           path: PATH_TEACHER.assignmentCreateManualQuestions,

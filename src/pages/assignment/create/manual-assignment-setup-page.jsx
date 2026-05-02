@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
@@ -244,9 +245,10 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
   const isQuestionBankMode = sourceMode === "question-bank";
   const bankIdFromQuery = toPositiveId(searchParams.get("bankId"));
 
-  const existingAssignmentId = searchParams.get("assignmentId")
-    ? Number(searchParams.get("assignmentId"))
-    : null;
+  const { assignmentId: paramAssignmentId } = useParams();
+  const existingAssignmentId = paramAssignmentId 
+    ? Number(paramAssignmentId)
+    : (searchParams.get("assignmentId") ? Number(searchParams.get("assignmentId")) : null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -266,17 +268,23 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
     limitTabs: "",
     maxAttemptsType: "UNLIMITED",
     maxAttempts: 1,
+    requireFullScreen: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [isPasswordPeekVisible, setIsPasswordPeekVisible] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
-  const pageTitle = isQuestionBankMode
-    ? "Tạo bài tập từ ngân hàng câu hỏi"
-    : isAiMode
-      ? "Tạo bài tập với AI"
-      : "Tạo bài tập thủ công";
+  const isEditMode = !!existingAssignmentId;
+
+  const pageTitle = isEditMode
+    ? "Chỉnh sửa bài tập"
+    : isQuestionBankMode
+      ? "Tạo bài tập từ ngân hàng câu hỏi"
+      : isAiMode
+        ? "Tạo bài tập với AI"
+        : "Tạo bài tập thủ công";
   const crumbTitle = isQuestionBankMode
     ? "Tạo từ ngân hàng câu hỏi"
     : isAiMode
@@ -321,6 +329,10 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
   };
 
   const handleBack = () => {
+    if (isEditMode) {
+      navigate(PATH_TEACHER.assignmentDetail(existingAssignmentId));
+      return;
+    }
     const preserved = searchParams.toString();
     navigate(
       preserved
@@ -363,7 +375,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
               : String(loadedSetting.limitTabs),
           maxAttemptsType: loadedSetting?.maxAttempts ? "LIMITED" : "UNLIMITED",
           maxAttempts: loadedSetting?.maxAttempts || 1,
+          requireFullScreen: Boolean(loadedSetting?.requireFullScreen),
         });
+        setIsLocked(Boolean(data?.locked));
       } catch (error) {
         console.error("Load assignment failed", error);
       } finally {
@@ -479,7 +493,10 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
       const basePayload = {
         title: safeTitle,
         description: safeDescription || null,
-        setting: settingPayload,
+        setting: {
+          ...settingPayload,
+          requireFullScreen: Boolean(setting.requireFullScreen),
+        },
       };
 
       let assignmentId =
@@ -490,7 +507,8 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
       let sectionsForAiPage = [];
 
       if (assignmentId) {
-        await assignmentApi.updateAssignment(assignmentId, basePayload);
+        const resp = await assignmentApi.updateAssignment(assignmentId, basePayload);
+        toast.success(resp?.message || "Cập nhật bài tập thành công.");
       } else {
         const createPayload = {
           ...basePayload,
@@ -512,6 +530,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
           resp?.result?.sections,
           format,
         );
+        toast.success(resp?.message || "Khởi tạo bài tập thành công.");
       }
 
       if (isAiMode && format !== "MIXED") {
@@ -553,6 +572,11 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
         }
       }
 
+      if (isEditMode) {
+        navigate(PATH_TEACHER.assignmentDetail(assignmentId));
+        return;
+      }
+
       const nextPath = isQuestionBankMode
         ? PATH_TEACHER.assignmentQuestionBankPicker
         : isAiMode
@@ -590,9 +614,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
         error,
       );
       const apiMessage = error?.response?.data?.message;
-      setErrorText(
-        apiMessage || "Không thể khởi tạo bài tập. Vui lòng thử lại.",
-      );
+      const finalMsg = apiMessage || "Không thể khởi tạo bài tập. Vui lòng thử lại.";
+      setErrorText(finalMsg);
+      toast.error(finalMsg);
     } finally {
       setSubmitting(false);
     }
@@ -615,7 +639,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
           className="btn primary"
           disabled={submitting || isLoadingAssignment}
         >
-          <Icons.Check /> {submitting ? "Đang khởi tạo..." : "Tiếp tục"}
+          <Icons.Check /> {submitting ? (isEditMode ? "Đang lưu..." : "Đang cập nhật...") : (isEditMode ? "Lưu thay đổi" : "Tiếp tục")}
         </button>
       </div>
 
@@ -628,9 +652,15 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
           </div>
           <div>
             <h1 className="intro-title">
-              Cấu hình bài tập trước khi soạn câu hỏi
+              {isEditMode 
+                ? "Chỉnh sửa cấu hình bài tập"
+                : "Cấu hình bài tập trước khi soạn câu hỏi"}
             </h1>
-            <p className="intro-desc">{introDescription}</p>
+            <p className="intro-desc">
+              {isEditMode
+                ? "Thay đổi các thông tin cơ bản, thiết lập bảo mật và thời gian làm bài của bài tập hiện tại."
+                : introDescription}
+            </p>
           </div>
         </div>
 
@@ -681,7 +711,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                       key={opt.value}
                       type="button"
                       className={`pill${category === opt.value ? " active" : ""}`}
-                      onClick={() => setCategory(opt.value)}
+                      onClick={() => !isEditMode && setCategory(opt.value)}
+                      disabled={isEditMode}
+                      style={isEditMode ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                     >
                       {opt.label}
                     </button>
@@ -699,7 +731,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                       key={opt.value}
                       type="button"
                       className={`pill${format === opt.value ? " active" : ""}`}
-                      onClick={() => setFormat(opt.value)}
+                      onClick={() => !isEditMode && setFormat(opt.value)}
+                      disabled={isEditMode}
+                      style={isEditMode ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                     >
                       {opt.label}
                     </button>
@@ -731,13 +765,15 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                       className="input password-input"
                       type={isPasswordPeekVisible ? "text" : "password"}
                       value={setting.password}
+                      disabled={isLocked}
                       onChange={(event) =>
                         setSetting((prev) => ({
                           ...prev,
                           password: event.target.value,
                         }))
                       }
-                      placeholder="Để trống nếu không dùng"
+                      placeholder={isLocked ? "Không thể đổi mật khẩu khi đã có bài nộp" : "Để trống nếu không dùng"}
+                      style={isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                     />
                     <button
                       type="button"
@@ -766,12 +802,14 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                     type="number"
                     min="1"
                     value={setting.durationMinutes}
+                    disabled={isLocked}
                     onChange={(event) =>
                       setSetting((prev) => ({
                         ...prev,
                         durationMinutes: event.target.value,
                       }))
                     }
+                    style={isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                   />
                 </div>
 
@@ -881,7 +919,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                   </div>
                 </div>
 
-                <div className="setting-toggle-item">
+                <div className="setting-toggle-item" style={isLocked ? { opacity: 0.6 } : {}}>
                   <label className="label">
                     Trộn câu hỏi
                   </label>
@@ -889,24 +927,28 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                     <button
                       type="button"
                       className={`pill${setting.shuffleQuestions ? " active" : ""}`}
+                      disabled={isLocked}
                       onClick={() =>
-                        setSetting((prev) => ({
+                        !isLocked && setSetting((prev) => ({
                           ...prev,
                           shuffleQuestions: true,
                         }))
                       }
+                      style={isLocked ? { cursor: 'not-allowed' } : {}}
                     >
                       Bật
                     </button>
                     <button
                       type="button"
                       className={`pill${!setting.shuffleQuestions ? " active" : ""}`}
+                      disabled={isLocked}
                       onClick={() =>
-                        setSetting((prev) => ({
+                        !isLocked && setSetting((prev) => ({
                           ...prev,
                           shuffleQuestions: false,
                         }))
                       }
+                      style={isLocked ? { cursor: 'not-allowed' } : {}}
                     >
                       Tắt
                     </button>
@@ -915,8 +957,44 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
               </div>
 
               {category === "TEST" ? (
-                <div className="setting-checks">
-                  <div className="setting-toggle-item full">
+                <>
+                  <div className="setting-toggle-item" style={isLocked ? { opacity: 0.6 } : {}}>
+                    <label className="label">
+                      Yêu cầu toàn màn hình
+                    </label>
+                    <div className="pill-group">
+                      <button
+                        type="button"
+                        className={`pill${setting.requireFullScreen ? " active" : ""}`}
+                        disabled={isLocked}
+                        onClick={() =>
+                          !isLocked && setSetting((prev) => ({
+                            ...prev,
+                            requireFullScreen: true,
+                          }))
+                        }
+                        style={isLocked ? { cursor: 'not-allowed' } : {}}
+                      >
+                        Bật
+                      </button>
+                      <button
+                        type="button"
+                        className={`pill${!setting.requireFullScreen ? " active" : ""}`}
+                        disabled={isLocked}
+                        onClick={() =>
+                          !isLocked && setSetting((prev) => ({
+                            ...prev,
+                            requireFullScreen: false,
+                          }))
+                        }
+                        style={isLocked ? { cursor: 'not-allowed' } : {}}
+                      >
+                        Tắt
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="setting-toggle-item" style={isLocked ? { opacity: 0.6 } : {}}>
                     <label className="label">
                       Giới hạn chuyển tab
                     </label>
@@ -925,20 +1003,21 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                       type="number"
                       min="0"
                       value={setting.limitTabs}
+                      disabled={isLocked}
                       onChange={(event) =>
                         setSetting((prev) => ({
                           ...prev,
                           limitTabs: event.target.value,
                         }))
                       }
-                      placeholder="Để trống nếu không giới hạn"
+                      placeholder={isLocked ? "Đã khóa giới hạn chuyển tab" : "Để trống nếu không giới hạn"}
+                      style={isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                     />
-
                   </div>
-                </div>
+                </>
               ) : (
                 <div className="setting-checks">
-                  <div className="setting-toggle-item full">
+                  <div className="setting-toggle-item full" style={isLocked ? { opacity: 0.6 } : {}}>
                     <label className="label">
                       Số lần làm bài tối đa
                     </label>
@@ -947,14 +1026,18 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                         <button
                           type="button"
                           className={`pill${setting.maxAttemptsType === "UNLIMITED" ? " active" : ""}`}
-                          onClick={() => setSetting(p => ({ ...p, maxAttemptsType: "UNLIMITED" }))}
+                          disabled={isLocked}
+                          onClick={() => !isLocked && setSetting(p => ({ ...p, maxAttemptsType: "UNLIMITED" }))}
+                          style={isLocked ? { cursor: 'not-allowed' } : {}}
                         >
                           Vô hạn
                         </button>
                         <button
                           type="button"
                           className={`pill${setting.maxAttemptsType === "LIMITED" ? " active" : ""}`}
-                          onClick={() => setSetting(p => ({ ...p, maxAttemptsType: "LIMITED" }))}
+                          disabled={isLocked}
+                          onClick={() => !isLocked && setSetting(p => ({ ...p, maxAttemptsType: "LIMITED" }))}
+                          style={isLocked ? { cursor: 'not-allowed' } : {}}
                         >
                           Giới hạn
                         </button>
@@ -966,8 +1049,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                             type="number"
                             min="1"
                             value={setting.maxAttempts}
-                            onChange={(e) => setSetting(p => ({ ...p, maxAttempts: e.target.value }))}
-                            style={{ paddingRight: 32, textAlign: 'center', height: '100%' }}
+                            disabled={isLocked}
+                            onChange={(e) => !isLocked && setSetting(p => ({ ...p, maxAttempts: e.target.value }))}
+                            style={{ paddingRight: 32, textAlign: 'center', height: '100%', opacity: isLocked ? 0.6 : 1, cursor: isLocked ? 'not-allowed' : 'text' }}
                           />
                           <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--t2)', fontWeight: 600 }}>lần</span>
                         </div>
@@ -994,7 +1078,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
               className="btn primary"
               disabled={submitting || isLoadingAssignment}
             >
-              <Icons.Check /> {continueButtonLabel}
+              <Icons.Check /> {submitting ? (isEditMode ? "Đang lưu..." : "Đang cập nhật...") : (isEditMode ? "Lưu thay đổi" : "Tiếp tục")}
             </button>
           </div>
           <div

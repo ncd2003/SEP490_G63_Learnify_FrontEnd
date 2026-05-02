@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
@@ -851,10 +851,11 @@ textarea.f-input{resize:vertical;min-height:70px}
 const ManualAssignmentCreatorPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { assignmentId: paramId } = useParams();
 
-  const assignmentId = searchParams.get("assignmentId")
-    ? Number(searchParams.get("assignmentId"))
-    : null;
+  const assignmentId = paramId 
+    ? Number(paramId) 
+    : (searchParams.get("assignmentId") ? Number(searchParams.get("assignmentId")) : null);
   const bankId = searchParams.get("bankId")
     ? Number(searchParams.get("bankId"))
     : null;
