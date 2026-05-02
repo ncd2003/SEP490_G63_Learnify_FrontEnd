@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Video, AlignLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import SessionModal from '@/components/SessionModal';
+import SyllabusModal from '@/components/SyllabusModal';
 import EventDetailModal from '@/components/EventDetailModal';
 import { useAuth } from '@/contexts/AuthContext';
 import useSchedule from '@/hooks/useSchedule';
@@ -110,6 +111,7 @@ const SchedulePage = () => {
   const [viewMode, setViewMode] = useState(VIEW_MODES.WEEK);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSyllabusModalOpen, setIsSyllabusModalOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
   const [isDayDetailOpen, setIsDayDetailOpen] = useState(false);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
@@ -140,6 +142,11 @@ const SchedulePage = () => {
     setSelectedSession(null);
     setPresetSessionDate('');
     setIsModalOpen(true);
+  };
+
+  const handleCreateFromSyllabus = () => {
+    if (isStudent) return;
+    setIsSyllabusModalOpen(true);
   };
 
   const handleCreateForDate = (date) => {
@@ -288,13 +295,21 @@ const SchedulePage = () => {
     <ClassroomDetailLayout>
       <div className="classroom-schedule-page">
         {/* View mode tabs */}
-        <div className="schedule-tabs">
-          {Object.entries({ [VIEW_MODES.WEEK]: 'Tuần', [VIEW_MODES.MONTH]: 'Tháng' }).map(
-            ([mode, label]) => (
-              <button key={mode} className={`schedule-tab ${viewMode === mode ? 'active' : ''}`} onClick={() => setViewMode(mode)}>
-                {label}
-              </button>
-            ),
+        <div className="schedule-header-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div className="schedule-tabs">
+            {Object.entries({ [VIEW_MODES.WEEK]: 'Tuần', [VIEW_MODES.MONTH]: 'Tháng' }).map(
+              ([mode, label]) => (
+                <button key={mode} className={`schedule-tab ${viewMode === mode ? 'active' : ''}`} onClick={() => setViewMode(mode)}>
+                  {label}
+                </button>
+              ),
+            )}
+          </div>
+          
+          {!isStudent && (
+            <button className="syl-btn-create-syllabus" onClick={handleCreateFromSyllabus}>
+              <Plus size={16} /> Tạo lịch từ Giáo án
+            </button>
           )}
         </div>
 
@@ -540,7 +555,10 @@ const SchedulePage = () => {
                           </div>
                         </div>
                         {s.description && (
-                          <div className="day-detail-event-description">{s.description}</div>
+                          <div className="day-detail-event-description">
+                            <AlignLeft size={14} style={{ marginRight: '6px', verticalAlign: 'middle', display: 'inline-block', color: '#6b7280' }} />
+                            {s.description}
+                          </div>
                         )}
                         {s.type === SESSION_TYPE.OFFLINE && s.location && (
                           <div className="day-detail-event-location">
@@ -569,6 +587,17 @@ const SchedulePage = () => {
           </div>
         </div>
       )}
+
+      {/* SYLLABUS MODAL */}
+      <SyllabusModal
+        isOpen={isSyllabusModalOpen}
+        onClose={() => setIsSyllabusModalOpen(false)}
+        classroomId={classroomId}
+        onSuccess={() => {
+          // You might need to refetch sessions here, or use a reload pattern
+          window.location.reload();
+        }}
+      />
     </ClassroomDetailLayout>
   );
 };

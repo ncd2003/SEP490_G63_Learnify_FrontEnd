@@ -40,10 +40,10 @@ const getAttendanceState = (session) => {
   }
 
   if (now > endWithGrace) {
-    return { label: "Đã đóng điểm danh", type: "closed" };
+    return { label: "Đã đóng", type: "closed" };
   }
 
-  return { label: "Đang mở điểm danh", type: "open" };
+  return { label: "Đang mở", type: "open" };
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -67,14 +67,19 @@ const AttendanceListPage = () => {
     timeSlot: "all",
   });
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   useEffect(() => {
     const fetchAttendanceSessions = async () => {
       try {
         setLoading(true);
         setError("");
-        const response = await attendanceApi.getAttendanceSessionsByClass(Number(classroomId));
-        setSessions(response?.result ?? []);
+        const response = await attendanceApi.getAttendanceSessionsByClass(Number(classroomId), page, ITEMS_PER_PAGE);
+        const data = response?.result;
+        setSessions(data?.content ?? []);
+        setTotalPages(data?.totalPages ?? 1);
+        setTotalElements(data?.totalElements ?? 0);
       } catch (err) {
         setError(err?.response?.data?.message ?? "Không thể tải danh sách buổi học điểm danh.");
       } finally {
@@ -83,15 +88,9 @@ const AttendanceListPage = () => {
     };
 
     fetchAttendanceSessions();
-  }, [classroomId]);
+  }, [classroomId, page]);
 
-  const sortedSessions = useMemo(() => {
-    return [...sessions].sort((a, b) => {
-      const da = parseDateTime(a.sessionDate, a.startTime)?.getTime() ?? 0;
-      const db = parseDateTime(b.sessionDate, b.startTime)?.getTime() ?? 0;
-      return db - da;
-    });
-  }, [sessions]);
+  const sortedSessions = sessions;
 
   const getSessionTitle = (session) => session.title || session.topic || "Buổi học";
 
@@ -104,10 +103,10 @@ const AttendanceListPage = () => {
       return { label: "Đang tiến hành", key: "open" };
     }
     if (state.type === "upcoming") {
-      return { label: "Chưa điểm danh", key: "pending" };
+      return { label: "Chưa bắt đầu", key: "pending" };
     }
     if (state.type === "closed") {
-      return { label: "Đã quá hạn điểm danh", key: "expired" };
+      return { label: "Đã quá hạn", key: "expired" };
     }
     return { label: "Không xác định", key: "unknown" };
   };
@@ -154,14 +153,10 @@ const AttendanceListPage = () => {
     });
   }, [appliedFilters, sortedSessions]);
 
-  const pagedSessions = useMemo(() => {
-    const startIndex = (page - 1) * ITEMS_PER_PAGE;
-    return filteredSessions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredSessions, page]);
+  const pagedSessions = filteredSessions; // Server already paged or we use local filter on current page
 
-  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / ITEMS_PER_PAGE));
-  const pageStart = filteredSessions.length === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
-  const pageEnd = Math.min(filteredSessions.length, page * ITEMS_PER_PAGE);
+  const pageStart = totalElements === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
+  const pageEnd = Math.min(totalElements, page * ITEMS_PER_PAGE);
 
   const handleSearch = () => {
     setAppliedFilters(filters);
@@ -182,9 +177,6 @@ const AttendanceListPage = () => {
   return (
     <ClassroomDetailLayout>
       <div className="attendance-list-page">
-        <div className="attendance-list-header">
-          <h1>Điểm danh</h1>
-        </div>
 
         {!loading && !error && sortedSessions.length > 0 && (
           <div className="attendance-filter-card">
@@ -209,7 +201,7 @@ const AttendanceListPage = () => {
                 />
               </div>
               <div className="attendance-filter-field">
-                <label htmlFor="attendance-status">Trạng thái điểm danh</label>
+                <label htmlFor="attendance-status">Trạng thái</label>
                 <select
                   id="attendance-status"
                   value={filters.status}
@@ -218,8 +210,8 @@ const AttendanceListPage = () => {
                   <option value="all">Tất cả</option>
                   <option value="completed">Hoàn thành</option>
                   <option value="open">Đang tiến hành</option>
-                  <option value="pending">Chưa điểm danh</option>
-                  <option value="expired">Đã quá hạn điểm danh</option>
+                  <option value="pending">Chưa bắt đầu</option>
+                  <option value="expired">Đã quá hạn</option>
                   <option value="unknown">Không xác định</option>
                 </select>
               </div>
@@ -306,7 +298,7 @@ const AttendanceListPage = () => {
                             onClick={() => handleOpenAttendance(session.id)}
                             disabled={status.key === "pending" || status.key === "unknown"}
                           >
-                            {status.key === "completed" || status.key === "expired" ? "Xem điểm danh" : "Vào điểm danh"}
+                            {status.key === "completed" || status.key === "expired" ? "Xem chi tiết" : "Vào báo cáo"}
                           </button>
                         </td>
                       </tr>
@@ -318,7 +310,7 @@ const AttendanceListPage = () => {
 
             <div className="attendance-table-footer">
               <span>
-                Hiển thị {pageStart}-{pageEnd} trên tổng {filteredSessions.length} buổi điểm danh
+                Hiển thị {pageStart}-{pageEnd} trên tổng {totalElements} buổi học
               </span>
               <div className="attendance-pagination">
                 <button
