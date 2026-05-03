@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Search, BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { classroomApi } from "@/apis/classroom.api";
@@ -7,10 +7,10 @@ import "@/assets/css/pages/classroom/modals.css";
 import "@/assets/css/pages/classroom/joinClassModal.css";
 
 /**
- * @param {{ onClose: () => void, onJoined: () => void }} props
+ * @param {{ onClose: () => void, onJoined: () => void, initialCode?: string }} props
  */
-const JoinClassModal = ({ onClose, onJoined }) => {
-  const [code, setCode]               = useState("");
+const JoinClassModal = ({ onClose, onJoined, initialCode = "" }) => {
+  const [code, setCode]               = useState(initialCode);
   const [classroom, setClassroom]     = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
@@ -18,9 +18,8 @@ const JoinClassModal = ({ onClose, onJoined }) => {
   const [joinError, setJoinError]     = useState("");
   const [joinBlocked, setJoinBlocked] = useState(false);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    const trimmed = code.trim();
+  const performSearch = async (searchCode) => {
+    const trimmed = searchCode.trim();
     if (!trimmed) return;
 
     setSearchLoading(true);
@@ -41,6 +40,17 @@ const JoinClassModal = ({ onClose, onJoined }) => {
       setSearchLoading(false);
     }
   };
+
+  const handleSearch = async (e) => {
+    e?.preventDefault();
+    await performSearch(code);
+  };
+
+  useEffect(() => {
+    if (initialCode) {
+      performSearch(initialCode);
+    }
+  }, [initialCode]);
 
   const handleJoin = async () => {
     if (!classroom || joinBlocked) return;

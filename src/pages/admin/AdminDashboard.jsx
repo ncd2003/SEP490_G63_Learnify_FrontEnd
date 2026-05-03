@@ -58,7 +58,7 @@ const AdminDashboardPage = () => {
       } catch (err) {
         setError(
           err?.response?.data?.message ||
-            "MSG90: Không thể tải dữ liệu bảng điều hành hệ thống. Vui lòng thử lại.",
+            "Không thể tải dữ liệu bảng điều hành hệ thống. Vui lòng thử lại.",
         );
       } finally {
         setLoading(false);

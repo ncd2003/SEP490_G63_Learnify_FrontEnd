@@ -204,7 +204,7 @@ const AdminUserDetailPage = () => {
     setReasonError("");
 
     if (pendingStatus === "BANNED" && !reason.trim()) {
-      setReasonError("MSG118: Vui lòng nhập lý do khóa tài khoản.");
+      setReasonError("Vui lòng nhập lý do khóa tài khoản.");
       return;
     }
 
@@ -234,14 +234,14 @@ const AdminUserDetailPage = () => {
         setReason("");
       }
 
-      setUpdateMessage(response?.message || "MSG02: Cập nhật trạng thái thành công.");
+      setUpdateMessage(response?.message || "Cập nhật trạng thái thành công.");
       setStatusModalOpen(false);
       setPendingStatus("");
       setReasonError("");
     } catch (err) {
       const backendMessage = err?.response?.data?.message;
       if (backendMessage && /email/i.test(backendMessage)) {
-        setUpdateError(`MSG23: ${backendMessage}`);
+        setUpdateError(`${backendMessage}`);
       } else {
         setUpdateError(backendMessage || "Không thể cập nhật trạng thái người dùng.");
       }
@@ -256,7 +256,7 @@ const AdminUserDetailPage = () => {
     setWarningError("");
 
     if (!warningContent.trim()) {
-      setWarningContentError("MSG138: Vui lòng nhập nội dung chi tiết cho cảnh báo này.");
+      setWarningContentError("Vui lòng nhập nội dung chi tiết cho cảnh báo này.");
       return;
     }
 
@@ -266,14 +266,14 @@ const AdminUserDetailPage = () => {
         content: warningContent.trim(),
       });
 
-      setWarningMessage(response?.message || "MSG137: Cảnh báo đã được gửi đến người dùng thành công.");
+      setWarningMessage(response?.message || "Cảnh báo đã được gửi đến người dùng thành công.");
       setWarningModalOpen(false);
       setWarningContent("");
       setWarningContentError("");
     } catch (err) {
       const backendMessage = err?.response?.data?.message;
       if (backendMessage && /nội dung|cảnh báo/i.test(backendMessage)) {
-        setWarningContentError(`MSG138: ${backendMessage}`);
+        setWarningContentError(`${backendMessage}`);
       } else {
         setWarningError(backendMessage || "Không thể gửi cảnh báo. Vui lòng thử lại.");
       }

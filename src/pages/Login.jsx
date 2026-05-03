@@ -120,7 +120,13 @@ const LoginPage = () => {
       if (isAdminRole(userRole)) {
         navigate(PATH_ADMIN.dashboard, { replace: true });
       } else if (isTeacherRole(userRole) || isStudentRole(userRole)) {
-        navigate("/classrooms", { replace: true });
+        const fromState = location.state?.from;
+        const fromPath = fromState?.pathname ? (fromState.pathname + (fromState.search || "")) : null;
+        if (fromPath && fromPath.includes("code=")) {
+          navigate(fromPath, { replace: true });
+        } else {
+          navigate("/classrooms", { replace: true });
+        }
       } else {
         // Fallback to home if role is not recognized
         navigate("/home", { replace: true });
@@ -329,7 +335,7 @@ const LoginPage = () => {
               </div>
 
               <div className="signup-link">
-                Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
+                Chưa có tài khoản? <Link to="/register" state={{ from: location.state?.from }}>Đăng ký ngay</Link>
               </div>
             </form>
           </div>

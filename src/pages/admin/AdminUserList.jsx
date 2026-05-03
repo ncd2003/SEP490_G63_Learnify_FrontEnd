@@ -197,15 +197,15 @@ const AdminUserListPage = () => {
     const errors = {};
 
     if (!createForm.fullName.trim()) {
-      errors.fullName = "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.";
+      errors.fullName = "Vui lòng điền đầy đủ các thông tin bắt buộc.";
     }
 
     if (!createForm.email.trim()) {
-      errors.email = "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.";
+      errors.email = "Vui lòng điền đầy đủ các thông tin bắt buộc.";
     }
 
     if (!createForm.role) {
-      errors.role = "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.";
+      errors.role = "Vui lòng điền đầy đủ các thông tin bắt buộc.";
     }
 
     if (createForm.email.trim() && !/^\S+@\S+\.\S+$/.test(createForm.email.trim())) {
@@ -236,7 +236,7 @@ const AdminUserListPage = () => {
       }
 
       const response = await adminApi.createUser(payload);
-      setCreateSuccess(response?.message || "MSG127: Tạo người dùng mới thành công. Mật khẩu đã được gửi qua email.");
+      setCreateSuccess(response?.message || "Tạo người dùng mới thành công. Mật khẩu đã được gửi qua email.");
       setCreateForm(INITIAL_CREATE_FORM);
       setCreateFieldErrors({});
       setPage(1);
@@ -247,16 +247,16 @@ const AdminUserListPage = () => {
       if (backendMessage && /email/i.test(backendMessage)) {
         setCreateFieldErrors((prev) => ({
           ...prev,
-          email: `MSG128: ${backendMessage}`,
+          email: `${backendMessage}`,
         }));
         return;
       }
 
       if (backendMessage && /đầy đủ|bắt buộc/i.test(backendMessage)) {
         setCreateFieldErrors({
-          fullName: "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.",
-          email: "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.",
-          role: "MSG129: Vui lòng điền đầy đủ các thông tin bắt buộc.",
+          fullName: "Vui lòng điền đầy đủ các thông tin bắt buộc.",
+          email: "Vui lòng điền đầy đủ các thông tin bắt buộc.",
+          role: "Vui lòng điền đầy đủ các thông tin bắt buộc.",
         });
         return;
       }

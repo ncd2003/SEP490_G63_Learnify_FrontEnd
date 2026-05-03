@@ -82,7 +82,7 @@ const AdminManageReportPage = () => {
         const backendMessage = err?.response?.data?.message;
         setError(
           backendMessage ||
-            "MSG90: Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
+            "Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
         );
         setItems([]);
         setTotalPages(1);

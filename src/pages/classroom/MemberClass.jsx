@@ -459,17 +459,6 @@ const MemberClass = () => {
 
     const filtered = [...combined.values()];
 
-    if (keyword && EMAIL_REGEX.test(keyword) && !selectedSet.has(keyword)) {
-      return [
-        {
-          email: keyword,
-          label: keyword,
-          subtitle: 'Nhập để gửi lời mời nếu chưa có tài khoản',
-        },
-        ...filtered,
-      ];
-    }
-
     return filtered;
   }, [emailDirectory, inviteEmails, inviteInput, inviteLookupResults]);
 
@@ -571,7 +560,12 @@ const MemberClass = () => {
     if (event.key === 'Enter' || event.key === ',' || event.key === 'Tab') {
       if (inviteInput.trim()) {
         event.preventDefault();
-        commitInviteDraft();
+        
+        const keyword = normalizeEmail(inviteInput);
+        const exactMatch = inviteLookupResults.find(r => normalizeEmail(r.email) === keyword);
+        if (exactMatch) {
+          addInviteEmails([exactMatch.email]);
+        }
       }
       return;
     }
@@ -1253,12 +1247,9 @@ const MemberClass = () => {
                           type="button"
                           className="invite-suggestion-item invite-suggestion-item--manual"
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => addInviteEmails([inviteInput])}
-                          disabled={inviteSubmitting || !EMAIL_REGEX.test(normalizeEmail(inviteInput))}
+                          disabled={true}
                         >
-                          <span className="invite-suggestion-email">{normalizeEmail(inviteInput)}</span>
-                          <span className="invite-suggestion-name">Chưa tìm thấy tài khoản trùng khớp</span>
-                          <span className="invite-suggestion-meta">Nhấn để thêm email này</span>
+                          <span className="invite-suggestion-name" style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>Chưa tìm thấy tài khoản trùng khớp</span>
                         </button>
                       )}
                     </div>
