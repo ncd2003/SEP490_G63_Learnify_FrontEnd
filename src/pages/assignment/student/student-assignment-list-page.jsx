@@ -6,7 +6,7 @@ import { classroomApi } from "@/apis/classroom.api";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_STUDENT } from "@/routes/paths";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
 const IN_PROGRESS_UI = {
   title: "Đang làm dở",
   loading: "Đang tải bài đang làm dở...",
@@ -218,6 +218,8 @@ const toUiAssignment = (item, fallbackStatus = "pending", classInfo = null) => {
     attemptLimit:
       item?.attemptLimit ?? item?.setting?.maxAttempts ?? item?.maxAttempts ?? null,
     attemptsUsed: Number(item?.attemptsUsed ?? item?.attemptCount ?? 0),
+    notStarted: Boolean(item?.notStarted ?? item?.isNotStarted ?? false),
+    status: item?.status,
   };
 };
 
@@ -669,6 +671,9 @@ const AssignmentCard = ({ assignment, index, onOpen }) => {
     urgency,
     attemptLimit,
     attemptsUsed,
+    notStarted,
+    start,
+    status,
   } = assignment;
 
   const attemptsLabel = (() => {
@@ -731,6 +736,33 @@ const AssignmentCard = ({ assignment, index, onOpen }) => {
   })();
 
   const actionBtn = (() => {
+    if (notStarted) {
+      return (
+        <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: "var(--r-m)",
+              background: "var(--border-l)",
+              color: "var(--text3)",
+              fontSize: "11px",
+              fontWeight: 700,
+              border: "1px solid var(--border)",
+            }}
+          >
+            <Ic.Clock width={12} height={12} />
+            Chưa mở · Mở lúc {toDisplayDateTime(start)}
+          </span>
+          <button className="btn btn-start" disabled style={{ opacity: 0.6, cursor: "not-allowed", marginTop: 0 }}>
+            <Ic.Send width={12} height={12} /> Làm bài
+          </button>
+        </div>
+      );
+    }
+
     if (myStatus === "done") {
       const hasAttemptsLeft =
         attemptLimit === null || attemptLimit === undefined || attemptsUsed < attemptLimit;
@@ -769,6 +801,20 @@ const AssignmentCard = ({ assignment, index, onOpen }) => {
 
     if (myStatus === "late") {
       return null;
+    }
+
+    if (status === "IN_PROGRESS") {
+      return (
+        <button
+          className="btn btn-start"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(assignment, "start");
+          }}
+        >
+          <Ic.Send width={12} height={12} /> Tiếp tục
+        </button>
+      );
     }
 
     if (urgency === "urgent") {
@@ -926,6 +972,7 @@ const DetailModal = ({
     urgency,
     attemptLimit,
     attemptsUsed,
+    notStarted,
   } = assignment;
 
   const hasAttemptsLeft =
@@ -954,6 +1001,29 @@ const DetailModal = ({
   const isLate = myStatus === "late";
 
   const statusBlock = (() => {
+    if (notStarted) {
+      return (
+        <div
+          style={{
+            background: "var(--border-l)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-m)",
+            padding: "11px 14px",
+            marginBottom: 16,
+            fontSize: 12,
+            fontWeight: 700,
+            color: "var(--text3)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <Ic.Clock width={13} height={13} />
+          Chưa mở · Bài tập này sẽ mở lúc {toDisplayDateTime(start)}
+        </div>
+      );
+    }
+
     if (isDone) {
       const safeMyScore = Number(myScore || 0);
       const pct =
@@ -1177,7 +1247,15 @@ const DetailModal = ({
           ) : null}
 
           <div className="modal-actions">
-            {isDone ? (
+            {notStarted ? (
+              <button
+                className="modal-btn modal-btn-p"
+                disabled
+                style={{ opacity: 0.6, cursor: "not-allowed" }}
+              >
+                <Ic.Send width={13} height={13} /> Bắt đầu làm bài
+              </button>
+            ) : isDone ? (
               <>
                 <button
                   className="modal-btn modal-btn-g"
@@ -1555,7 +1633,6 @@ const ASSIGNMENT_CATEGORY_TO_API = {
   todo: "TODO",
   completed: "COMPLETED",
   overdue: "OVERDUE",
-  all: "ALL",
 };
 
 const EMPTY_PAGE_META = {
@@ -1759,26 +1836,10 @@ const StudentAssignmentListPage = () => {
         page: Math.max(0, uiPage - 1),
         size: PAGE_SIZE,
       })
-      .then(async (response) => {
+      .then((response) => {
         if (!alive) return;
 
         let parsed = parsePagedAssignments(response);
-
-        // Fallback for backends that ignore/unsupported category params and only
-        // expose classroom assignments as a plain array response.
-        if (parsed.items.length === 0) {
-          try {
-            const fallbackResponse =
-              await classroomApi.getAssignmentsForClassroom(classId);
-            const fallbackParsed = parsePagedAssignments(fallbackResponse);
-
-            if (fallbackParsed.items.length > 0) {
-              parsed = fallbackParsed;
-            }
-          } catch {
-            // Keep original parsed result if fallback request fails.
-          }
-        }
 
         if (!alive) return;
 
