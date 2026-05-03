@@ -102,7 +102,7 @@ const AdminSystemNotificationPage = () => {
         setTotalPages(result.totalPages || 1);
       } catch (err) {
         const backendMessage = err?.response?.data?.message;
-        setError(backendMessage || "MSG90: Không thể tải nội dung trang. Vui lòng làm mới hoặc thử lại sau.");
+        setError(backendMessage || "Không thể tải nội dung trang. Vui lòng làm mới hoặc thử lại sau.");
         setItems([]);
         setTotalPages(1);
       } finally {
@@ -152,7 +152,7 @@ const AdminSystemNotificationPage = () => {
     setFormError("");
 
     if (!title.trim() || !content.trim()) {
-      setFieldError("MSG132: Vui lòng điền đầy đủ tiêu đề và nội dung thông báo.");
+      setFieldError("Vui lòng điền đầy đủ tiêu đề và nội dung thông báo.");
       return;
     }
 
@@ -171,7 +171,7 @@ const AdminSystemNotificationPage = () => {
     } catch (err) {
       const backendMessage = err?.response?.data?.message;
       if (/tiêu đề|nội dung|đầy đủ/i.test(backendMessage || "")) {
-        setFieldError(`MSG132: ${backendMessage}`);
+        setFieldError(`${backendMessage}`);
       } else {
         setFormError(backendMessage || "Không thể gửi thông báo. Vui lòng thử lại.");
       }

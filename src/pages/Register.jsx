@@ -178,6 +178,7 @@ const RegisterScreen = () => {
           email: formData.email,
           userId: userId,
           message: "Đăng ký thành công! Vui lòng kiểm tra email và nhập OTP.",
+          from: location.state?.from,
         },
       });
     } catch (err) {
@@ -550,7 +551,7 @@ const RegisterScreen = () => {
               </div>
 
               <div className="login-link">
-                Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link>
+                Đã có tài khoản? <Link to="/login" state={{ from: location.state?.from }}>Đăng nhập ngay</Link>
               </div>
             </form>
           </div>

@@ -64,7 +64,7 @@ const SendUserReportPage = () => {
     setSuccessMessage("");
 
     if (!reason) {
-      setValidationError("MSG136: Vui lòng chọn ít nhất một lý do báo cáo.");
+      setValidationError("Vui lòng chọn ít nhất một lý do báo cáo.");
       return;
     }
 
@@ -88,14 +88,14 @@ const SendUserReportPage = () => {
 
       await reportApi.createUserReport(payload);
 
-      setSuccessMessage("MSG134 (Success): Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét và xử lý sớm nhất có thể.");
+      setSuccessMessage("Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét và xử lý sớm nhất có thể.");
       setIsModalOpen(false);
     } catch (error) {
       const backendMessage = error?.response?.data?.message || "Không thể gửi báo cáo. Vui lòng thử lại.";
       if (/giới hạn|24 giờ|vượt quá/i.test(backendMessage)) {
-        setWarningMessage(`MSG135 (Rule Violation): ${backendMessage}`);
+        setWarningMessage(`${backendMessage}`);
       } else if (/lý do|reason/i.test(backendMessage)) {
-        setValidationError(`MSG136: ${backendMessage}`);
+        setValidationError(`${backendMessage}`);
       } else {
         setWarningMessage(backendMessage);
       }
@@ -160,7 +160,7 @@ const SendUserReportPage = () => {
             </button>
           ) : (
             <div className="admin-restricted-note">
-              BR-126: Nút báo cáo được ẩn cho tài khoản Admin.
+              Nút báo cáo được ẩn cho tài khoản Admin.
             </div>
           )}
         </div>

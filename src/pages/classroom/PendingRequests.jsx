@@ -289,7 +289,7 @@ const MemberClass = () => {
     setReportSuccess('');
 
     if (!reportReason) {
-      setReportError('MSG136: Vui lòng chọn ít nhất một lý do báo cáo.');
+      setReportError('Vui lòng chọn ít nhất một lý do báo cáo.');
       return;
     }
 
@@ -305,7 +305,7 @@ const MemberClass = () => {
       }
 
       await reportApi.createUserReport(payload);
-      setReportSuccess('MSG134 (Success): Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét sớm nhất có thể.');
+      setReportSuccess('Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét sớm nhất có thể.');
       setIsReportModalOpen(false);
       setTimeout(() => setReportSuccess(''), 3500);
     } catch (err) {

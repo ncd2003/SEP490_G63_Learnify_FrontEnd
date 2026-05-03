@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { BookOpen, Plus, Search, Loader2, MoreVertical, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { classroomMemberApi, ENROLLMENT_STATUS } from "@/apis/classroom-member.api";
 import useDebounce from "@/hooks/use-debounce";
 import JoinClassModal from "@/pages/classroom/search/join-class-modal";
@@ -43,6 +43,8 @@ const StudentClassroomPage = () => {
     ENROLLMENT_STATUS.ACCEPTED,
   );
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const codeParam = searchParams.get("code");
 
   const selectedStatusMeta =
     STATUS_FILTERS.find((item) => item.value === selectedStatus) ??
@@ -90,10 +92,16 @@ const StudentClassroomPage = () => {
   useEffect(() => { fetchStatusCounts(); }, [fetchStatusCounts]);
 
   const [searchQuery, setSearchQuery]   = useState("");
-  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(!!codeParam);
   const [leaveTarget, setLeaveTarget]    = useState(null); // classroom to leave
   const [leaveLoading, setLeaveLoading]  = useState(false);
   const [leaveError, setLeaveError]      = useState(null);
+
+  useEffect(() => {
+    if (codeParam) {
+      setShowJoinModal(true);
+    }
+  }, [codeParam]);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -233,7 +241,14 @@ const StudentClassroomPage = () => {
       {/* Join modal */}
       {showJoinModal && (
         <JoinClassModal
-          onClose={() => setShowJoinModal(false)}
+          initialCode={codeParam || ""}
+          onClose={() => {
+            setShowJoinModal(false);
+            if (codeParam) {
+              searchParams.delete("code");
+              setSearchParams(searchParams, { replace: true });
+            }
+          }}
           onJoined={handleJoinSuccess}
         />
       )}

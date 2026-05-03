@@ -197,7 +197,7 @@ const useAttendance = (sessionId, roster) => {
       }
 
       await fetchAttendance();
-      setSuccess("MSG96: Điểm danh thành công.");
+      setSuccess("Điểm danh thành công.");
       setLocked(true);
       setHasSubmitted(true);
     } catch (err) {
