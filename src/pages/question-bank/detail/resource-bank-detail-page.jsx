@@ -79,6 +79,7 @@ const QTYPES = [
 const LETTERS = "ABCDEFGH";
 
 const ITEMS_PER_PAGE = 10;
+const SUMMARY_PAGE_SIZE = 100;
 
 /* ─────────────────────────── icons ─────────────────────────── */
 
@@ -348,7 +349,7 @@ const CSS = `
 .top-l{display:flex;align-items:center;gap:10px}
 .bk-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--b);border-radius:var(--rs);background:var(--card);font-size:11px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .15s var(--e);font-family:var(--f)}
 .bk-btn:hover{border-color:var(--p);color:var(--p)}
-.top-t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
+.top-t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px;font-family:var(--f)}
 .bank-ic{width:26px;height:26px;border-radius:8px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .sep-line{width:1px;height:18px;background:var(--b)}
 .top-r{display:flex;gap:6px;align-items:center}
@@ -399,6 +400,8 @@ const CSS = `
 .sort-sel{height:30px;padding:0 8px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:11px;font-family:var(--f);color:var(--t2);background:var(--card);font-weight:600;outline:none;cursor:pointer}
 .sort-sel:focus{border-color:var(--p)}
 
+.qcard{font-family:var(--f)}
+
 /* QUESTION LIST */
 .q-scroll{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
 
@@ -413,12 +416,12 @@ const CSS = `
 .qcard-num{min-width:24px;height:24px;border-radius:50%;background:var(--p);color:var(--inv);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
 .qcard-body{flex:1;min-width:0}
 .qcard-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.badge{padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block}
+.badge{padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:inline-block;font-family:var(--f)}
 .badge-mc{background:var(--pl);color:var(--p)}
 .badge-tf{background:var(--gnl);color:var(--gn)}
 .badge-fb{background:var(--orl);color:var(--or)}
 .badge-es{background:var(--pul);color:var(--pu)}
-.qcard-prompt{font-size:15px;font-weight:600;line-height:1.6;color:var(--t);margin-bottom:4px}
+.qcard-prompt{font-size:15px;font-weight:700;line-height:1.55;color:var(--t);margin-bottom:4px;letter-spacing:-.01em}
 
 /* OPTIONS DESIGN */
 .opt-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
@@ -426,12 +429,12 @@ const CSS = `
 .opt-item.ok{border-color:var(--gn);background:var(--gnl)}
 .opt-let{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--b);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--t3);flex-shrink:0}
 .opt-item.ok .opt-let{background:var(--gn);color:var(--inv);border-color:var(--gn)}
-.opt-txt{font-size:13px;font-weight:500;color:var(--t2)}
+.opt-txt{font-size:13px;font-weight:500;color:var(--t2);font-family:var(--f)}
 .opt-item.ok .opt-txt{color:var(--gn);font-weight:600}
 
 .qcard-footer{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-top:1px solid var(--bl);background:var(--bg)}
 .footer-l{display:flex;align-items:center;gap:12px}
-.qmeta{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--t3)}
+.qmeta{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--t3);font-family:var(--f)}
 .footer-r{display:flex;gap:2px}
 .ab-btn{display:flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--rs);border:none;background:none;font-size:11px;font-weight:600;font-family:var(--f);color:var(--t3);cursor:pointer;transition:all .15s}
 .ab-btn:hover{background:var(--hov);color:var(--p)}
@@ -476,6 +479,40 @@ const CSS = `
 .form-row {display:flex;gap:12px}
 .form-row > * {flex:1}
 .modal-ftr {padding:16px 20px;border-top:1px solid var(--b);background:var(--bg);display:flex;justify-content:flex-end;gap:10px}
+.modal-ftr .btn {
+  min-width: 118px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  font-family: var(--f);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .2s var(--e);
+}
+.modal-ftr .btn:disabled {opacity:.7;cursor:not-allowed;transform:none}
+.modal-ftr .btn.btn-g {background:var(--card);color:var(--t2);border-color:var(--b)}
+.modal-ftr .btn.btn-g:hover:not(:disabled) {background:var(--hov);border-color:var(--p);color:var(--p)}
+.modal-ftr .btn.btn-p {background:var(--gr);color:var(--inv);box-shadow:0 2px 10px var(--ps)}
+.modal-ftr .btn.btn-p:hover:not(:disabled) {transform:translateY(-1px)}
+.modal-ftr .btn .spin {display:inline-flex;align-items:center;justify-content:center}
+.delete-modal {max-width: 520px}
+.delete-hero {display:flex;align-items:flex-start;gap:14px;padding:20px 20px 0}
+.delete-ic {width:48px;height:48px;border-radius:16px;background:var(--rdl);color:var(--rd);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 0 6px rgba(239,68,68,.08)}
+.delete-title {font-size:17px;font-weight:800;color:var(--t);margin-bottom:6px}
+.delete-desc {font-size:13px;line-height:1.6;color:var(--t2)}
+.delete-meta {margin:14px 20px 0;padding:12px 14px;border:1px solid var(--b);border-radius:14px;background:var(--plr)}
+.delete-meta-label {font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.delete-meta-value {font-size:13px;font-weight:700;color:var(--t)}
+.delete-modal .modal-ftr {background:var(--card);justify-content:flex-end}
+.delete-modal .btn.btn-p {background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 10px 24px rgba(239,68,68,.22)}
+.delete-modal .btn.btn-p:hover:not(:disabled) {transform:translateY(-1px);box-shadow:0 12px 28px rgba(239,68,68,.28)}
+.delete-modal .btn.btn-g:hover:not(:disabled) {border-color:var(--rd);color:var(--rd);background:var(--rdl)}
 .opt-row {display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .opt-check {width:18px;height:18px;cursor:pointer;accent-color:var(--gn)}
 .opt-input {flex:1;padding:8px 12px;border:1.5px solid var(--b);border-radius:var(--rm);font-size:13px;font-family:var(--f);outline:none;background:var(--inp)}
@@ -510,6 +547,104 @@ const formatDate = (dateStr) => {
   });
 };
 
+const createEmptyCountMap = (items) =>
+  items.reduce((acc, item) => {
+    acc[item.v] = 0;
+    return acc;
+  }, {});
+
+const createEmptyQuestionStats = () => ({
+  total: 0,
+  usedIn: 0,
+  ratio: 0,
+  typeCounts: createEmptyCountMap(QTYPES),
+  cogCounts: createEmptyCountMap(COG),
+});
+
+const isBankSource = (source) => {
+  const normalized = String(source || "")
+    .trim()
+    .toUpperCase();
+  return (
+    normalized === "BANK" ||
+    normalized === "QUESTION_BANK" ||
+    normalized === "QUESTIONBANK"
+  );
+};
+
+const normalizeQuestionType = (questionType) => {
+  const normalized = String(questionType || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "FILL_IN_BLANK") {
+    return "FILL_IN_THE_BLANK";
+  }
+
+  return normalized;
+};
+
+const buildQuestionStats = (questions) => {
+  const summary = createEmptyQuestionStats();
+  const sourceItems = Array.isArray(questions) ? questions : [];
+
+  sourceItems.forEach((question) => {
+    summary.total += 1;
+
+    const normalizedType = normalizeQuestionType(question?.questionType);
+    if (summary.typeCounts[normalizedType] !== undefined) {
+      summary.typeCounts[normalizedType] += 1;
+    }
+
+    const normalizedCog = String(question?.cognitiveLevel || "")
+      .trim()
+      .toUpperCase();
+    if (summary.cogCounts[normalizedCog] !== undefined) {
+      summary.cogCounts[normalizedCog] += 1;
+    }
+
+    if (!isBankSource(question?.source)) {
+      summary.usedIn += 1;
+    }
+  });
+
+  summary.ratio =
+    summary.total > 0 ? Math.round((summary.usedIn / summary.total) * 100) : 0;
+  return summary;
+};
+
+const getQuestionSourceLabel = (source) => {
+  const normalized = String(source || "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    normalized === "BANK" ||
+    normalized === "QUESTION_BANK" ||
+    normalized === "QUESTIONBANK"
+  ) {
+    return "Ngân hàng câu hỏi";
+  }
+
+  if (normalized === "ASSIGNMENT") {
+    return "Bài tập";
+  }
+
+  if (normalized === "MANUAL" || normalized === "MANUAL_CREATION") {
+    return "Thủ công";
+  }
+
+  if (normalized === "AI") {
+    return "AI";
+  }
+
+  if (normalized === "IMPORT") {
+    return "Import";
+  }
+
+  return source || "";
+};
+
 /* ─────────────────────────── QuestionCard ─────────────────────────── */
 
 function QuestionCard({ question, index, onEdit, onDelete }) {
@@ -525,9 +660,9 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
 
   // For True/False
   let tfCorrect = null;
-  if (isTrueFalse && question.options) {
+  if (isTrueFalse && Array.isArray(question.options)) {
     const corOpt = question.options.find((o) => o.correct || o.isCorrect);
-    if (corOpt) {
+    if (corOpt && corOpt.content) {
       tfCorrect =
         corOpt.content.toLowerCase().includes("true") ||
         corOpt.content.toLowerCase() === "đúng";
@@ -555,13 +690,12 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
               >
                 Mức độ: {cog.l}
               </span>
-              {question.usedIn > 0 ? (
-                <span className="badge" style={{ background: "var(--gnl)", color: "var(--gn)" }}>
-                  Dùng trong {question.usedIn} đề
-                </span>
-              ) : (
-                <span className="badge" style={{ background: "var(--bl)", color: "var(--t3)" }}>
-                  Chưa dùng
+              {question.source && (
+                <span
+                  className="badge"
+                  style={{ background: "var(--pul)", color: "var(--pu)" }}
+                >
+                  Nguồn: {getQuestionSourceLabel(question.source)}
                 </span>
               )}
             </div>
@@ -573,7 +707,10 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
                 {question.options.map((o, oi) => {
                   const isOk = o.correct || o.isCorrect;
                   return (
-                    <div key={o.id || oi} className={`opt-item${isOk ? " ok" : ""}`}>
+                    <div
+                      key={o.id || oi}
+                      className={`opt-item${isOk ? " ok" : ""}`}
+                    >
                       <div className="opt-let">{LETTERS[oi]}</div>
                       <div className="opt-txt">{o.content}</div>
                     </div>
@@ -584,8 +721,18 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
 
             {/* True/False Display */}
             {isTrueFalse && tfCorrect !== null && (
-              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "var(--t2)" }}>Đáp án:</span>
+              <div
+                style={{
+                  marginTop: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ fontWeight: 600, color: "var(--t2)" }}>
+                  Đáp án:
+                </span>
                 <span
                   className="badge"
                   style={{
@@ -601,33 +748,56 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
             )}
 
             {/* Fill in the Blank Display */}
-            {isFillBlank && Array.isArray(question.options) && question.options.length > 0 && (
-              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "var(--t2)" }}>Đáp án:</span>
-                <span
+            {isFillBlank &&
+              Array.isArray(question.options) &&
+              question.options.length > 0 && (
+                <div
                   style={{
-                    color: "var(--p)",
-                    fontWeight: 700,
-                    background: "var(--pl)",
-                    padding: "2px 10px",
-                    borderRadius: 8,
+                    marginTop: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 13,
                   }}
                 >
-                  {question.options[0]?.content}
-                </span>
-              </div>
-            )}
+                  <span style={{ fontWeight: 600, color: "var(--t2)" }}>
+                    Đáp án:
+                  </span>
+                  <span
+                    style={{
+                      color: "var(--p)",
+                      fontWeight: 700,
+                      background: "var(--pl)",
+                      padding: "2px 10px",
+                      borderRadius: 8,
+                    }}
+                  >
+                    {question.options[0]?.content}
+                  </span>
+                </div>
+              )}
 
             {/* Essay Display */}
             {isEssay && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, color: "var(--t3)", fontStyle: "italic", marginBottom: 4 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--t3)",
+                    fontStyle: "italic",
+                    marginBottom: 4,
+                  }}
+                >
                   Tự luận — chấm thủ công
                 </div>
                 {question.sampleAnswer && (
                   <div style={{ fontSize: 13 }}>
-                    <span style={{ fontWeight: 600, color: "var(--p)" }}>Gợi ý trả lời: </span>
-                    <span style={{ color: "var(--t2)" }}>{question.sampleAnswer}</span>
+                    <span style={{ fontWeight: 600, color: "var(--p)" }}>
+                      Gợi ý trả lời:{" "}
+                    </span>
+                    <span style={{ color: "var(--t2)" }}>
+                      {question.sampleAnswer}
+                    </span>
                   </div>
                 )}
               </div>
@@ -638,21 +808,36 @@ function QuestionCard({ question, index, onEdit, onDelete }) {
 
       <div className="qcard-footer">
         <div className="footer-l">
-          <div className="qmeta">
-            <Ic.Calendar />&nbsp;{formatDate(question.createdAt)}
-          </div>
-          <div className="qmeta">
-            <Ic.User />&nbsp;{question.author || "Giáo viên"}
-          </div>
+          {question.createdAt && (
+            <div className="qmeta">
+              <Ic.Calendar />
+              &nbsp;{formatDate(question.createdAt)}
+            </div>
+          )}
+          {question.author && (
+            <div className="qmeta">
+              <Ic.User />
+              &nbsp;{question.author}
+            </div>
+          )}
         </div>
         <div className="footer-r">
-          <button className="ab-btn" onClick={(e) => { e.stopPropagation(); }}>
-            <Ic.Copy /> Nhân bản
-          </button>
-          <button className="ab-btn" onClick={(e) => { e.stopPropagation(); onEdit(question); }}>
+          <button
+            className="ab-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(question);
+            }}
+          >
             <Ic.Edit /> Sửa
           </button>
-          <button className="ab-btn dng" onClick={(e) => { e.stopPropagation(); onDelete(question); }}>
+          <button
+            className="ab-btn dng"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(question);
+            }}
+          >
             <Ic.Trash /> Xóa
           </button>
         </div>
@@ -999,10 +1184,20 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
           </div>
         </div>
         <div className="modal-ftr">
-          <button className="btn btn-g" onClick={onClose} disabled={loading}>
+          <button
+            type="button"
+            className="btn btn-g"
+            onClick={onClose}
+            disabled={loading}
+          >
             Hủy
           </button>
-          <button className="btn btn-p" onClick={handleSave} disabled={loading}>
+          <button
+            type="button"
+            className="btn btn-p"
+            onClick={handleSave}
+            disabled={loading}
+          >
             {loading ? (
               <span className="spin">
                 <Ic.Loader />
@@ -1010,6 +1205,72 @@ function EditQuestionModal({ isOpen, onClose, question, bankId, onSuccess }) {
             ) : (
               <>
                 <Ic.Check /> Lưu thay đổi
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteQuestionConfirmModal({
+  isOpen,
+  question,
+  onClose,
+  onConfirm,
+  loading,
+}) {
+  if (!isOpen || !question) return null;
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) onClose();
+      }}
+    >
+      <div className="modal-content delete-modal">
+        <div className="delete-hero">
+          <div className="delete-ic">
+            <Ic.Trash />
+          </div>
+          <div>
+            <div className="delete-title">Xác nhận xóa câu hỏi</div>
+            <div className="delete-desc">
+              Câu hỏi này sẽ bị xóa khỏi ngân hàng và không thể khôi phục sau
+              khi xác nhận.
+            </div>
+          </div>
+        </div>
+
+        <div className="delete-meta">
+          <div className="delete-meta-label">Nội dung câu hỏi</div>
+          <div className="delete-meta-value">{question.content}</div>
+        </div>
+
+        <div className="modal-ftr">
+          <button
+            type="button"
+            className="btn btn-g"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="btn btn-p"
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="spin">
+                <Ic.Loader />
+              </span>
+            ) : (
+              <>
+                <Ic.Trash /> Xóa câu hỏi
               </>
             )}
           </button>
@@ -1039,6 +1300,11 @@ export default function ResourceBankDetailPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [deletingQuestion, setDeletingQuestion] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [questionStats, setQuestionStats] = useState(
+    createEmptyQuestionStats(),
+  );
   const [questionsPage, setQuestionsPage] = useState({
     content: [],
     pageNumber: 1,
@@ -1070,6 +1336,61 @@ export default function ResourceBankDetailPage() {
     };
     hydrateBankInfo();
   }, [bankData, safeBankId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(safeBankId) || safeBankId <= 0) {
+      setQuestionStats(createEmptyQuestionStats());
+      return;
+    }
+
+    let isActive = true;
+
+    const fetchQuestionStats = async () => {
+      try {
+        const firstResponse = await questionBankApi.getQuestions(safeBankId, {
+          page: 1,
+          size: SUMMARY_PAGE_SIZE,
+          sortBy: "createdAt",
+          sortDirection: "DESC",
+        });
+
+        const firstResult = firstResponse?.result ?? {};
+        const firstContent = Array.isArray(firstResult.content)
+          ? firstResult.content
+          : [];
+        const totalPages = Math.max(1, Number(firstResult.totalPages) || 1);
+        const allQuestions = [...firstContent];
+
+        for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
+          const pageResponse = await questionBankApi.getQuestions(safeBankId, {
+            page: currentPage,
+            size: SUMMARY_PAGE_SIZE,
+            sortBy: "createdAt",
+            sortDirection: "DESC",
+          });
+
+          const pageContent = Array.isArray(pageResponse?.result?.content)
+            ? pageResponse.result.content
+            : [];
+          allQuestions.push(...pageContent);
+        }
+
+        if (isActive) {
+          setQuestionStats(buildQuestionStats(allQuestions));
+        }
+      } catch (err) {
+        if (isActive) {
+          setQuestionStats(createEmptyQuestionStats());
+        }
+      }
+    };
+
+    fetchQuestionStats();
+
+    return () => {
+      isActive = false;
+    };
+  }, [safeBankId, refreshTrigger]);
 
   // Fetch Questions
   useEffect(() => {
@@ -1144,18 +1465,22 @@ export default function ResourceBankDetailPage() {
   }, [debouncedSearch, typeFilter, cogFilter, sort]);
 
   const handleDelete = async (question) => {
-    if (
-      window.confirm(
-        "Bạn có chắc chắn muốn xóa câu hỏi này khỏi ngân hàng không?",
-      )
-    ) {
-      try {
-        await questionBankApi.deleteQuestion(safeBankId, question.id);
-        toast.success("Đã xóa câu hỏi thành công");
-        setRefreshTrigger((prev) => prev + 1);
-      } catch (err) {
-        toast.error(err.response?.data?.message || "Lỗi khi xóa câu hỏi");
-      }
+    setDeletingQuestion(question);
+  };
+
+  const confirmDeleteQuestion = async () => {
+    if (!deletingQuestion) return;
+
+    try {
+      setDeleteLoading(true);
+      await questionBankApi.deleteQuestion(safeBankId, deletingQuestion.id);
+      toast.success("Xóa câu hỏi khỏi ngân hàng thành công.");
+      setDeletingQuestion(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Lỗi khi xóa câu hỏi");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -1184,10 +1509,12 @@ export default function ResourceBankDetailPage() {
 
   // Stats (Using real data where possible, fake for UI placeholders)
   const stats = {
-    total: questionsPage.totalElements,
-    usedIn: 3, // Mocked for now as requested by UI design
-    ratio: Math.round((3 / (questionsPage.totalElements || 1)) * 100),
-    updatedAt: bankData?.updatedAt ? formatDate(bankData.updatedAt) : "12/04/2025"
+    total: questionStats.total,
+    usedIn: questionStats.usedIn,
+    ratio: questionStats.ratio,
+    updatedAt: bankData?.updatedAt
+      ? formatDate(bankData.updatedAt)
+      : "12/04/2025",
   };
 
   return (
@@ -1212,9 +1539,6 @@ export default function ResourceBankDetailPage() {
             </div>
           </div>
           <div className="top-r">
-            <button className="btn-action btn-g">
-              <Ic.Download /> Xuất Excel
-            </button>
             <button
               className="btn-action btn-g"
               onClick={() =>
@@ -1227,7 +1551,7 @@ export default function ResourceBankDetailPage() {
               className="btn-action btn-p"
               onClick={() =>
                 navigate(
-                  `/assignments/create/manual?source=question-bank`,
+                  `/assignments/create/manual?source=question-bank&bankId=${safeBankId}`,
                 )
               }
             >
@@ -1262,7 +1586,7 @@ export default function ResourceBankDetailPage() {
                   <div className="fi-dot" style={{ background: "var(--p)" }} />
                   <span className="fi-name">Tất cả</span>
                 </div>
-                <span className="fi-cnt">{questionsPage.totalElements}</span>
+                <span className="fi-cnt">{questionStats.total}</span>
               </div>
               {QTYPES.map((t) => (
                 <div
@@ -1279,14 +1603,17 @@ export default function ResourceBankDetailPage() {
                             ? "#2563EB"
                             : t.v === "TRUE_FALSE"
                               ? "#10B981"
-                              : t.v === "FILL_IN_THE_BLANK" || t.v === "FILL_IN_BLANK"
+                              : t.v === "FILL_IN_THE_BLANK" ||
+                                  t.v === "FILL_IN_BLANK"
                                 ? "#F59E0B"
                                 : "#8B5CF6",
                       }}
                     />
                     <span className="fi-name">{t.l}</span>
                   </div>
-                  <span className="fi-cnt">{t.v === "MULTIPLE_CHOICE" ? 5 : 2}</span> {/* Mock counts for UI */}
+                  <span className="fi-cnt">
+                    {questionStats.typeCounts[t.v] ?? 0}
+                  </span>
                 </div>
               ))}
             </div>
@@ -1308,7 +1635,9 @@ export default function ResourceBankDetailPage() {
                     <div className="fi-dot" style={{ background: c.c }} />
                     <span className="fi-name">{c.l}</span>
                   </div>
-                  <span className="fi-cnt">2</span> {/* Mock counts */}
+                  <span className="fi-cnt">
+                    {questionStats.cogCounts[c.v] ?? 0}
+                  </span>
                 </div>
               ))}
             </div>
@@ -1495,6 +1824,15 @@ export default function ResourceBankDetailPage() {
         question={editingQuestion}
         bankId={safeBankId}
         onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
+      />
+      <DeleteQuestionConfirmModal
+        isOpen={!!deletingQuestion}
+        question={deletingQuestion}
+        onClose={() => {
+          if (!deleteLoading) setDeletingQuestion(null);
+        }}
+        onConfirm={confirmDeleteQuestion}
+        loading={deleteLoading}
       />
     </>
   );

@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
@@ -851,10 +851,11 @@ textarea.f-input{resize:vertical;min-height:70px}
 const ManualAssignmentCreatorPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { assignmentId: paramId } = useParams();
 
-  const assignmentId = searchParams.get("assignmentId")
-    ? Number(searchParams.get("assignmentId"))
-    : null;
+  const assignmentId = paramId 
+    ? Number(paramId) 
+    : (searchParams.get("assignmentId") ? Number(searchParams.get("assignmentId")) : null);
   const bankId = searchParams.get("bankId")
     ? Number(searchParams.get("bankId"))
     : null;
@@ -932,6 +933,7 @@ const ManualAssignmentCreatorPage = () => {
   const draggedSectionKeyRef = useRef(null);
   const initPromiseRef = useRef(null);
   const initScopeKeyRef = useRef("");
+  const previewAnchorRef = useRef(null);
   const isDraftHydratedRef = useRef(false);
 
   const [draggingQuestionId, setDraggingQuestionId] = useState(null);
@@ -1587,6 +1589,18 @@ const ManualAssignmentCreatorPage = () => {
     }
   };
 
+  const handlePreviewClick = () => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("bankId");
+    const query = next.toString();
+
+    navigate(
+      query
+        ? `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${query}`
+        : PATH_TEACHER.assignmentCreateManualQuestionsPreview,
+    );
+  };
+
   const addOpt = (qId) => {
     const q = qs.find((x) => x.id === qId);
     if (!q) return;
@@ -1744,7 +1758,9 @@ const ManualAssignmentCreatorPage = () => {
       prevQuestionSnapshotsRef.current = buildSnapshotMap(qs);
       prevOrderSignatureRef.current = buildOrderSignature(qs);
       setAutoSaveStatus("saved");
-      showToast("Đã lưu");
+      showToast(
+        isBankMode ? "Đã lưu bản nháp thành công" : "Đã lưu thành công",
+      );
       return true;
     } catch (error) {
       console.error("Batch save failed", error?.response?.data || error);
@@ -1766,6 +1782,11 @@ const ManualAssignmentCreatorPage = () => {
     }
 
     navigate(PATH_TEACHER.assignments);
+  };
+
+  const handleSaveOnly = async () => {
+    if (publishing) return;
+    await saveAllToDraftByBatch();
   };
 
   const collectSelectedQuestionIds = () => {
@@ -2227,10 +2248,13 @@ const ManualAssignmentCreatorPage = () => {
 
     if (!initPromiseRef.current) {
       initPromiseRef.current = (async () => {
-        const initResp = await assignmentApi.initManualDraftSession(
-          scope,
-          SESSION_TYPE.MANUAL_CREATION,
-        );
+        const initResp =
+          !isBankMode && Number.isFinite(scope.assignmentId)
+            ? await assignmentApi.initAssignmentWorkspace(scope.assignmentId)
+            : await assignmentApi.initManualDraftSession(
+                scope,
+                SESSION_TYPE.MANUAL_CREATION,
+              );
         const result = initResp?.result;
         const sid = result?.sessionId || result;
         const hasPending =
@@ -3171,14 +3195,26 @@ const ManualAssignmentCreatorPage = () => {
             </div>
           </div>
           <div className="top-r">
+            {!isBankMode && (
+              <button
+                type="button"
+                className="btn btn-g"
+                onClick={handlePreviewClick}
+                disabled={publishing || !qs.length}
+              >
+                <Ic.Eye /> Xem Preview
+              </button>
+            )}
             <button
+              type="button"
               className="btn btn-g"
-              onClick={handleSaveAndBackToAssignments}
+              onClick={handleSaveOnly}
               disabled={publishing}
             >
-              <Ic.Eye /> Lưu
+              <Ic.Save /> Lưu
             </button>
             <button
+              type="button"
               className="btn btn-p"
               onClick={handlePublish}
               disabled={publishing}
@@ -3238,6 +3274,8 @@ const ManualAssignmentCreatorPage = () => {
               </div>
             </div>
           )}
+
+          <div ref={previewAnchorRef} />
 
           {groupedQuestions.map((group) => (
             <div key={group.key} className="section-wrap">

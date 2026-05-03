@@ -114,6 +114,14 @@ const ManualAssignmentCreatorPage = Loadable(
     () => import("@/pages/assignment/create/manual-assignment-creator-page"),
   ),
 );
+const ManualAssignmentPreviewPage = Loadable(
+  lazy(
+    () => import("@/pages/assignment/create/manual-assignment-preview-page"),
+  ),
+);
+const EditQuestionsPage = Loadable(
+  lazy(() => import("@/pages/assignment/edit/assignment-edit-questions-page")),
+);
 const AssignToClassesPage = Loadable(
   lazy(() => import("@/pages/assignment/assign/assign-to-classes-page")),
 );
@@ -140,6 +148,9 @@ const ClassroomRecordingPage = Loadable(
 );
 const AttendanceListPage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-list-page")),
+);
+const GradebookPage = Loadable(
+  lazy(() => import("@/pages/classroom/gradebook/gradebook-page")),
 );
 const AttendancePage = Loadable(
   lazy(() => import("@/pages/classroom/attendance/attendance-page")),
@@ -365,12 +376,28 @@ const AppRoutes = () =>
           element: <CreateAssignmentAiPage />,
         },
         {
+          path: PATH_TEACHER.assignmentEdit(":assignmentId"),
+          element: <ManualAssignmentSetupPage mode="manual" />,
+        },
+        {
+          path: PATH_TEACHER.assignmentEditQuestions(":id"),
+          element: <EditQuestionsPage />,
+        },
+        {
           path: PATH_TEACHER.assignmentCreateManual,
           element: <ManualAssignmentSetupPage mode="manual" />,
         },
         {
+          path: PATH_TEACHER.assignmentEditor(":assignmentId"),
+          element: <ManualAssignmentCreatorPage />,
+        },
+        {
           path: PATH_TEACHER.assignmentCreateManualQuestions,
           element: <ManualAssignmentCreatorPage />,
+        },
+        {
+          path: PATH_TEACHER.assignmentCreateManualQuestionsPreview,
+          element: <ManualAssignmentPreviewPage />,
         },
         {
           path: PATH_TEACHER.assignmentAssignClasses(":assignmentId"),
@@ -570,6 +597,16 @@ const AppRoutes = () =>
         <AuthGuard>
           <RoleBasedGuard role="ROLE_TEACHER">
             <ClassroomAnalyticsPage />
+          </RoleBasedGuard>
+        </AuthGuard>
+      ),
+    },
+    {
+      path: "classrooms/:id/gradebook",
+      element: (
+        <AuthGuard>
+          <RoleBasedGuard role="ROLE_TEACHER">
+            <GradebookPage />
           </RoleBasedGuard>
         </AuthGuard>
       ),

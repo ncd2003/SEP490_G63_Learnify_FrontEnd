@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
@@ -97,7 +98,7 @@ const CSS = `
 .intro-desc{font-size:14px;color:var(--t2);line-height:1.6}
 .layout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:20px;margin-bottom:18px;align-items:start}
 .layout-grid > *{height:100%;min-width:0}
-.step-card{background:var(--card);border:1.5px solid var(--b);border-radius:16px;padding:22px;box-shadow:0 1px 3px rgba(26,35,50,.06);height:100%}
+.step-card{background:var(--card);border:1.5px solid var(--b);border-radius:16px;padding:22px;box-shadow:0 1px 3px rgba(26,35,50,.06);height:100%;display:flex;flex-direction:column}
 .step-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .step-number{width:30px;height:30px;border-radius:50%;background:var(--pl);color:var(--p);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .step-label{font-size:15px;font-weight:700;color:var(--t)}
@@ -244,9 +245,10 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
   const isQuestionBankMode = sourceMode === "question-bank";
   const bankIdFromQuery = toPositiveId(searchParams.get("bankId"));
 
-  const existingAssignmentId = searchParams.get("assignmentId")
-    ? Number(searchParams.get("assignmentId"))
-    : null;
+  const { assignmentId: paramAssignmentId } = useParams();
+  const existingAssignmentId = paramAssignmentId 
+    ? Number(paramAssignmentId)
+    : (searchParams.get("assignmentId") ? Number(searchParams.get("assignmentId")) : null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -264,18 +266,25 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
     resultReleaseTime: "",
     shuffleQuestions: false,
     limitTabs: "",
+    maxAttemptsType: "UNLIMITED",
+    maxAttempts: 1,
     requireFullScreen: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [isPasswordPeekVisible, setIsPasswordPeekVisible] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
-  const pageTitle = isQuestionBankMode
-    ? "Tạo bài tập từ ngân hàng câu hỏi"
-    : isAiMode
-      ? "Tạo bài tập với AI"
-      : "Tạo bài tập thủ công";
+  const isEditMode = !!existingAssignmentId;
+
+  const pageTitle = isEditMode
+    ? "Chỉnh sửa bài tập"
+    : isQuestionBankMode
+      ? "Tạo bài tập từ ngân hàng câu hỏi"
+      : isAiMode
+        ? "Tạo bài tập với AI"
+        : "Tạo bài tập thủ công";
   const crumbTitle = isQuestionBankMode
     ? "Tạo từ ngân hàng câu hỏi"
     : isAiMode
@@ -320,6 +329,10 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
   };
 
   const handleBack = () => {
+    if (isEditMode) {
+      navigate(PATH_TEACHER.assignmentDetail(existingAssignmentId));
+      return;
+    }
     const preserved = searchParams.toString();
     navigate(
       preserved
@@ -360,8 +373,11 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
             loadedSetting?.limitTabs === undefined
               ? ""
               : String(loadedSetting.limitTabs),
+          maxAttemptsType: loadedSetting?.maxAttempts ? "LIMITED" : "UNLIMITED",
+          maxAttempts: loadedSetting?.maxAttempts || 1,
           requireFullScreen: Boolean(loadedSetting?.requireFullScreen),
         });
+        setIsLocked(Boolean(data?.locked));
       } catch (error) {
         console.error("Load assignment failed", error);
       } finally {
@@ -454,7 +470,6 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
       }
 
       if (category === "TEST") {
-        settingPayload.requireFullScreen = Boolean(setting.requireFullScreen);
         if (
           setting.limitTabs !== "" &&
           Number.isFinite(parsedLimitTabs) &&
@@ -462,12 +477,26 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
         ) {
           settingPayload.limitTabs = parsedLimitTabs;
         }
+      } else if (category === "HOMEWORK") {
+        if (setting.maxAttemptsType === "LIMITED") {
+          const parsedAttempts = Number(setting.maxAttempts);
+          if (Number.isFinite(parsedAttempts) && parsedAttempts > 0) {
+            settingPayload.maxAttempts = parsedAttempts;
+          } else {
+            throw new Error("Số lần làm bài tối đa phải lớn hơn 0.");
+          }
+        } else {
+          settingPayload.maxAttempts = null;
+        }
       }
 
       const basePayload = {
         title: safeTitle,
         description: safeDescription || null,
-        setting: settingPayload,
+        setting: {
+          ...settingPayload,
+          requireFullScreen: Boolean(setting.requireFullScreen),
+        },
       };
 
       let assignmentId =
@@ -478,7 +507,8 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
       let sectionsForAiPage = [];
 
       if (assignmentId) {
-        await assignmentApi.updateAssignment(assignmentId, basePayload);
+        const resp = await assignmentApi.updateAssignment(assignmentId, basePayload);
+        toast.success(resp?.message || "Cập nhật bài tập thành công.");
       } else {
         const createPayload = {
           ...basePayload,
@@ -500,6 +530,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
           resp?.result?.sections,
           format,
         );
+        toast.success(resp?.message || "Khởi tạo bài tập thành công.");
       }
 
       if (isAiMode && format !== "MIXED") {
@@ -541,6 +572,11 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
         }
       }
 
+      if (isEditMode) {
+        navigate(PATH_TEACHER.assignmentDetail(assignmentId));
+        return;
+      }
+
       const nextPath = isQuestionBankMode
         ? PATH_TEACHER.assignmentQuestionBankPicker
         : isAiMode
@@ -578,9 +614,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
         error,
       );
       const apiMessage = error?.response?.data?.message;
-      setErrorText(
-        apiMessage || "Không thể khởi tạo bài tập. Vui lòng thử lại.",
-      );
+      const finalMsg = apiMessage || "Không thể khởi tạo bài tập. Vui lòng thử lại.";
+      setErrorText(finalMsg);
+      toast.error(finalMsg);
     } finally {
       setSubmitting(false);
     }
@@ -603,7 +639,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
           className="btn primary"
           disabled={submitting || isLoadingAssignment}
         >
-          <Icons.Check /> {submitting ? "Đang khởi tạo..." : "Tiếp tục"}
+          <Icons.Check /> {submitting ? (isEditMode ? "Đang lưu..." : "Đang cập nhật...") : (isEditMode ? "Lưu thay đổi" : "Tiếp tục")}
         </button>
       </div>
 
@@ -616,9 +652,15 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
           </div>
           <div>
             <h1 className="intro-title">
-              Cấu hình bài tập trước khi soạn câu hỏi
+              {isEditMode 
+                ? "Chỉnh sửa cấu hình bài tập"
+                : "Cấu hình bài tập trước khi soạn câu hỏi"}
             </h1>
-            <p className="intro-desc">{introDescription}</p>
+            <p className="intro-desc">
+              {isEditMode
+                ? "Thay đổi các thông tin cơ bản, thiết lập bảo mật và thời gian làm bài của bài tập hiện tại."
+                : introDescription}
+            </p>
           </div>
         </div>
 
@@ -647,10 +689,11 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                 />
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group" style={{ marginBottom: 14, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 <label className="label">Mô tả</label>
                 <textarea
                   className="textarea"
+                  style={{ flexGrow: 1 }}
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="Mô tả ngắn về mục tiêu, phạm vi bài tập..."
@@ -668,7 +711,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                       key={opt.value}
                       type="button"
                       className={`pill${category === opt.value ? " active" : ""}`}
-                      onClick={() => setCategory(opt.value)}
+                      onClick={() => !isEditMode && setCategory(opt.value)}
+                      disabled={isEditMode}
+                      style={isEditMode ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                     >
                       {opt.label}
                     </button>
@@ -686,7 +731,9 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                       key={opt.value}
                       type="button"
                       className={`pill${format === opt.value ? " active" : ""}`}
-                      onClick={() => setFormat(opt.value)}
+                      onClick={() => !isEditMode && setFormat(opt.value)}
+                      disabled={isEditMode}
+                      style={isEditMode ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                     >
                       {opt.label}
                     </button>
@@ -712,19 +759,21 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
               <div className="setting-grid">
                 <div className="form-group">
-                  <label className="label">Mật khẩu (password)</label>
+                  <label className="label">Mật khẩu</label>
                   <div className="password-wrap">
                     <input
                       className="input password-input"
                       type={isPasswordPeekVisible ? "text" : "password"}
                       value={setting.password}
+                      disabled={isLocked}
                       onChange={(event) =>
                         setSetting((prev) => ({
                           ...prev,
                           password: event.target.value,
                         }))
                       }
-                      placeholder="Để trống nếu không dùng"
+                      placeholder={isLocked ? "Không thể đổi mật khẩu khi đã có bài nộp" : "Để trống nếu không dùng"}
+                      style={isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                     />
                     <button
                       type="button"
@@ -746,24 +795,26 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="form-group">
                   <label className="label">
-                    Thời gian làm bài (durationMinutes)
+                    Thời gian làm bài
                   </label>
                   <input
                     className="input"
                     type="number"
                     min="1"
                     value={setting.durationMinutes}
+                    disabled={isLocked}
                     onChange={(event) =>
                       setSetting((prev) => ({
                         ...prev,
                         durationMinutes: event.target.value,
                       }))
                     }
+                    style={isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="label">Bắt đầu (startTime)</label>
+                  <label className="label">Bắt đầu</label>
                   <input
                     className="input"
                     type="datetime-local"
@@ -778,7 +829,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                 </div>
 
                 <div className="form-group">
-                  <label className="label">Hạn nộp (deadline)</label>
+                  <label className="label">Hạn nộp</label>
                   <input
                     className="input"
                     type="datetime-local"
@@ -794,7 +845,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="form-group">
                   <label className="label">
-                    Hiển thị kết quả (resultVisibility)
+                    Hiển thị kết quả
                   </label>
                   <select
                     className="select"
@@ -816,7 +867,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="form-group">
                   <label className="label">
-                    Thời điểm release điểm (resultReleaseTime)
+                    Thời điểm công bố điểm
                   </label>
                   <select
                     className="select"
@@ -838,7 +889,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
 
                 <div className="setting-toggle-item">
                   <label className="label">
-                    Cho phép nộp muộn (allowLateSubmission)
+                    Cho phép nộp muộn
                   </label>
                   <div className="pill-group">
                     <button
@@ -868,32 +919,36 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
                   </div>
                 </div>
 
-                <div className="setting-toggle-item">
+                <div className="setting-toggle-item" style={isLocked ? { opacity: 0.6 } : {}}>
                   <label className="label">
-                    Trộn câu hỏi (shuffleQuestions)
+                    Trộn câu hỏi
                   </label>
                   <div className="pill-group">
                     <button
                       type="button"
                       className={`pill${setting.shuffleQuestions ? " active" : ""}`}
+                      disabled={isLocked}
                       onClick={() =>
-                        setSetting((prev) => ({
+                        !isLocked && setSetting((prev) => ({
                           ...prev,
                           shuffleQuestions: true,
                         }))
                       }
+                      style={isLocked ? { cursor: 'not-allowed' } : {}}
                     >
                       Bật
                     </button>
                     <button
                       type="button"
                       className={`pill${!setting.shuffleQuestions ? " active" : ""}`}
+                      disabled={isLocked}
                       onClick={() =>
-                        setSetting((prev) => ({
+                        !isLocked && setSetting((prev) => ({
                           ...prev,
                           shuffleQuestions: false,
                         }))
                       }
+                      style={isLocked ? { cursor: 'not-allowed' } : {}}
                     >
                       Tắt
                     </button>
@@ -902,59 +957,109 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
               </div>
 
               {category === "TEST" ? (
-                <div className="setting-checks">
-                  <div className="setting-toggle-item">
+                <>
+                  <div className="setting-toggle-item" style={isLocked ? { opacity: 0.6 } : {}}>
                     <label className="label">
-                      Giới hạn chuyển tab (limitTabs)
-                    </label>
-                    <input
-                      className="input"
-                      type="number"
-                      min="0"
-                      value={setting.limitTabs}
-                      onChange={(event) =>
-                        setSetting((prev) => ({
-                          ...prev,
-                          limitTabs: event.target.value,
-                        }))
-                      }
-                      placeholder="Để trống nếu không giới hạn"
-                    />
-                  </div>
-
-                  <div className="setting-toggle-item">
-                    <label className="label">
-                      Yêu cầu toàn màn hình (requireFullScreen)
+                      Yêu cầu toàn màn hình
                     </label>
                     <div className="pill-group">
                       <button
                         type="button"
                         className={`pill${setting.requireFullScreen ? " active" : ""}`}
+                        disabled={isLocked}
                         onClick={() =>
-                          setSetting((prev) => ({
+                          !isLocked && setSetting((prev) => ({
                             ...prev,
                             requireFullScreen: true,
                           }))
                         }
+                        style={isLocked ? { cursor: 'not-allowed' } : {}}
                       >
                         Bật
                       </button>
                       <button
                         type="button"
                         className={`pill${!setting.requireFullScreen ? " active" : ""}`}
+                        disabled={isLocked}
                         onClick={() =>
-                          setSetting((prev) => ({
+                          !isLocked && setSetting((prev) => ({
                             ...prev,
                             requireFullScreen: false,
                           }))
                         }
+                        style={isLocked ? { cursor: 'not-allowed' } : {}}
                       >
                         Tắt
                       </button>
                     </div>
                   </div>
+
+                  <div className="setting-toggle-item" style={isLocked ? { opacity: 0.6 } : {}}>
+                    <label className="label">
+                      Giới hạn chuyển tab
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      value={setting.limitTabs}
+                      disabled={isLocked}
+                      onChange={(event) =>
+                        setSetting((prev) => ({
+                          ...prev,
+                          limitTabs: event.target.value,
+                        }))
+                      }
+                      placeholder={isLocked ? "Đã khóa giới hạn chuyển tab" : "Để trống nếu không giới hạn"}
+                      style={isLocked ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="setting-checks">
+                  <div className="setting-toggle-item full" style={isLocked ? { opacity: 0.6 } : {}}>
+                    <label className="label">
+                      Số lần làm bài tối đa
+                    </label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <div className="pill-group" style={{ flex: 1 }}>
+                        <button
+                          type="button"
+                          className={`pill${setting.maxAttemptsType === "UNLIMITED" ? " active" : ""}`}
+                          disabled={isLocked}
+                          onClick={() => !isLocked && setSetting(p => ({ ...p, maxAttemptsType: "UNLIMITED" }))}
+                          style={isLocked ? { cursor: 'not-allowed' } : {}}
+                        >
+                          Vô hạn
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill${setting.maxAttemptsType === "LIMITED" ? " active" : ""}`}
+                          disabled={isLocked}
+                          onClick={() => !isLocked && setSetting(p => ({ ...p, maxAttemptsType: "LIMITED" }))}
+                          style={isLocked ? { cursor: 'not-allowed' } : {}}
+                        >
+                          Giới hạn
+                        </button>
+                      </div>
+                      {setting.maxAttemptsType === "LIMITED" && (
+                        <div style={{ position: 'relative', width: 90 }}>
+                          <input
+                            className="input"
+                            type="number"
+                            min="1"
+                            value={setting.maxAttempts}
+                            disabled={isLocked}
+                            onChange={(e) => !isLocked && setSetting(p => ({ ...p, maxAttempts: e.target.value }))}
+                            style={{ paddingRight: 32, textAlign: 'center', height: '100%', opacity: isLocked ? 0.6 : 1, cursor: isLocked ? 'not-allowed' : 'text' }}
+                          />
+                          <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--t2)', fontWeight: 600 }}>lần</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
 
@@ -973,7 +1078,7 @@ const ManualAssignmentSetupPage = ({ mode = "manual" }) => {
               className="btn primary"
               disabled={submitting || isLoadingAssignment}
             >
-              <Icons.Check /> {continueButtonLabel}
+              <Icons.Check /> {submitting ? (isEditMode ? "Đang lưu..." : "Đang cập nhật...") : (isEditMode ? "Lưu thay đổi" : "Tiếp tục")}
             </button>
           </div>
           <div

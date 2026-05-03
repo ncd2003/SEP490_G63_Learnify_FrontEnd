@@ -530,14 +530,30 @@ const normalizeEditorType = (type) => {
   return "MULTIPLE_CHOICE";
 };
 
-const normalizeDifficulty = (value) => {
+const normalizeCognitiveLevel = (value) => {
   const upper = String(value || "")
     .trim()
     .toUpperCase();
-  if (upper === "EASY" || upper === "MEDIUM" || upper === "HARD") {
+
+  const validLevels = [
+    "REMEMBERING",
+    "UNDERSTANDING",
+    "APPLYING",
+    "ANALYZING",
+    "EVALUATING",
+    "CREATING",
+  ];
+
+  if (validLevels.includes(upper)) {
     return upper;
   }
-  return "MEDIUM";
+
+  // Map legacy/simple difficulty levels to CognitiveLevel
+  if (upper === "EASY") return "REMEMBERING";
+  if (upper === "MEDIUM") return "UNDERSTANDING";
+  if (upper === "HARD") return "APPLYING";
+
+  return "REMEMBERING";
 };
 
 const mapPreviewItemToEditorQuestion = (item, index) => {
@@ -546,6 +562,12 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
   const rawOptions = Array.isArray(questionData?.options)
     ? questionData.options
     : [];
+
+  const errors = Array.isArray(item?.errors) ? item.errors : [];
+  let status = String(item?.status || "").toUpperCase();
+  if (!status || status === "UNDEFINED") {
+    status = errors.length > 0 ? "INVALID" : "VALID";
+  }
 
   if (type === "TRUE_FALSE") {
     const trueOption = rawOptions.find(
@@ -558,13 +580,13 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
     return {
       id: Number(item?.id || item?.rowNumber || index + 1),
       rowNumber: Number(item?.rowNumber || index + 1),
-      status: String(item?.status || "VALID").toUpperCase(),
-      errors: Array.isArray(item?.errors) ? item.errors : [],
+      status,
+      errors,
       type,
       prompt: String(questionData?.content || ""),
       cor: Boolean(trueOption?.isCorrect ?? trueOption?.correct),
       points: Number(questionData?.defaultPoints ?? 1) || 1,
-      difficulty: normalizeDifficulty(questionData?.difficulty),
+      difficulty: normalizeCognitiveLevel(questionData?.difficulty || questionData?.cognitiveLevel),
     };
   }
 
@@ -573,13 +595,13 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
     return {
       id: Number(item?.id || item?.rowNumber || index + 1),
       rowNumber: Number(item?.rowNumber || index + 1),
-      status: String(item?.status || "VALID").toUpperCase(),
-      errors: Array.isArray(item?.errors) ? item.errors : [],
+      status,
+      errors,
       type,
       prompt: String(questionData?.content || ""),
       ans: String(rawOptions?.[0]?.content || ""),
       points: Number(questionData?.defaultPoints ?? 1) || 1,
-      difficulty: normalizeDifficulty(questionData?.difficulty),
+      difficulty: normalizeCognitiveLevel(questionData?.difficulty || questionData?.cognitiveLevel),
     };
   }
 
@@ -587,13 +609,13 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
     return {
       id: Number(item?.id || item?.rowNumber || index + 1),
       rowNumber: Number(item?.rowNumber || index + 1),
-      status: String(item?.status || "VALID").toUpperCase(),
-      errors: Array.isArray(item?.errors) ? item.errors : [],
+      status,
+      errors,
       type,
       prompt: String(questionData?.content || ""),
       ans: String(questionData?.sampleAnswer || ""),
       points: Number(questionData?.defaultPoints ?? 1) || 1,
-      difficulty: normalizeDifficulty(questionData?.difficulty),
+      difficulty: normalizeCognitiveLevel(questionData?.difficulty || questionData?.cognitiveLevel),
     };
   }
 
@@ -607,14 +629,14 @@ const mapPreviewItemToEditorQuestion = (item, index) => {
   return {
     id: Number(item?.id || item?.rowNumber || index + 1),
     rowNumber: Number(item?.rowNumber || index + 1),
-    status: String(item?.status || "VALID").toUpperCase(),
-    errors: Array.isArray(item?.errors) ? item.errors : [],
+    status,
+    errors,
     type,
     prompt: String(questionData?.content || ""),
     opts: opts.length > 0 ? opts : ["", "", "", ""],
     cor: correctIndex >= 0 ? correctIndex : 0,
     points: Number(questionData?.defaultPoints ?? 1) || 1,
-    difficulty: normalizeDifficulty(questionData?.difficulty),
+    difficulty: normalizeCognitiveLevel(questionData?.difficulty || questionData?.cognitiveLevel),
   };
 };
 
@@ -650,6 +672,35 @@ const validateEditorQuestion = (question) => {
   return true;
 };
 
+const mapEditorQuestionToDraftPayload = (q) => {
+  const type = normalizeEditorType(q.type);
+  const payload = {
+    itemId: q.id,
+    content: q.prompt,
+    questionType: type,
+    cognitiveLevel: normalizeCognitiveLevel(q.difficulty),
+    defaultPoints: q.points || 1,
+  };
+
+  if (type === "MULTIPLE_CHOICE") {
+    payload.options = (q.opts || []).map((o, index) => ({
+      content: o,
+      correct: index === q.cor,
+    }));
+  } else if (type === "TRUE_FALSE") {
+    payload.options = [
+      { content: "Đúng", correct: q.cor === true },
+      { content: "Sai", correct: q.cor === false },
+    ];
+  } else if (type === "FILL_IN_BLANK") {
+    payload.options = [{ content: q.ans, correct: true }];
+  } else if (type === "ESSAY") {
+    payload.sampleAnswer = q.ans;
+  }
+
+  return payload;
+};
+
 const ImportAssignmentFilePage = ({
   initialPreviewItems = [],
   isInitializingDraft = false,
@@ -676,6 +727,29 @@ const ImportAssignmentFilePage = ({
   const [isDeletingInvalid, setIsDeletingInvalid] = useState(false);
   const fRef = useRef(null);
   const hasAppliedInitialDraftRef = useRef(false);
+  const autoSaveTimerRef = useRef(null);
+
+  const performAutoSave = async (question) => {
+    if (!currentSessionId || !isBankMode) return;
+
+    try {
+      const payload = mapEditorQuestionToDraftPayload(question);
+      await questionBankApi.updateDraftItem(currentSessionId, payload, {
+        bankId: resolvedBankId,
+      });
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+    }
+  };
+
+  const triggerAutoSave = (updatedQuestion) => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      performAutoSave(updatedQuestion);
+    }, 1000);
+  };
 
   const fileName = file?.name || "";
   const fileSizeLabel =
@@ -769,7 +843,17 @@ const ImportAssignmentFilePage = ({
             draftResult?.aiExcelData?.questions ||
             draftResult?.questions;
           if (Array.isArray(draftItems) && draftItems.length > 0) {
-            previewItems = draftItems;
+            // Merge status and errors from import response if draft response is missing them
+            previewItems = draftItems.map((dItem) => {
+              const matchedImportItem = previewItems.find(
+                (p) => p.rowNumber === dItem.rowNumber,
+              );
+              return {
+                ...dItem,
+                status: dItem.status || matchedImportItem?.status,
+                errors: dItem.errors || matchedImportItem?.errors,
+              };
+            });
           }
         } catch {
           // Fall back to import response items — IDs will be rowNumbers
@@ -786,7 +870,7 @@ const ImportAssignmentFilePage = ({
       setPg(1);
       showToast(
         response?.message ||
-          `Đã xử lý ${previewItems.length} câu từ file Excel.`,
+        `Đã xử lý ${previewItems.length} câu từ file Excel.`,
       );
     } catch (error) {
       const apiMessage =
@@ -853,6 +937,24 @@ const ImportAssignmentFilePage = ({
     }
   };
 
+  const handleBatchAutoSave = async () => {
+    if (!currentSessionId || !isBankMode) return;
+
+    try {
+      setIsSaving(true);
+      const items = qs.map((q) => mapEditorQuestionToDraftPayload(q));
+      await questionBankApi.batchAutoSaveDraftItems(currentSessionId, items, {
+        bankId: resolvedBankId,
+      });
+      showToast("Đã lưu toàn bộ bản nháp thành công.");
+    } catch (error) {
+      const msg = error?.response?.data?.message || "Không thể lưu bản nháp.";
+      showToast(msg);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleBack = () => {
     if (isBankMode) {
       navigate(PATH_TEACHER.questionBankMethod(resolvedBankId));
@@ -883,11 +985,20 @@ const ImportAssignmentFilePage = ({
     setEditData(null);
   };
   const saveEdit = () => {
-    setQs((prev) => prev.map((q) => (q.id === editId ? { ...editData } : q)));
+    const updated = { ...editData };
+    setQs((prev) => prev.map((q) => (q.id === editId ? updated : q)));
+    performAutoSave(updated);
     cancelEdit();
     showToast("Đã lưu chỉnh sửa!");
   };
-  const deleteQ = (id) => {
+  const deleteQ = async (id) => {
+    if (isBankMode && currentSessionId) {
+      try {
+        await questionBankApi.deleteDraftItem(currentSessionId, id);
+      } catch (error) {
+        console.error("Delete draft item failed:", error);
+      }
+    }
     setQs((prev) => prev.filter((q) => q.id !== id));
     if (editId === id) cancelEdit();
   };
@@ -954,9 +1065,10 @@ const ImportAssignmentFilePage = ({
                 <button
                   type="button"
                   className="btn btn-g"
-                  onClick={resetImportState}
+                  disabled={isSaving}
+                  onClick={handleBatchAutoSave}
                 >
-                  <I.Refresh /> Import lại
+                  <I.Save /> {isSaving ? "Đang lưu..." : "Lưu tất cả"}
                 </button>
                 <button
                   type="button"
@@ -964,7 +1076,7 @@ const ImportAssignmentFilePage = ({
                   disabled={isSaving}
                   onClick={handleSaveToBank}
                 >
-                  <I.Save /> {isSaving ? "Đang lưu..." : "Lưu ngân hàng"}
+                  <I.Check /> {isSaving ? "Đang lưu..." : "Lưu vào ngân hàng"}
                 </button>
               </>
             )}
@@ -996,13 +1108,6 @@ const ImportAssignmentFilePage = ({
                 >
                   <I.Download /> .XLSX
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-g"
-                  style={{ fontSize: 10, padding: "6px 12px" }}
-                >
-                  <I.Download /> .DOCX
-                </button>
               </div>
             </div>
 
@@ -1012,7 +1117,7 @@ const ImportAssignmentFilePage = ({
               accept={
                 isBankMode
                   ? ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                  : ".xlsx,.xls,.doc,.docx,.csv"
+                  : ".xlsx,.xls"
               }
               style={{ display: "none" }}
               onChange={(e) => {
@@ -1052,8 +1157,6 @@ const ImportAssignmentFilePage = ({
                   <div className="uz-fmts">
                     <span className="uz-fmt">XLSX</span>
                     <span className="uz-fmt">XLS</span>
-                    {!isBankMode && <span className="uz-fmt">DOCX</span>}
-                    {!isBankMode && <span className="uz-fmt">CSV</span>}
                   </div>
                 </>
               )}
@@ -1281,9 +1384,9 @@ const ImportAssignmentFilePage = ({
                           <div className="inv-banner">
                             <div className="inv-icon">
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                                <circle cx="12" cy="12" r="10"/>
-                                <line x1="12" y1="8" x2="12" y2="12"/>
-                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
                               </svg>
                             </div>
                             <div className="inv-info">
@@ -1291,8 +1394,8 @@ const ImportAssignmentFilePage = ({
                               <div className="inv-errs">
                                 {errors.length > 0
                                   ? errors.map((err, ei) => (
-                                      <div key={ei} className="inv-err">• {err}</div>
-                                    ))
+                                    <div key={ei} className="inv-err">• {err}</div>
+                                  ))
                                   : <div className="inv-err">• Câu hỏi không hợp lệ</div>
                                 }
                               </div>
@@ -1304,9 +1407,11 @@ const ImportAssignmentFilePage = ({
                           <textarea
                             className="ed-pr"
                             value={d.prompt}
-                            onChange={(e) =>
-                              setEditData({ ...d, prompt: e.target.value })
-                            }
+                            onChange={(e) => {
+                              const next = { ...d, prompt: e.target.value };
+                              setEditData(next);
+                              triggerAutoSave(next);
+                            }}
                           />
                         ) : (
                           <div className="qc-pr">{d.prompt}</div>
@@ -1323,7 +1428,11 @@ const ImportAssignmentFilePage = ({
                             <div key={oi} className="ed-or">
                               <div
                                 className={`ed-radio${d.cor === oi ? " on" : ""}`}
-                                onClick={() => setEditData({ ...d, cor: oi })}
+                                onClick={() => {
+                                  const next = { ...d, cor: oi };
+                                  setEditData(next);
+                                  triggerAutoSave(next);
+                                }}
                               >
                                 {d.cor === oi && <I.Check />}
                               </div>
@@ -1350,7 +1459,9 @@ const ImportAssignmentFilePage = ({
                                 onChange={(e) => {
                                   const nw = [...d.opts];
                                   nw[oi] = e.target.value;
-                                  setEditData({ ...d, opts: nw });
+                                  const next = { ...d, opts: nw };
+                                  setEditData(next);
+                                  triggerAutoSave(next);
                                 }}
                               />
                             </div>
@@ -1377,13 +1488,21 @@ const ImportAssignmentFilePage = ({
                           <div className="ed-tf">
                             <div
                               className={`ed-tfb${d.cor === true ? " on" : ""}`}
-                              onClick={() => setEditData({ ...d, cor: true })}
+                              onClick={() => {
+                                const next = { ...d, cor: true };
+                                setEditData(next);
+                                triggerAutoSave(next);
+                              }}
                             >
                               Đúng
                             </div>
                             <div
                               className={`ed-tfb${d.cor === false ? " on" : ""}`}
-                              onClick={() => setEditData({ ...d, cor: false })}
+                              onClick={() => {
+                                const next = { ...d, cor: false };
+                                setEditData(next);
+                                triggerAutoSave(next);
+                              }}
                             >
                               Sai
                             </div>
@@ -1403,9 +1522,11 @@ const ImportAssignmentFilePage = ({
                           <input
                             className="ed-ans"
                             value={d.ans || ""}
-                            onChange={(e) =>
-                              setEditData({ ...d, ans: e.target.value })
-                            }
+                            onChange={(e) => {
+                              const next = { ...d, ans: e.target.value };
+                              setEditData(next);
+                              triggerAutoSave(next);
+                            }}
                           />
                         </>
                       ) : (
