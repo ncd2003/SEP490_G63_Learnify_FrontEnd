@@ -247,6 +247,7 @@ const normalizeResult = (data) => {
     partial,
     total,
     questions: normalizedQs,
+    visibility: String(data.visibility || "FULL_DETAILS").toUpperCase(),
   };
 };
 
@@ -630,8 +631,13 @@ const QuestionReviewCard = ({ q, index, isOpen, onToggle }) => {
                 <div className="opt-letter">{LETTERS[oi]}</div>
                 <span style={{ flex: 1 }}>{o.text || "(trong)"}</span>
                 <div className="opt-tags">
-                  {isCorrect ? (
-                    <span className="opt-tag tag-correct-ans">Đúng</span>
+                  {isCorrect && (!isMine || q.status === "correct") ? (
+                    <span className="opt-tag tag-correct-ans">Đáp án đúng</span>
+                  ) : null}
+                  {isMine && q.status !== "correct" ? (
+                    <span className="opt-tag tag-wrong-ans">Lựa chọn của bạn</span>
+                  ) : isMine && q.status === "correct" ? (
+                    <span className="opt-tag tag-correct-ans">Bạn chọn đúng</span>
                   ) : null}
                 </div>
               </div>
@@ -811,9 +817,18 @@ const StudentAssignmentResultPage = () => {
       })
       .catch((err) => {
         if (!alive) return;
-        setError(
-          err?.response?.data?.message || "Không thể tải kết quả bài thi.",
-        );
+        const code = err?.response?.data?.code;
+        const msg = err?.response?.data?.message;
+
+        if (code === "RESULT_NOT_RELEASED_YET") {
+          setError(
+            "Kết quả chưa được công bố. Vui lòng chờ sau khi hết hạn nộp bài.",
+          );
+        } else if (code === "RESULT_NOT_VISIBLE") {
+          setError("Bài tập này không cho phép xem lại kết quả.");
+        } else {
+          setError(msg || "Không thể tải kết quả bài thi.");
+        }
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -1113,67 +1128,83 @@ const StudentAssignmentResultPage = () => {
             </div>
           ) : null}
 
-          <div className="inner-tabs-wrap">
-            <div className="inner-tabs">
-              {[
-                ["all", `Tất cả (${result.questions.length})`],
-                ["wrong", `Sai / Thiếu (${wrongCount})`],
-                ["correct", `Đúng (${correctCount})`],
-                [
-                  "essay",
-                  `Tự luận (${result.questions.filter((q) => q.type === "essay").length})`,
-                ],
-              ].map(([key, label]) => (
-                <button
-                  key={key}
-                  className={`itab${activeTab === key ? " active" : ""}`}
-                  onClick={() => setActiveTab(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="filter-row">
-              {[
-                ["all", "Tất cả", ""],
-                ["correct", `${correctCount} Đúng`, "green-chip"],
-                ["wrong", `${wrongCount} Sai`, "red-chip"],
-              ].map(([key, label, chipCls]) => (
-                <button
-                  key={key}
-                  className={`fchip${activeFilter === key ? ` active ${chipCls}` : ""}`}
-                  onClick={() => setActiveFilter(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="qr-list">
-            {filtered.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "32px 0",
-                  color: "var(--text3)",
-                  fontSize: 13,
-                }}
-              >
-                Không có câu hỏi nào trong bộ lọc này.
+          {result.visibility === "SCORE_ONLY" ? (
+            <div className="section-card" style={{ textAlign: "center", padding: "40px 24px" }}>
+              <div className="state-icon" style={{ marginBottom: 12 }}>
+                <Ic.File width={24} height={24} />
               </div>
-            ) : (
-              filtered.map((q, idx) => (
-                <QuestionReviewCard
-                  key={q.id}
-                  q={q}
-                  index={idx}
-                  isOpen={expanded.has(q.id)}
-                  onToggle={() => toggleExpand(q.id)}
-                />
-              ))
-            )}
-          </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text2)" }}>
+                Bài tập này chỉ cho phép xem điểm số.
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>
+                Chi tiết câu hỏi và đáp án không được hiển thị theo thiết lập của giáo viên.
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="inner-tabs-wrap">
+                <div className="inner-tabs">
+                  {[
+                    ["all", `Tất cả (${result.questions.length})`],
+                    ["wrong", `Sai / Thiếu (${wrongCount})`],
+                    ["correct", `Đúng (${correctCount})`],
+                    [
+                      "essay",
+                      `Tự luận (${result.questions.filter((q) => q.type === "essay").length})`,
+                    ],
+                  ].map(([key, label]) => (
+                    <button
+                      key={key}
+                      className={`itab${activeTab === key ? " active" : ""}`}
+                      onClick={() => setActiveTab(key)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="filter-row">
+                  {[
+                    ["all", "Tất cả", ""],
+                    ["correct", `${correctCount} Đúng`, "green-chip"],
+                    ["wrong", `${wrongCount} Sai`, "red-chip"],
+                  ].map(([key, label, chipCls]) => (
+                    <button
+                      key={key}
+                      className={`fchip${activeFilter === key ? ` active ${chipCls}` : ""}`}
+                      onClick={() => setActiveFilter(key)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="qr-list">
+                {filtered.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "32px 0",
+                      color: "var(--text3)",
+                      fontSize: 13,
+                    }}
+                  >
+                    Không có câu hỏi nào trong bộ lọc này.
+                  </div>
+                ) : (
+                  filtered.map((q, idx) => (
+                    <QuestionReviewCard
+                      key={q.id}
+                      q={q}
+                      index={idx}
+                      isOpen={expanded.has(q.id)}
+                      onToggle={() => toggleExpand(q.id)}
+                    />
+                  ))
+                )}
+              </div>
+            </>
+          )}
 
           <div className="action-bar">
             <button
