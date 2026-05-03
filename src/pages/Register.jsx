@@ -222,18 +222,18 @@ const RegisterScreen = () => {
               </div>
               <h1 className="brand-name">Learnify</h1>
             </div>
-            <p className="tagline">Bắt đầu hành trình học tập của bạn</p>
+            <p className="tagline">Đồng hành cùng sự nghiệp giáo dục hiện đại</p>
 
             <div className="benefits-list">
-              <h3 className="benefits-title">Những gì bạn nhận được:</h3>
+              <h3 className="benefits-title">Nâng tầm trải nghiệm giảng dạy:</h3>
               <div className="benefit-item">
                 <div className="benefit-icon">
                   <Check size={18} />
                 </div>
                 <div>
-                  <div className="benefit-name">Khóa học chất lượng cao</div>
+                  <div className="benefit-name">Quản lý lớp học 4.0</div>
                   <div className="benefit-desc">
-                    Hơn 1000+ khóa học từ các chuyên gia
+                    Tổ chức lớp học, theo dõi học sinh và lưu trữ giáo án tập trung
                   </div>
                 </div>
               </div>
@@ -242,9 +242,9 @@ const RegisterScreen = () => {
                   <Check size={18} />
                 </div>
                 <div>
-                  <div className="benefit-name">Chứng chỉ được công nhận</div>
+                  <div className="benefit-name">Tạo bài tập với sức mạnh AI</div>
                   <div className="benefit-desc">
-                    Nâng cao CV và cơ hội nghề nghiệp
+                    Xây dựng ngân hàng câu hỏi thông minh và chấm điểm tự động
                   </div>
                 </div>
               </div>
@@ -253,9 +253,9 @@ const RegisterScreen = () => {
                   <Check size={18} />
                 </div>
                 <div>
-                  <div className="benefit-name">Học mọi lúc, mọi nơi</div>
+                  <div className="benefit-name">Phân tích học tập chuyên sâu</div>
                   <div className="benefit-desc">
-                    Trên mọi thiết bị, tiến độ được đồng bộ
+                    Theo dõi tiến độ và đánh giá năng lực qua biểu đồ trực quan
                   </div>
                 </div>
               </div>
@@ -264,14 +264,13 @@ const RegisterScreen = () => {
             <div className="testimonial">
               <div className="quote-mark">"</div>
               <p className="testimonial-text">
-                Nền tảng tuyệt vời! Tôi đã học được rất nhiều kỹ năng mới và
-                phát triển sự nghiệp.
+                Từ ngày sử dụng Learnify, tôi không còn mệt mỏi với đống sổ sách và bài tập giấy. Mọi thứ đều tự động hóa, giúp tôi có thêm thời gian sáng tạo bài giảng.
               </p>
               <div className="testimonial-author">
-                <div className="author-avatar">NT</div>
+                <div className="author-avatar">LĐ</div>
                 <div>
-                  <div className="author-name">Nguyễn Thị Mai</div>
-                  <div className="author-role">Học viên xuất sắc 2024</div>
+                  <div className="author-name">Thầy Lê Mai Đông</div>
+                  <div className="author-role">Giáo viên tiêu biểu 2024</div>
                 </div>
               </div>
             </div>
@@ -307,7 +306,7 @@ const RegisterScreen = () => {
                     <div className="role-icon">🎓</div>
                     <div className="role-name">Học sinh</div>
                     <div className="role-desc">
-                      Tìm kiếm và học các khóa học
+                      Tham gia lớp học và hoàn thành bài tập
                     </div>
                   </div>
                 </label>
@@ -325,7 +324,7 @@ const RegisterScreen = () => {
                   >
                     <div className="role-icon">👨‍🏫</div>
                     <div className="role-name">Giáo viên</div>
-                    <div className="role-desc">Tạo và quản lý khóa học</div>
+                    <div className="role-desc">Quản lý lớp học và giảng dạy</div>
                   </div>
                 </label>
               </div>
@@ -651,7 +650,7 @@ const RegisterScreen = () => {
           z-index: 1;
           display: flex;
           width: 95%;
-          max-width: 1300px;
+          max-width: 1000px;
           background: white;
           border-radius: 24px;
           overflow: hidden;
@@ -673,7 +672,7 @@ const RegisterScreen = () => {
         .brand-section {
           flex: 1;
           background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-          padding: 60px;
+          padding: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -703,12 +702,12 @@ const RegisterScreen = () => {
           display: flex;
           align-items: center;
           gap: 16px;
-          margin-bottom: 16px;
+          margin-bottom: 12px;
         }
 
         .logo-icon {
-          width: 56px;
-          height: 56px;
+          width: 48px;
+          height: 48px;
           background: rgba(255, 255, 255, 0.2);
           border-radius: 16px;
           display: flex;
@@ -718,7 +717,7 @@ const RegisterScreen = () => {
         }
 
         .brand-name {
-          font-size: 42px;
+          font-size: 32px;
           font-weight: 700;
           letter-spacing: -0.5px;
         }
@@ -726,7 +725,7 @@ const RegisterScreen = () => {
         .tagline {
           font-size: 18px;
           opacity: 0.95;
-          margin-bottom: 48px;
+          margin-bottom: 24px;
           font-weight: 300;
         }
 
@@ -738,13 +737,13 @@ const RegisterScreen = () => {
         }
 
         .benefits-list {
-          margin-bottom: 48px;
+          margin-bottom: 24px;
         }
 
         .benefit-item {
           display: flex;
           gap: 16px;
-          margin-bottom: 24px;
+          margin-bottom: 12px;
           animation: fadeIn 0.6s ease-out backwards;
         }
 
@@ -838,7 +837,7 @@ const RegisterScreen = () => {
 
         .form-section {
           flex: 1.2;
-          padding: 60px;
+          padding: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -848,11 +847,11 @@ const RegisterScreen = () => {
 
         .form-container {
           width: 100%;
-          max-width: 480px;
+          max-width: 420px;
         }
 
         .form-header {
-          margin-bottom: 32px;
+          margin-bottom: 20px;
         }
 
         .form-header h2 {
@@ -882,7 +881,7 @@ const RegisterScreen = () => {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 16px;
-          margin-bottom: 24px;
+          margin-bottom: 16px;
         }
 
         .role-option {
@@ -894,7 +893,7 @@ const RegisterScreen = () => {
         }
 
         .role-card {
-          padding: 20px;
+          padding: 12px 16px;
           border: 2px solid #e0e0e0;
           border-radius: 12px;
           text-align: center;
@@ -933,7 +932,7 @@ const RegisterScreen = () => {
         }
 
         .input-group {
-          margin-bottom: 20px;
+          margin-bottom: 12px;
           position: relative;
         }
 
@@ -954,10 +953,10 @@ const RegisterScreen = () => {
 
         .input-group input {
           width: 100%;
-          padding: 14px 16px;
+          padding: 12px 16px;
           border: 2px solid #e0e0e0;
           border-radius: 12px;
-          font-size: 15px;
+          font-size: 14px;
           transition: all 0.3s ease;
           background: white;
           color: #1a1a1a;
@@ -1057,7 +1056,7 @@ const RegisterScreen = () => {
           gap: 8px;
           cursor: pointer;
           user-select: none;
-          margin-bottom: 24px;
+          margin-bottom: 16px;
         }
 
         .checkbox-label input {
@@ -1130,12 +1129,12 @@ const RegisterScreen = () => {
 
         .register-button {
           width: 100%;
-          padding: 16px;
+          padding: 14px;
           background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
           color: white;
           border: none;
           border-radius: 12px;
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s;
@@ -1188,7 +1187,7 @@ const RegisterScreen = () => {
 
         .divider {
           text-align: center;
-          margin: 24px 0;
+          margin: 16px 0;
           position: relative;
         }
 
@@ -1217,12 +1216,12 @@ const RegisterScreen = () => {
         .social-login {
           display: flex;
           gap: 12px;
-          margin-bottom: 24px;
+          margin-bottom: 16px;
         }
 
         .social-button {
           flex: 1;
-          padding: 14px;
+          padding: 12px;
           border: 2px solid #e0e0e0;
           border-radius: 12px;
           background: white;
