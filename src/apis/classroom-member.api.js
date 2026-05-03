@@ -59,6 +59,10 @@ const getMyClassrooms = (enrollmentStatus = ENROLLMENT_STATUS.ACCEPTED) =>
 		params: { enrollmentStatus },
 	});
 
+/** @param {number} classroomId @param {number} studentId */
+const removeStudent = (classroomId, studentId) =>
+	apiRequest.delete(`${BASE}/${classroomId}/students/${studentId}`);
+
 export const classroomMemberApi = {
 	joinClass,
 	inviteStudents,
@@ -68,5 +72,6 @@ export const classroomMemberApi = {
 	approveRequests,
 	rejectRequests,
 	getMyClassrooms,
+	removeStudent,
 };
 

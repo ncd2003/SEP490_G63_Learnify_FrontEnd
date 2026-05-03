@@ -374,9 +374,6 @@ const StudentClassroomCard = ({
         {classroom.subject && (
           <p className="student-card-subject">{classroom.subject}</p>
         )}
-        <p className={`student-card-status-badge status-${status.toLowerCase()}`}>
-          Trạng thái: {status}
-        </p>
         {classroom.teacherName && (
           <p className="student-card-teacher">Giáo viên: {classroom.teacherName}</p>
         )}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
@@ -10,6 +10,9 @@ import {
   List,
   ListFilter,
   X,
+  MoreVertical,
+  Trash2,
+  Eye,
 } from 'lucide-react';
 import ClassroomDetailLayout from '@/components/ClassroomDetailLayout';
 import { classroomApi } from '@/apis/classroom.api';
@@ -20,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import ApproveRequestsModal from './ApproveRequestsModal';
 import RejectRequestsModal from './RejectRequestsModal';
+import RemoveStudentModal from './RemoveStudentModal';
 import '@/assets/css/pages/classroom/pendingRequests.css';
 
 const REPORT_REASON_OPTIONS = [
@@ -109,6 +113,12 @@ const MemberClass = () => {
   const [inviteLookupLoading, setInviteLookupLoading] = useState(false);
   const [inviteLookupError, setInviteLookupError] = useState('');
 
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null); // { studentId, studentName }
+  const [removeLoading, setRemoveLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
+
   const fetchClassroomInfo = useCallback(async () => {
     try {
       const response = await classroomApi.getClassroomById(id);
@@ -192,6 +202,51 @@ const MemberClass = () => {
     fetchClassroomInfo();
     fetchMembersByRole();
   }, [fetchClassroomInfo, fetchMembersByRole]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    if (openMenuId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
+
+  const handleRemoveClick = (member) => {
+    setOpenMenuId(null);
+    setRemoveTarget({ studentId: member.studentId, studentName: member.studentName });
+    setShowRemoveModal(true);
+  };
+
+  const handleRemoveConfirm = async () => {
+    if (!removeTarget?.studentId) return;
+    setRemoveLoading(true);
+    try {
+      await classroomMemberApi.removeStudent(Number(id), removeTarget.studentId);
+      setShowRemoveModal(false);
+      setRemoveTarget(null);
+      await fetchMembersByRole();
+      await fetchClassroomInfo();
+    } catch (err) {
+      // E1: Student no longer enrolled — refresh list
+      if (err.response?.status === 404) {
+        await fetchMembersByRole();
+      }
+      setShowRemoveModal(false);
+      setRemoveTarget(null);
+    } finally {
+      setRemoveLoading(false);
+    }
+  };
+
+  const handleRemoveCancel = () => {
+    if (removeLoading) return;
+    setShowRemoveModal(false);
+    setRemoveTarget(null);
+  };
 
   /* ── Selection helpers ─────────────────────────────────────────────── */
   const allSelected =
@@ -650,14 +705,13 @@ const MemberClass = () => {
   const teacherMembers = filteredMembers.filter(m => (m.roleName || '').toUpperCase().includes('TEACHER'));
   
   // Add from classroomInfo if not found in list (fallback)
-  if (teacherMembers.length === 0 && classroomInfo?.teacher?.id) {
-    const t = classroomInfo.teacher;
+  if (teacherMembers.length === 0 && classroomInfo?.teacherId) {
     teacherMembers.push({
-      studentId: t.id,
-      studentName: t.fullName || 'Giáo viên',
-      studentEmail: t.email,
-      phoneNumber: t.phoneNumber,
-      avatarUrl: t.avatarUrl,
+      studentId: classroomInfo.teacherId,
+      studentName: classroomInfo.teacherName || 'Giáo viên',
+      studentEmail: classroomInfo.teacherEmail,
+      phoneNumber: classroomInfo.teacherPhoneNumber || '',
+      avatarUrl: classroomInfo.teacherAvatarUrl,
       roleName: 'ROLE_TEACHER',
       joinedAt: null,
     });
@@ -704,14 +758,7 @@ const MemberClass = () => {
           {(!isTeacher || activeTeacherTab === 'members') && (
             <div className="members-main">
               <div className="members-toolbar">
-                <div className="members-view-toggle" aria-hidden="true">
-                  <button type="button" className="toggle-btn active">
-                    <List size={18} />
-                  </button>
-                  <button type="button" className="toggle-btn">
-                    <ListFilter size={18} />
-                  </button>
-                </div>
+
 
                 <label className="members-search-box">
                   <Search size={18} />
@@ -723,14 +770,16 @@ const MemberClass = () => {
                   />
                 </label>
 
-                <button
-                  type="button"
-                  className="members-icon-btn"
-                  onClick={handlePrintMembers}
-                  title="In danh sách"
-                >
-                  <Printer size={18} />
-                </button>
+                {isTeacher && (
+                  <button
+                    type="button"
+                    className="members-icon-btn"
+                    onClick={handlePrintMembers}
+                    title="In danh sách"
+                  >
+                    <Printer size={18} />
+                  </button>
+                )}
 
                 {isTeacher && (
                   <button
@@ -758,20 +807,24 @@ const MemberClass = () => {
                 <div className="class-members-roster">
                   {teacherMembers.length > 0 && (
                     <div className="roster-section" style={{ marginBottom: '24px' }}>
-                      <h3 style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '16px' }}>Giáo viên</h3>
+                      <h3 style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '16px', fontWeight: 600, color: '#374151' }}>Giáo viên</h3>
                       <div className="class-members-table-wrapper">
                         <table className="class-members-table">
                           <thead>
                             <tr>
                               <th>Họ và tên</th>
-                              {showContactDetails && <th>Email</th>}
-                              {showContactDetails && <th>SĐT</th>}
+                              <th>Email</th>
+                              <th>SĐT</th>
                               <th>Hành động</th>
                             </tr>
                           </thead>
                           <tbody>
                             {teacherMembers.map((member) => (
-                              <tr key={`teacher-${member.studentId}`}>
+                              <tr 
+                                key={`teacher-${member.studentId}`}
+                                onClick={() => openMemberDetail(member)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 <td>
                                   <div className="student-cell">
                                     <div className="student-avatar">
@@ -784,15 +837,16 @@ const MemberClass = () => {
                                     <span className="student-name">{member.studentName}</span>
                                   </div>
                                 </td>
-                                {showContactDetails && <td className="cell-email">{member.studentEmail || '—'}</td>}
-                                {showContactDetails && <td>{member.phoneNumber || '—'}</td>}
+                                <td className="cell-email">{member.studentEmail || '—'}</td>
+                                <td>{member.phoneNumber || '—'}</td>
                                 <td>
                                   <button
                                     type="button"
-                                    className="member-view-btn"
-                                    onClick={() => openMemberDetail(member)}
+                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', padding: '4px' }}
+                                    title="Xem chi tiết"
+                                    onClick={(e) => { e.stopPropagation(); openMemberDetail(member); }}
                                   >
-                                    Xem
+                                    <Eye size={18} />
                                   </button>
                                 </td>
                               </tr>
@@ -804,7 +858,7 @@ const MemberClass = () => {
                   )}
 
                   <div className="roster-section">
-                    <h3 style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '16px' }}>Học sinh ({studentMembers.length})</h3>
+                    <h3 style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '16px', fontWeight: 600, color: '#374151' }}>Học sinh ({studentMembers.length})</h3>
                     {studentMembers.length === 0 ? (
                       <p style={{ color: '#6b7280' }}>Chưa có học sinh nào.</p>
                     ) : (
@@ -821,7 +875,11 @@ const MemberClass = () => {
                           </thead>
                           <tbody>
                             {studentMembers.map((member) => (
-                              <tr key={`student-${member.studentId}`}>
+                              <tr 
+                                key={`student-${member.studentId}`}
+                                onClick={() => openMemberDetail(member)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 <td>
                                   <div className="student-cell">
                                     <div className="student-avatar">
@@ -838,13 +896,26 @@ const MemberClass = () => {
                                 {showContactDetails && <td>{member.phoneNumber || '—'}</td>}
                                 {showContactDetails && <td className="cell-date">{formatDateTime(member.joinedAt)}</td>}
                                 <td>
-                                  <button
-                                    type="button"
-                                    className="member-view-btn"
-                                    onClick={() => openMemberDetail(member)}
-                                  >
-                                    Xem
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <button
+                                      type="button"
+                                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', padding: '4px' }}
+                                      title="Xem chi tiết"
+                                      onClick={(e) => { e.stopPropagation(); openMemberDetail(member); }}
+                                    >
+                                      <Eye size={18} />
+                                    </button>
+                                    {isTeacher && (
+                                      <button
+                                        type="button"
+                                        style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', border: '1px solid #fecaca', borderRadius: '4px', background: '#fef2f2', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#ef4444' }}
+                                        onClick={(e) => { e.stopPropagation(); handleRemoveClick(member); }}
+                                      >
+                                        <Trash2 size={14} style={{ marginRight: '6px' }} />
+                                        Xóa
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -963,73 +1034,103 @@ const MemberClass = () => {
           <div className="member-detail-modal-overlay" onClick={closeMemberModal}>
             <div className="member-detail-modal" onClick={(e) => e.stopPropagation()}>
               <div className="member-detail-modal-header">
-                <h3>Thông tin người dùng</h3>
-                <button type="button" className="member-detail-close" onClick={closeMemberModal}>Đóng</button>
+                {!isReportModalOpen ? (
+                  <h3>Thông tin {formatRoleLabel(selectedMember?.roleName).toLowerCase()}</h3>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button 
+                      type="button" 
+                      className="member-detail-back-btn" 
+                      onClick={closeReportModal}
+                      disabled={reportSubmitting}
+                      title="Quay lại thông tin"
+                      style={{ border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer', padding: 0 }}
+                    >
+                      &larr;
+                    </button>
+                    <h3>Báo cáo người dùng</h3>
+                  </div>
+                )}
+                <button 
+                  type="button" 
+                  className="member-detail-close-icon" 
+                  onClick={closeMemberModal}
+                  title="Đóng"
+                  style={{ border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer' }}
+                >
+                  &#10005;
+                </button>
               </div>
 
               {reportSuccess && <div className="pending-requests-alert alert-success sidebar-alert">{reportSuccess}</div>}
 
-              {profileLoading ? (
-                <div className="pending-side-loading">
-                  <Loader2 size={16} className="spin" />
-                  <span>Đang tải hồ sơ...</span>
-                </div>
-              ) : profileError ? (
-                <div className="pending-requests-alert alert-error sidebar-alert">{profileError}</div>
-              ) : selectedMember ? (
-                <div className="member-profile-card">
-                  <div className="member-profile-head">
-                    <div className="member-profile-avatar">
-                      {selectedProfile?.avatarUrl ? (
-                        <img src={selectedProfile.avatarUrl} alt={selectedProfile.fullName || selectedMember.studentName} />
-                      ) : (
-                        <span>{getInitials(selectedProfile?.fullName || selectedMember.studentName)}</span>
-                      )}
+              {!isReportModalOpen ? (
+                /* --- PROFILE VIEW --- */
+                profileLoading ? (
+                  <div className="pending-side-loading">
+                    <Loader2 size={16} className="spin" />
+                    <span>Đang tải hồ sơ...</span>
+                  </div>
+                ) : profileError ? (
+                  <div className="pending-requests-alert alert-error sidebar-alert">{profileError}</div>
+                ) : selectedMember ? (
+                  <div className="member-profile-card">
+                    <div className="member-profile-head">
+                      <div className="member-profile-avatar">
+                        {selectedProfile?.avatarUrl ? (
+                          <img src={selectedProfile.avatarUrl} alt={selectedProfile.fullName || selectedMember.studentName} />
+                        ) : (
+                          <span>{getInitials(selectedProfile?.fullName || selectedMember.studentName)}</span>
+                        )}
+                      </div>
+                      <div className="member-profile-meta">
+                        <strong>{selectedProfile?.fullName || selectedMember.studentName || '—'}</strong>
+                        <span>{formatRoleLabel(selectedMember.roleName)}</span>
+                        {(showContactDetails || selectedMember.roleName === 'ROLE_TEACHER') && <span>{selectedProfile?.email || selectedMember.studentEmail || '—'}</span>}
+                      </div>
                     </div>
-                    <div className="member-profile-meta">
-                      <strong>{selectedProfile?.fullName || selectedMember.studentName || '—'}</strong>
-                      <span>{formatRoleLabel(selectedMember.roleName)}</span>
-                      {showContactDetails && <span>{selectedProfile?.email || selectedMember.studentEmail || '—'}</span>}
+
+                    {(showContactDetails || selectedMember.roleName === 'ROLE_TEACHER') && (
+                      <div className="member-profile-info-list">
+                        <div className="info-list-item">
+                          <span className="info-list-icon">📞</span>
+                          <div className="info-list-content">
+                            <small>Số điện thoại</small>
+                            <p>{selectedProfile?.phoneNumber || selectedMember.phoneNumber || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="info-list-item">
+                          <span className="info-list-icon">📅</span>
+                          <div className="info-list-content">
+                            <small>Ngày sinh</small>
+                            <p>{selectedProfile?.birthDate || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="info-list-item">
+                          <span className="info-list-icon">📍</span>
+                          <div className="info-list-content">
+                            <small>Địa chỉ</small>
+                            <p>{selectedProfile?.address || '—'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="member-profile-actions">
+                      <button
+                        type="button"
+                        className="member-report-text-btn"
+                        onClick={openReportUser}
+                        disabled={Number(selectedMember.studentId) === Number(user?.id) || reportSubmitting}
+                      >
+                        🚩 {Number(selectedMember.studentId) === Number(user?.id) ? 'Không thể tự báo cáo' : 'Báo cáo vi phạm'}
+                      </button>
                     </div>
                   </div>
-
-                  {showContactDetails && (
-                    <div className="member-profile-grid">
-                      <div>
-                        <small>Số điện thoại</small>
-                        <p>{selectedProfile?.phoneNumber || selectedMember.phoneNumber || '—'}</p>
-                      </div>
-                      <div>
-                        <small>Ngày sinh</small>
-                        <p>{selectedProfile?.birthDate || '—'}</p>
-                      </div>
-                      <div className="member-profile-address">
-                        <small>Địa chỉ</small>
-                        <p>{selectedProfile?.address || '—'}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    className="member-report-btn"
-                    onClick={openReportUser}
-                    disabled={Number(selectedMember.studentId) === Number(user?.id) || reportSubmitting}
-                  >
-                    {Number(selectedMember.studentId) === Number(user?.id) ? 'Không thể tự báo cáo chính mình' : 'Báo cáo người dùng'}
-                  </button>
-                </div>
-              ) : null}
-
-              {isReportModalOpen && (
-                <div className="report-inline-modal">
-                  <div className="report-inline-modal-head">
-                    <h4>Báo cáo người dùng</h4>
-                    <button type="button" className="member-detail-close" onClick={closeReportModal} disabled={reportSubmitting}>
-                      Đóng
-                    </button>
-                  </div>
-
+                ) : null
+              ) : (
+                /* --- REPORT FORM VIEW --- */
+                <div className="report-swap-content">
                   <label className="report-field">
                     Lý do báo cáo *
                     <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} disabled={reportSubmitting}>
@@ -1044,21 +1145,21 @@ const MemberClass = () => {
                   <label className="report-field">
                     Mô tả chi tiết (tùy chọn)
                     <textarea
-                      rows={4}
+                      rows={5}
                       value={reportDetail}
                       onChange={(e) => setReportDetail(e.target.value)}
-                      placeholder="Nhập nội dung chi tiết nếu cần"
+                      placeholder="Nhập nội dung chi tiết..."
                       disabled={reportSubmitting}
                     />
                   </label>
 
                   {reportError && <div className="pending-requests-alert alert-error sidebar-alert">{reportError}</div>}
 
-                  <div className="report-inline-actions">
-                    <button type="button" className="member-detail-close" onClick={closeReportModal} disabled={reportSubmitting}>
+                  <div className="report-swap-actions">
+                    <button type="button" className="btn-cancel" onClick={closeReportModal} disabled={reportSubmitting}>
                       Hủy
                     </button>
-                    <button type="button" className="member-report-btn" onClick={handleSubmitReport} disabled={reportSubmitting}>
+                    <button type="button" className="btn-danger" onClick={handleSubmitReport} disabled={reportSubmitting}>
                       {reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
                     </button>
                   </div>
@@ -1188,6 +1289,14 @@ const MemberClass = () => {
             count={pendingAction?.ids.length ?? 0}
             onConfirm={handleApproveConfirm}
             onCancel={() => { setShowApproveModal(false); setPendingAction(null); }}
+          />
+        )}
+        {showRemoveModal && removeTarget && (
+          <RemoveStudentModal
+            studentName={removeTarget.studentName}
+            onConfirm={handleRemoveConfirm}
+            onCancel={handleRemoveCancel}
+            loading={removeLoading}
           />
         )}
         {showRejectModal && (

@@ -107,6 +107,12 @@ const JoinClassModal = ({ onClose, onJoined }) => {
                 placeholder="Ví dụ: ABC123"
                 autoFocus
                 disabled={searchLoading || joinLoading}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && code.trim() && !searchLoading && !joinLoading) {
+                    e.preventDefault();
+                    handleSearch(e);
+                  }
+                }}
               />
               <button
                 type="submit"

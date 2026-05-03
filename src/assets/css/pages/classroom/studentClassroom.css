@@ -58,45 +58,43 @@
 
 .status-filter-grid {
   display: flex;
-  gap: 10px;
+  gap: 24px;
   margin-bottom: 0;
   align-items: center;
   flex: 1;
-  min-width: 0; /* allow children to shrink inside flex */
-  flex-wrap: wrap;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .status-filter-box {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: #f9fafb;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.2s;
-
-  /* allow filter boxes to evenly share available space */
-  flex: 1;
-  min-width: 140px;
+  flex: none;
+  min-width: 0;
 }
 
 .status-filter-box:hover {
-  border-color: #93c5fd;
-  background: #eff6ff;
+  color: #3b82f6;
 }
 
 .status-filter-box.active {
-  border-color: #3b82f6;
-  background: #dbeafe;
+  border-bottom-color: #3b82f6;
+  color: #3b82f6;
 }
 
 .status-filter-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
 }
 
 .status-filter-value {
@@ -106,9 +104,18 @@
 }
 
 .status-filter-count {
-  font-size: 13px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #4b5563;
+  padding: 2px 8px;
+  border-radius: 999px;
+  transition: all 0.2s;
+}
+
+.status-filter-box.active .status-filter-count {
+  background: #dbeafe;
+  color: #2563eb;
 }
 
 .student-classroom-toolbar .search-box {
@@ -149,7 +156,7 @@
 /* Grid */
 .student-classroom-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
 }
 
@@ -554,16 +561,17 @@
   }
 
   .status-filter-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 16px;
     margin-bottom: 14px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .status-filter-box {
     flex: none;
-    width: 100%;
-    min-width: 0;
+    width: auto;
   }
 
   .student-classroom-toolbar .search-box {

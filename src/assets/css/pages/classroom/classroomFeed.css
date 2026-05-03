@@ -12,11 +12,11 @@
   gap: 16px;
 }
 
-.feed-three-col {
+.feed-two-col {
   max-width: 1280px;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(240px, 0.9fr) minmax(560px, 1.8fr) minmax(240px, 0.9fr);
+  grid-template-columns: minmax(560px, 2fr) minmax(280px, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -100,14 +100,12 @@
   color: #6b7280;
 }
 
-.pinned-col,
-.filter-col {
+.side-col {
   position: sticky;
   top: 16px;
 }
 
-.pinned-col .feed-card,
-.filter-col .feed-card {
+.side-col .feed-card {
   max-height: calc(100vh - 96px);
   overflow-y: auto;
 }
@@ -152,15 +150,13 @@
 }
 
 @media (max-width: 1100px) {
-  .feed-three-col {
+  .feed-two-col {
     grid-template-columns: 1fr;
   }
-  .pinned-col,
-  .filter-col {
+  .side-col {
     position: static;
   }
-  .pinned-col .feed-card,
-  .filter-col .feed-card {
+  .side-col .feed-card {
     max-height: none;
     overflow: visible;
   }
@@ -193,13 +189,12 @@
   animation: spin 1s linear infinite;
 }
 
-/* ── Post create form wrapper ────────────────────────────── */
 .post-form-wrapper {
   background: #fff;
-  border: 1px solid #e6ebf3;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
 }
 
 /* ── Post form ───────────────────────────────────────────── */
@@ -454,7 +449,7 @@
   cursor: not-allowed;
 }
 
-.post-form-pin-checkbox {
+.post-form-pin-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -463,25 +458,26 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
-  color: #6366f1;
-  user-select: none;
+  transition: all 0.15s;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748b;
 }
 
-.post-form-pin-checkbox:hover {
-  background: #eff6ff;
+.post-form-pin-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #475569;
 }
 
-.post-form-pin-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #6366f1;
+.post-form-pin-btn.active {
+  background: #f3e8ff;
+  color: #7c3aed;
+  border-color: #e9d5ff;
 }
 
-.post-form-pin-checkbox input[type="checkbox"]:disabled {
-  cursor: not-allowed;
+.post-form-pin-btn:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .post-form-submit {
@@ -498,13 +494,13 @@
 }
 
 .post-form-submit:not(:disabled) {
-  background: #4f46e5;
+  background: #8b5cf6;
   color: #fff;
   cursor: pointer;
 }
 
 .post-form-submit:not(:disabled):hover {
-  background: #4338ca;
+  background: #7c3aed;
 }
 
 .post-form-submit:disabled {
@@ -962,11 +958,23 @@
 .comment-form {
   display: flex;
   flex-direction: column;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.comment-form.collapsed {
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: text;
+}
+
+.comment-form.expanded {
+  padding: 14px 16px;
   gap: 10px;
-  padding: 16px;
+  border-radius: 12px;
   background: #fafafa;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
 }
 
 .comment-form-title {
@@ -978,21 +986,28 @@
 
 .comment-form-textarea {
   width: 100%;
-  min-height: 100px;
-  resize: vertical;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  resize: none;
+  border: none;
+  background: transparent;
+  outline: none;
   font-size: 13px;
   color: #111827;
-  outline: none;
-  transition: border-color 0.15s;
   font-family: inherit;
+  padding: 0;
   box-sizing: border-box;
 }
 
+.comment-form.collapsed .comment-form-textarea {
+  min-height: auto;
+  cursor: pointer;
+}
+
+.comment-form.expanded .comment-form-textarea {
+  min-height: 60px;
+}
+
 .comment-form-textarea:focus {
-  border-color: #6366f1;
+  border-color: transparent;
 }
 
 .comment-form-textarea:disabled {

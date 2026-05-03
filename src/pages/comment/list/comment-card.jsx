@@ -5,6 +5,7 @@ import { formatRelativeTime } from "@/lib/utils";
 import CommentForm from "@/pages/comment/create/comment-form";
 import EditCommentForm from "@/pages/comment/edit/comment-edit-form";
 import DeleteCommentDialog from "@/pages/comment/delete/delete-comment-dialog";
+import UserDetailModal from "@/components/UserDetailModal";
 
 const REPLIES_BATCH_SIZE = 5;
 
@@ -38,6 +39,7 @@ const CommentCard = memo(({ comment, postId, classroomId, onReply, onEdit, onDel
   const [menuOpen, setMenuOpen] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   const [visibleRepliesCount, setVisibleRepliesCount] = useState(REPLIES_BATCH_SIZE);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const maxDepth = 3; // Giới hạn độ sâu nested comments
 
   const isAuthor = user?.id === comment.user?.id;
@@ -83,7 +85,7 @@ const CommentCard = memo(({ comment, postId, classroomId, onReply, onEdit, onDel
     <div className="comment-card" style={{ marginLeft: depth > 0 ? '24px' : '0' }}>
       <div className="comment-header">
         <div className="comment-author-info">
-          <span className="comment-author-name">{displayName}</span>
+          <span className="comment-author-name" onClick={() => { if (comment.user?.id) setIsUserModalOpen(true); }} style={{ cursor: comment.user?.id ? 'pointer' : 'default' }}>{displayName}</span>
           {role && <span className="comment-author-role">({role})</span>}
           {comment.createdAt && (
             <span className="comment-date">{formatRelativeTime(comment.createdAt)}</span>
@@ -228,6 +230,19 @@ const CommentCard = memo(({ comment, postId, classroomId, onReply, onEdit, onDel
             </div>
           )}
         </div>
+      )}
+      
+      {/* User Detail Modal */}
+      {isUserModalOpen && (
+        <UserDetailModal
+          isOpen={isUserModalOpen}
+          onClose={() => setIsUserModalOpen(false)}
+          userId={comment.user?.id}
+          initialData={{
+            fullName: displayName,
+            roleName: role
+          }}
+        />
       )}
     </div>
   );

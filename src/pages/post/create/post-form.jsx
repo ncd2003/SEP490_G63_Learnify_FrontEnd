@@ -315,16 +315,15 @@ const PostForm = ({ classroomId, onSubmit, submitting, initialPost = null, onCan
             onChange={handleFileChange}
           />
           
-          <label className="post-form-pin-checkbox">
-            <input
-              type="checkbox"
-              checked={pinned}
-              onChange={(e) => setPinned(e.target.checked)}
-              disabled={submitting}
-            />
-            <Pin size={14} />
-            <span>Ghim bài đăng</span>
-          </label>
+          <button
+            type="button"
+            className={`post-form-pin-btn ${pinned ? 'active' : ''}`}
+            onClick={() => setPinned(!pinned)}
+            disabled={submitting}
+          >
+            <Pin size={16} />
+            <span>{pinned ? 'Đang ghim' : 'Ghim bài đăng'}</span>
+          </button>
         </div>
 
         <div className="post-form-right-actions">

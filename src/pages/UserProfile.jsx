@@ -25,13 +25,22 @@ import {
 } from "lucide-react";
 
 const mapRole = (role) => {
+  if (Array.isArray(role)) {
+    role = role[0];
+  }
+  if (!role) return "Học sinh";
+  const roleStr = String(role).toUpperCase();
   const roleMap = {
     ROLE_STUDENT: "Học sinh",
     ROLE_TEACHER: "Giáo viên",
     ROLE_ADMIN: "Quản trị viên",
     ROLE_GUEST: "Khách",
+    STUDENT: "Học sinh",
+    TEACHER: "Giáo viên",
+    ADMIN: "Quản trị viên",
+    GUEST: "Khách"
   };
-  return roleMap[role] || role || "Học sinh";
+  return roleMap[roleStr] || roleStr;
 };
 
 const MSG16 =
@@ -125,7 +134,7 @@ const UserProfile = () => {
           phoneNumber: data.phoneNumber ?? "",
           birthDate: data.birthDate ?? "",
           address: data.address ?? "",
-          role: mapRole(data.role),
+          role: mapRole(data.roles || data.role || user?.role),
         };
         setProfileData(mapped);
         originalProfileData.current = mapped;
@@ -259,7 +268,7 @@ const UserProfile = () => {
           phoneNumber: updated.phoneNumber || profileData.phoneNumber,
           birthDate: updated.birthDate || profileData.birthDate,
           address: updated.address || profileData.address,
-          role: mapRole(updated.role) || profileData.role,
+          role: (updated.roles || updated.role) ? mapRole(updated.roles || updated.role) : profileData.role,
         };
         setProfileData(synced);
         originalProfileData.current = synced;
@@ -456,12 +465,14 @@ const UserProfile = () => {
             />
           </div>
           <div className="avatar-info">
-            <h3 className="avatar-name">
-              {profileData.fullName || "Người dùng"}
-            </h3>
-            <p className="avatar-hint">Ảnh đại diện</p>
-            <p className="avatar-hint">Kích thước tối đa: 5MB</p>
-            <p className="avatar-hint">Định dạng: JPG, PNG</p>
+            <div className="avatar-name-wrapper">
+              <h3 className="avatar-name">
+                {profileData.fullName || "Người dùng"}
+              </h3>
+              <span className="role-badge">🏷️ {profileData.role || "—"}</span>
+            </div>
+            <p className="avatar-email">{profileData.email || "—"}</p>
+            <p className="avatar-hint" style={{ marginTop: '8px' }}>Nhấn vào ảnh để thay đổi (Tối đa 5MB, JPG/PNG)</p>
           </div>
         </div>
       </div>
@@ -473,8 +484,7 @@ const UserProfile = () => {
         <div className="info-grid">
           <div className="info-item">
             <div className="info-label-compact">
-              <User size={16} />
-              <span>Họ và tên</span>
+              <span>👤 Họ và tên</span>
             </div>
             {isEditing ? (
               <input
@@ -493,16 +503,7 @@ const UserProfile = () => {
 
           <div className="info-item">
             <div className="info-label-compact">
-              <Mail size={16} />
-              <span>Email</span>
-            </div>
-            <div className="info-value">{profileData.email || "—"}</div>
-          </div>
-
-          <div className="info-item">
-            <div className="info-label-compact">
-              <Phone size={16} />
-              <span>Số điện thoại</span>
+              <span>📞 Số điện thoại</span>
             </div>
             {isEditing ? (
               <input
@@ -515,14 +516,20 @@ const UserProfile = () => {
                 placeholder="Nhập số điện thoại"
               />
             ) : (
-              <div className="info-value">{profileData.phoneNumber || "—"}</div>
+              <div className="info-value">{profileData.phoneNumber || "Chưa cập nhật"}</div>
             )}
           </div>
 
           <div className="info-item">
             <div className="info-label-compact">
-              <Calendar size={16} />
-              <span>Ngày sinh</span>
+              <span>✉️ Email</span>
+            </div>
+            <div className="info-value">{profileData.email || "Chưa cập nhật"}</div>
+          </div>
+
+          <div className="info-item">
+            <div className="info-label-compact">
+              <span>📅 Ngày sinh</span>
             </div>
             {isEditing ? (
               <input
@@ -537,15 +544,14 @@ const UserProfile = () => {
               <div className="info-value">
                 {profileData.birthDate
                   ? new Date(profileData.birthDate).toLocaleDateString("vi-VN")
-                  : "—"}
+                  : "Chưa cập nhật"}
               </div>
             )}
           </div>
 
-          <div className="info-item">
+          <div className="info-item" style={{ gridColumn: '1 / -1' }}>
             <div className="info-label-compact">
-              <MapPin size={16} />
-              <span>Địa chỉ</span>
+              <span>📍 Địa chỉ</span>
             </div>
             {isEditing ? (
               <input
@@ -556,18 +562,8 @@ const UserProfile = () => {
                 placeholder="Nhập địa chỉ"
               />
             ) : (
-              <div className="info-value">{profileData.address || "—"}</div>
+              <div className="info-value">{profileData.address || "Chưa cập nhật"}</div>
             )}
-          </div>
-
-          <div className="info-item">
-            <div className="info-label-compact">
-              <Shield size={16} />
-              <span>Vai trò</span>
-            </div>
-            <div className="info-value role-badge">
-              {profileData.role || "—"}
-            </div>
           </div>
         </div>
 
