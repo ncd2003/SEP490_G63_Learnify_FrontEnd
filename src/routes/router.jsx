@@ -158,9 +158,6 @@ const AttendancePage = Loadable(
 const FoldersPage = Loadable(
   lazy(() => import("@/pages/classroom/folders/foldersPage")),
 );
-const ClassroomAnalyticsPage = Loadable(
-  lazy(() => import("@/pages/classroom/analytics/ClassroomAnalyticsPage")),
-);
 const QuestionBankPage = Loadable(
   lazy(() => import("@/pages/question-bank/list/question-bank-page")),
 );
@@ -588,16 +585,6 @@ const AppRoutes = () =>
       element: (
         <AuthGuard>
           <FoldersPage />
-        </AuthGuard>
-      ),
-    },
-    {
-      path: "classrooms/:id/analytics",
-      element: (
-        <AuthGuard>
-          <RoleBasedGuard role="ROLE_TEACHER">
-            <ClassroomAnalyticsPage />
-          </RoleBasedGuard>
         </AuthGuard>
       ),
     },
