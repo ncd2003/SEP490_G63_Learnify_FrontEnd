@@ -76,46 +76,7 @@ const ClassroomFeedPage = () => {
   /* ── Render ───────────────────────────────────────────────────────────── */
   return (
     <ClassroomDetailLayout>
-      <div className="classroom-feed feed-three-col">
-        <div className="feed-col pinned-col">
-          <div className="feed-card">
-            <div className="feed-card-header">
-              <span>Đã ghim</span>
-            </div>
-            {loading ? (
-              <div className="feed-state">
-                <Loader2 size={20} className="feed-state-icon spinning" />
-                <span>Đang tải...</span>
-              </div>
-            ) : error ? (
-              <div className="feed-state feed-state--error">
-                <AlertCircle size={18} />
-                <span>{error}</span>
-              </div>
-            ) : pinnedPosts.length === 0 ? (
-              <div className="feed-state">
-                <span>Chưa có bài đăng ghim.</span>
-              </div>
-            ) : (
-              <div className="post-list pinned-list">
-                {pinnedPosts.map((post) => (
-                  <button
-                    key={post.id}
-                    type="button"
-                    className="pinned-summary"
-                    onClick={() => scrollToPost(post.id)}
-                  >
-                    <span className="pinned-summary-title">{post.content?.slice(0, 80) || "(Không có nội dung)"}</span>
-                    <span className="pinned-summary-meta">
-                      {(post.attachments?.length ?? 0) > 0 ? `${post.attachments.length} tệp đính kèm` : "Không có tệp"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
+      <div className="classroom-feed feed-two-col">
         <div className="feed-col main-col">
           {canCreatePost && (
             <div className="post-form-wrapper">
@@ -171,8 +132,45 @@ const ClassroomFeedPage = () => {
           </div>
         </div>
 
-        <div className="feed-col filter-col">
+        <div className="feed-col side-col">
           <div className="feed-card">
+            <div className="feed-card-header">
+              <span>Đã ghim</span>
+            </div>
+            {loading ? (
+              <div className="feed-state">
+                <Loader2 size={20} className="feed-state-icon spinning" />
+                <span>Đang tải...</span>
+              </div>
+            ) : error ? (
+              <div className="feed-state feed-state--error">
+                <AlertCircle size={18} />
+                <span>{error}</span>
+              </div>
+            ) : pinnedPosts.length === 0 ? (
+              <div className="feed-state">
+                <span>Chưa có bài đăng ghim.</span>
+              </div>
+            ) : (
+              <div className="post-list pinned-list">
+                {pinnedPosts.map((post) => (
+                  <button
+                    key={post.id}
+                    type="button"
+                    className="pinned-summary"
+                    onClick={() => scrollToPost(post.id)}
+                  >
+                    <span className="pinned-summary-title">{post.content?.slice(0, 80) || "(Không có nội dung)"}</span>
+                    <span className="pinned-summary-meta">
+                      {(post.attachments?.length ?? 0) > 0 ? `${post.attachments.length} tệp đính kèm` : "Không có tệp"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="feed-card" style={{ marginTop: '16px' }}>
             <div className="feed-card-header">
               <span>Bộ lọc</span>
               <Filter size={16} />

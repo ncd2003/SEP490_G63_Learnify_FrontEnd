@@ -583,71 +583,101 @@ const MemberClass = () => {
           <div className="member-detail-modal-overlay" onClick={closeMemberModal}>
             <div className="member-detail-modal" onClick={(e) => e.stopPropagation()}>
               <div className="member-detail-modal-header">
-                <h3>Thông tin người dùng</h3>
-                <button type="button" className="member-detail-close" onClick={closeMemberModal}>Đóng</button>
+                {!isReportModalOpen ? (
+                  <h3>Thông tin {formatRoleLabel(selectedMember?.roleName).toLowerCase()}</h3>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button 
+                      type="button" 
+                      className="member-detail-back-btn" 
+                      onClick={closeReportModal}
+                      disabled={reportSubmitting}
+                      title="Quay lại thông tin"
+                      style={{ border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer', padding: 0 }}
+                    >
+                      &larr;
+                    </button>
+                    <h3>Báo cáo người dùng</h3>
+                  </div>
+                )}
+                <button 
+                  type="button" 
+                  className="member-detail-close-icon" 
+                  onClick={closeMemberModal}
+                  title="Đóng"
+                  style={{ border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer' }}
+                >
+                  &#10005;
+                </button>
               </div>
 
               {reportSuccess && <div className="pending-requests-alert alert-success sidebar-alert">{reportSuccess}</div>}
 
-              {profileLoading ? (
-                <div className="pending-side-loading">
-                  <Loader2 size={16} className="spin" />
-                  <span>Đang tải hồ sơ...</span>
-                </div>
-              ) : profileError ? (
-                <div className="pending-requests-alert alert-error sidebar-alert">{profileError}</div>
-              ) : selectedMember ? (
-                <div className="member-profile-card">
-                  <div className="member-profile-head">
-                    <div className="member-profile-avatar">
-                      {selectedProfile?.avatarUrl ? (
-                        <img src={selectedProfile.avatarUrl} alt={selectedProfile.fullName || selectedMember.studentName} />
-                      ) : (
-                        <span>{getInitials(selectedProfile?.fullName || selectedMember.studentName)}</span>
-                      )}
+              {!isReportModalOpen ? (
+                /* --- PROFILE VIEW --- */
+                profileLoading ? (
+                  <div className="pending-side-loading">
+                    <Loader2 size={16} className="spin" />
+                    <span>Đang tải hồ sơ...</span>
+                  </div>
+                ) : profileError ? (
+                  <div className="pending-requests-alert alert-error sidebar-alert">{profileError}</div>
+                ) : selectedMember ? (
+                  <div className="member-profile-card">
+                    <div className="member-profile-head">
+                      <div className="member-profile-avatar">
+                        {selectedProfile?.avatarUrl ? (
+                          <img src={selectedProfile.avatarUrl} alt={selectedProfile.fullName || selectedMember.studentName} />
+                        ) : (
+                          <span>{getInitials(selectedProfile?.fullName || selectedMember.studentName)}</span>
+                        )}
+                      </div>
+                      <div className="member-profile-meta">
+                        <strong>{selectedProfile?.fullName || selectedMember.studentName || '—'}</strong>
+                        <span>{formatRoleLabel(selectedMember.roleName)}</span>
+                        <span>{selectedProfile?.email || selectedMember.studentEmail || '—'}</span>
+                      </div>
                     </div>
-                    <div className="member-profile-meta">
-                      <strong>{selectedProfile?.fullName || selectedMember.studentName || '—'}</strong>
-                      <span>{formatRoleLabel(selectedMember.roleName)}</span>
-                      <span>{selectedProfile?.email || selectedMember.studentEmail || '—'}</span>
+
+                    <div className="member-profile-info-list">
+                      <div className="info-list-item">
+                        <span className="info-list-icon">📞</span>
+                        <div className="info-list-content">
+                          <small>Số điện thoại</small>
+                          <p>{selectedProfile?.phoneNumber || selectedMember.phoneNumber || '—'}</p>
+                        </div>
+                      </div>
+                      <div className="info-list-item">
+                        <span className="info-list-icon">📅</span>
+                        <div className="info-list-content">
+                          <small>Ngày sinh</small>
+                          <p>{selectedProfile?.birthDate || '—'}</p>
+                        </div>
+                      </div>
+                      <div className="info-list-item">
+                        <span className="info-list-icon">📍</span>
+                        <div className="info-list-content">
+                          <small>Địa chỉ</small>
+                          <p>{selectedProfile?.address || '—'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="member-profile-actions">
+                      <button
+                        type="button"
+                        className="member-report-text-btn"
+                        onClick={openReportUser}
+                        disabled={Number(selectedMember.studentId) === Number(user?.id) || reportSubmitting}
+                      >
+                        🚩 {Number(selectedMember.studentId) === Number(user?.id) ? 'Không thể tự báo cáo' : 'Báo cáo vi phạm'}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="member-profile-grid">
-                    <div>
-                      <small>Số điện thoại</small>
-                      <p>{selectedProfile?.phoneNumber || selectedMember.phoneNumber || '—'}</p>
-                    </div>
-                    <div>
-                      <small>Ngày sinh</small>
-                      <p>{selectedProfile?.birthDate || '—'}</p>
-                    </div>
-                    <div className="member-profile-address">
-                      <small>Địa chỉ</small>
-                      <p>{selectedProfile?.address || '—'}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="member-report-btn"
-                    onClick={openReportUser}
-                    disabled={Number(selectedMember.studentId) === Number(user?.id) || reportSubmitting}
-                  >
-                    {Number(selectedMember.studentId) === Number(user?.id) ? 'Không thể tự báo cáo chính mình' : 'Báo cáo người dùng'}
-                  </button>
-                </div>
-              ) : null}
-
-              {isReportModalOpen && (
-                <div className="report-inline-modal">
-                  <div className="report-inline-modal-head">
-                    <h4>Báo cáo người dùng</h4>
-                    <button type="button" className="member-detail-close" onClick={closeReportModal} disabled={reportSubmitting}>
-                      Đóng
-                    </button>
-                  </div>
-
+                ) : null
+              ) : (
+                /* --- REPORT FORM VIEW --- */
+                <div className="report-swap-content">
                   <label className="report-field">
                     Lý do báo cáo *
                     <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} disabled={reportSubmitting}>
@@ -662,21 +692,21 @@ const MemberClass = () => {
                   <label className="report-field">
                     Mô tả chi tiết (tùy chọn)
                     <textarea
-                      rows={4}
+                      rows={5}
                       value={reportDetail}
                       onChange={(e) => setReportDetail(e.target.value)}
-                      placeholder="Nhập nội dung chi tiết nếu cần"
+                      placeholder="Nhập nội dung chi tiết..."
                       disabled={reportSubmitting}
                     />
                   </label>
 
                   {reportError && <div className="pending-requests-alert alert-error sidebar-alert">{reportError}</div>}
 
-                  <div className="report-inline-actions">
-                    <button type="button" className="member-detail-close" onClick={closeReportModal} disabled={reportSubmitting}>
+                  <div className="report-swap-actions">
+                    <button type="button" className="btn-cancel" onClick={closeReportModal} disabled={reportSubmitting}>
                       Hủy
                     </button>
-                    <button type="button" className="member-report-btn" onClick={handleSubmitReport} disabled={reportSubmitting}>
+                    <button type="button" className="btn-danger" onClick={handleSubmitReport} disabled={reportSubmitting}>
                       {reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
                     </button>
                   </div>

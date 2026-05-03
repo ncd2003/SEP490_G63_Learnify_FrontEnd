@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     const response = await authApi.login(credentials);
     const loginResult = response?.result || {};
 
-    // Backend returns: { code, message, result: { accessToken, id, email, fullName } }
+    // Backend returns: { code, message, result: { accessToken, id, email, fullName, requirePasswordChange } }
     const { accessToken } = loginResult;
 
     // Lưu token
@@ -85,6 +85,11 @@ export const AuthProvider = ({ children }) => {
         loginResult,
       );
 
+      // Preserve requirePasswordChange from login response or /users/me
+      if (loginResult.requirePasswordChange || userResponse.result?.requirePasswordChange) {
+        userData.requirePasswordChange = true;
+      }
+
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
     } catch (error) {
@@ -97,6 +102,7 @@ export const AuthProvider = ({ children }) => {
           fullName: loginResult.fullName,
           avatarUrl: null,
           role: loginResult.role,
+          requirePasswordChange: loginResult.requirePasswordChange || false,
         },
         loginResult,
       );

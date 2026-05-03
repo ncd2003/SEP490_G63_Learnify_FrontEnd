@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   ChevronDown,
@@ -482,12 +482,49 @@ const FoldersPage = () => {
   const [previewingMaterialId, setPreviewingMaterialId] = useState(null);
   const [materialPreviewState, setMaterialPreviewState] = useState(MATERIAL_PREVIEW_INITIAL_STATE);
 
+  const fileInputRef = useRef(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+
   const guardTeacherMaterialAction = useCallback(() => {
     if (canManageMaterials) {
       return true;
     }
     return false;
   }, [canManageMaterials]);
+
+  const selectedFolder = useMemo(() => findFolderById(folders, selectedId), [folders, selectedId]);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!guardTeacherMaterialAction() || !selectedFolder) return;
+    setIsDragActive(true);
+  }, [guardTeacherMaterialAction, selectedFolder]);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    
+    if (!guardTeacherMaterialAction() || !selectedFolder) return;
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setUploading(true);
+      try {
+        await uploadMaterials(Number(classroomId), Array.from(e.dataTransfer.files));
+      } catch {
+        // Errors handled in interceptors
+      } finally {
+        setUploading(false);
+      }
+    }
+  }, [guardTeacherMaterialAction, selectedFolder, classroomId, uploadMaterials]);
 
   useEffect(() => {
     setExpandedIds((prev) => {
@@ -513,8 +550,6 @@ const FoldersPage = () => {
       URL.revokeObjectURL(materialPreviewState.previewUrl);
     }
   }, [materialPreviewState.previewUrl]);
-
-  const selectedFolder = useMemo(() => findFolderById(folders, selectedId), [folders, selectedId]);
 
   const toggleExpand = (id) => {
     setExpandedIds((prev) => {
@@ -901,12 +936,6 @@ const FoldersPage = () => {
             <p className="page-subtitle">Quản lý thư mục tài liệu theo cấu trúc cây.</p>
           </div>
           <div className="header-actions">
-            {canManageFolders && (
-              <button type="button" onClick={openCreateRoot} className="btn btn-primary">
-                <Plus size={16} />
-                <span>Tạo thư mục</span>
-              </button>
-            )}
             <button type="button" onClick={refresh} className="btn btn-outline">
               <RefreshCcw size={16} />
               <span>Làm mới</span>
@@ -916,9 +945,17 @@ const FoldersPage = () => {
 
         <div className="folders-layout">
           <div className="panel folder-tree-panel">
-            <div className="panel-header">
+            <div className="panel-header" style={{ alignItems: 'center' }}>
               <h2 className="panel-title">Cây thư mục</h2>
-              {loading && <span className="muted-text">Đang tải...</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {loading && <span className="muted-text">Đang tải...</span>}
+                {canManageFolders && (
+                  <button type="button" onClick={openCreateRoot} className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }}>
+                    <Plus size={14} />
+                    <span>Thêm</span>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="folder-tree-scroll">
               {loading ? <p className="muted-text">Đang tải thư mục...</p> : renderTree(folders)}
@@ -947,53 +984,70 @@ const FoldersPage = () => {
                   </select>
                 </div>
                 {canManageMaterials ? (
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      if (!guardTeacherMaterialAction()) return;
-                      if (!selectedFolder || !files || files.length === 0) return;
-                      setUploading(true);
-                      try {
-                        await uploadMaterials(Number(classroomId), Array.from(files));
-                        setFiles([]);
-                        e.target.reset();
-                      } catch {
-                        // Upload errors are handled in hook/interceptor; keep form state unchanged.
-                      } finally {
-                        setUploading(false);
-                      }
-                    }}
-                    className="upload-form"
-                  >
+                  <div className="upload-form">
                     <input
                       type="file"
                       multiple
-                      onChange={(e) => setFiles(e.target.files)}
-                      disabled={!selectedFolder || !canManageMaterials}
-                      className="file-input"
+                      ref={fileInputRef}
+                      style={{ display: "none" }}
+                      onChange={async (e) => {
+                        if (!guardTeacherMaterialAction()) return;
+                        if (!selectedFolder || !e.target.files || e.target.files.length === 0) return;
+                        setUploading(true);
+                        try {
+                          await uploadMaterials(Number(classroomId), Array.from(e.target.files));
+                          e.target.value = '';
+                        } catch {
+                          // Upload errors are handled in hook/interceptor
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                      disabled={!selectedFolder || !canManageMaterials || uploading}
                     />
                     <button
-                      type="submit"
-                      disabled={uploading || !selectedFolder || !files || files.length === 0 || !canManageMaterials}
+                      type="button"
+                      disabled={uploading || !selectedFolder || !canManageMaterials}
                       className="btn btn-primary"
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      {uploading && <span className="spinner" />}
-                      Tải lên
+                      {uploading ? <span className="spinner" /> : "☁️"}
+                      {uploading ? "Đang tải..." : "Tải tài liệu lên"}
                     </button>
-                  </form>
+                  </div>
                 ) : (
                   <p className="muted-text"></p>
                 )}
               </div>
             </div>
 
-            <div className="materials-content">
+            <div 
+              className="materials-content"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               {!selectedFolder ? (
                 <p className="muted-text">Chọn một thư mục ở bên trái để xem/tải tài liệu.</p>
               ) : loadingMaterials ? (
                 <p className="muted-text">Đang tải tài liệu...</p>
               ) : materials.length === 0 ? (
-                <p className="muted-text">Chưa có tài liệu.</p>
+                <div 
+                  className={`material-empty-state ${isDragActive ? 'drag-active' : ''}`}
+                  onClick={() => {
+                    if (canManageMaterials) fileInputRef.current?.click();
+                  }}
+                >
+                  <div className="material-empty-icon">📁</div>
+                  <h3 className="material-empty-title">Chưa có tài liệu nào ở đây</h3>
+                  {canManageMaterials ? (
+                    <p className="material-empty-desc">
+                      Kéo thả file vào đây hoặc click để tải lên ngay!
+                    </p>
+                  ) : (
+                    <p className="material-empty-desc">Thư mục này hiện đang trống.</p>
+                  )}
+                </div>
               ) : (
                 <ul className="material-list">
                   {visibleMaterials.map((file) => {

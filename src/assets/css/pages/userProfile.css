@@ -229,24 +229,68 @@
 .info-value {
   flex: 1;
   font-size: 15px;
-  color: #4b5563;
-  padding: 10px 14px;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  min-height: 42px;
+  font-weight: 600;
+  color: #111827;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  min-height: auto;
   display: flex;
   align-items: center;
 }
 
 .role-badge {
   display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: #eff6ff;
   color: #2563eb;
-  border-color: #bfdbfe;
-  font-weight: 500;
-  width: auto;
-  flex: unset;
+  border: 1px solid #bfdbfe;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  vertical-align: middle;
+  margin-left: 12px;
+}
+
+.avatar-name-wrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.avatar-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.avatar-email {
+  font-size: 14px;
+  color: #475569;
+  margin: 0 0 12px 0;
+}
+
+.avatar-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.avatar-upload-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
 }
 
 .info-input {
@@ -257,10 +301,10 @@
   background: white;
   border-radius: 8px;
   border: 2px solid #3b82f6;
-  min-height: 42px;
   outline: none;
   transition: all 0.2s;
   font-family: inherit;
+  width: 100%;
 }
 
 .info-input:focus {

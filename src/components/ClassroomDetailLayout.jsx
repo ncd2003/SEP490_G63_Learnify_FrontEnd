@@ -275,7 +275,7 @@ const ClassroomDetailLayout = ({
     if (path.includes("/members")) return "members";
     if (path.includes("/assignments")) return "assignments";
     if (path.includes("/folders")) return "folders";
-    if (path.includes("/gradebook")) return "grades";
+    if (path.includes("/grades")) return "grades";
     return "feed";
   };
 
@@ -471,7 +471,7 @@ const ClassroomDetailLayout = ({
                   }
                 }}
               >
-                <Icon size={20} />
+                <Icon size={20} strokeWidth={1.5} />
                 {!collapsed && <span>{item.label}</span>}
               </button>
             );
@@ -517,9 +517,8 @@ const ClassroomDetailLayout = ({
       <main className="classroom-main-content">
         <header className="classroom-workspace-header">
           <div className="classroom-workspace-left">
-            <div className="classroom-workspace-label">KHU VỰC LÀM VIỆC</div>
             <div className="classroom-workspace-title-row">
-              <div className="classroom-workspace-title">{activeMenuLabel}</div>
+              <div className="classroom-workspace-title" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{activeMenuLabel}</div>
             </div>
           </div>
 

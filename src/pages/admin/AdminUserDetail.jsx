@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpenCheck, Clock3, Mail, Phone, ShieldCheck, UserCircle2 } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, Clock3, Mail, Phone, ShieldCheck, UserCircle2, KeyRound } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { adminApi } from "@/apis/admin.api";
 import CenteredConfirmModal from "@/components/CenteredConfirmModal";
 import { PATH_ADMIN } from "@/routes/paths";
+import { toast } from "sonner";
 
 const formatRole = (role) => {
   switch (role) {
@@ -99,6 +100,13 @@ const AdminUserDetailPage = () => {
   const [updateError, setUpdateError] = useState("");
   const [warningMessage, setWarningMessage] = useState("");
   const [warningError, setWarningError] = useState("");
+
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetMethod, setResetMethod] = useState("email"); // "email" or "manual"
+  const [tempPassword, setTempPassword] = useState("");
+  const [tempPasswordError, setTempPasswordError] = useState("");
+  const [shownTempPassword, setShownTempPassword] = useState("");
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchUserDetail = async () => {
@@ -274,6 +282,51 @@ const AdminUserDetailPage = () => {
     }
   };
 
+  const handleOpenResetModal = () => {
+    setResetModalOpen(true);
+    setResetMethod("email");
+    setTempPassword("");
+    setTempPasswordError("");
+    setShownTempPassword("");
+  };
+
+  const handleCloseResetModal = () => {
+    if (resetSubmitting) return;
+    setResetModalOpen(false);
+    setShownTempPassword("");
+  };
+
+  const handleResetConfirm = async () => {
+    setTempPasswordError("");
+
+    if (resetMethod === "manual" && tempPassword.length < 8) {
+      setTempPasswordError("Mật khẩu tạm thời phải có ít nhất 8 ký tự.");
+      return;
+    }
+
+    try {
+      setResetSubmitting(true);
+      if (resetMethod === "email") {
+        await adminApi.sendPasswordResetLink(id);
+        toast.success("Đã gửi liên kết đặt lại mật khẩu đến email của người dùng.", { id: "msg72" });
+        setResetModalOpen(false);
+      } else {
+        await adminApi.setTemporaryPassword(id, { temporaryPassword: tempPassword });
+        setShownTempPassword(tempPassword);
+        setTempPassword("");
+      }
+    } catch (err) {
+      const backendMessage = err?.response?.data?.message;
+      if (resetMethod === "email") {
+        toast.error("Không thể gửi email đặt lại mật khẩu do lỗi hệ thống. Vui lòng thử lại sau.", { id: "msg73" });
+      } else {
+        setTempPasswordError(backendMessage || "Có lỗi xảy ra khi cấp mật khẩu tạm thời.");
+      }
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
   return (
     <div className="admin-user-detail-page">
       <div className="top-row">
@@ -307,6 +360,15 @@ const AdminUserDetailPage = () => {
                   <ShieldCheck size={14} /> {formatRole(user.role)}
                 </span>
                 <StatusPill status={user.status} />
+                <button 
+                  type="button" 
+                  className="reset-password-btn" 
+                  onClick={handleOpenResetModal}
+                  title="Đặt lại mật khẩu"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: 'auto', padding: '6px 12px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+                >
+                  <KeyRound size={14} /> Đặt lại mật khẩu
+                </button>
               </div>
               <p className="id-text">ID người dùng: #{user.id}</p>
             </div>
@@ -398,6 +460,82 @@ const AdminUserDetailPage = () => {
                   disabled={updating}
                 />
                 {reasonError && <p className="modal-error-text">{reasonError}</p>}
+              </div>
+            )}
+          </CenteredConfirmModal>
+
+          <CenteredConfirmModal
+            isOpen={resetModalOpen}
+            title="Đặt lại mật khẩu"
+            description="Chọn phương thức đặt lại mật khẩu cho người dùng này."
+            confirmText={shownTempPassword ? "Đóng" : "Xác nhận"}
+            cancelText={shownTempPassword ? "" : "Hủy"}
+            onConfirm={shownTempPassword ? handleCloseResetModal : handleResetConfirm}
+            onClose={handleCloseResetModal}
+            loading={resetSubmitting}
+            hideCancel={!!shownTempPassword}
+          >
+            {shownTempPassword ? (
+              <div className="reset-success-view" style={{ padding: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', color: '#166534', marginTop: '16px' }}>
+                <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>Đã cập nhật mật khẩu tạm thời. Người dùng sẽ bị yêu cầu đổi mật khẩu ở lần đăng nhập tiếp theo.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px' }}>
+                  <span style={{ fontWeight: '500', fontFamily: 'monospace', fontSize: '15px' }}>{shownTempPassword}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      navigator.clipboard.writeText(shownTempPassword);
+                      toast.success("Đã sao chép mật khẩu", { id: 'copy' });
+                    }}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '13px' }}
+                  >
+                    Sao chép
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="reset-methods" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="resetMethod"
+                    value="email"
+                    checked={resetMethod === "email"}
+                    onChange={(e) => setResetMethod(e.target.value)}
+                    disabled={resetSubmitting}
+                  />
+                  <span>Gửi link qua Email</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="resetMethod"
+                    value="manual"
+                    checked={resetMethod === "manual"}
+                    onChange={(e) => setResetMethod(e.target.value)}
+                    disabled={resetSubmitting}
+                  />
+                  <span>Cấp mật khẩu tạm thời</span>
+                </label>
+
+                {resetMethod === "manual" && (
+                  <div className="modal-reason-field" style={{ marginTop: '8px' }}>
+                    <label htmlFor="temp-password" style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>Mật khẩu mới</label>
+                    <input
+                      id="temp-password"
+                      type="text"
+                      value={tempPassword}
+                      onChange={(e) => {
+                        setTempPassword(e.target.value);
+                        if (tempPasswordError) setTempPasswordError("");
+                      }}
+                      placeholder="Nhập mật khẩu tạm thời..."
+                      disabled={resetSubmitting}
+                      style={{ width: '100%', padding: '8px 12px', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                    {tempPasswordError && <p className="modal-error-text" style={{ color: '#dc2626', fontSize: '13px', marginTop: '4px' }}>{tempPasswordError}</p>}
+                    <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>BR-68: Đổi mật khẩu thành công sẽ yêu cầu người dùng thay đổi lại mật khẩu trong lần đăng nhập kế tiếp.</p>
+                  </div>
+                )}
               </div>
             )}
           </CenteredConfirmModal>

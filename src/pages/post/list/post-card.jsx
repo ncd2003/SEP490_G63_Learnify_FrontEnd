@@ -6,6 +6,7 @@ import useComments from "@/hooks/use-comments";
 import useCommentMutations from "@/hooks/use-comment";
 import CommentCard from "@/pages/comment/list/comment-card";
 import CommentForm from "@/pages/comment/create/comment-form";
+import UserDetailModal from "@/components/UserDetailModal";
 
 /**
  * Returns an icon based on file type string (e.g. "JPG", "PDF", "MP4")
@@ -49,6 +50,7 @@ const PostCard = memo(({ post, classroomId = null, onEdit, onDelete }) => {
   const [commentSortOrder, setCommentSortOrder] = useState("newest");
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const isOptimisticPost = Boolean(post?.isOptimistic);
   const commentsPostId = isOptimisticPost ? null : post.id;
 
@@ -139,7 +141,7 @@ const PostCard = memo(({ post, classroomId = null, onEdit, onDelete }) => {
     <div className={`post-card${isOptimisticPost ? " post-card--optimistic" : ""}`}>
       {/* Header */}
       <div className="post-card-header">
-        <div className="post-author">
+        <div className="post-author" onClick={() => { if (!isOptimisticPost && postOwnerId) setIsUserModalOpen(true); }} style={{ cursor: (!isOptimisticPost && postOwnerId) ? 'pointer' : 'default' }}>
           <div className="post-author-avatar">
             {post.user?.avatarUrl
               ? <img src={post.user.avatarUrl} alt={authorName} />
@@ -148,7 +150,7 @@ const PostCard = memo(({ post, classroomId = null, onEdit, onDelete }) => {
           </div>
           <div className="post-author-info">
             <div className="post-author-header">
-              <span className="post-author-name">{authorName}</span>
+              <span className="post-author-name" style={{ cursor: (!isOptimisticPost && postOwnerId) ? 'pointer' : 'default' }}>{authorName}</span>
               {post.createdAt && (
                 <span className="post-created-time">{formatRelativeTime(post.createdAt)}</span>
               )}
@@ -414,6 +416,19 @@ const PostCard = memo(({ post, classroomId = null, onEdit, onDelete }) => {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* User Detail Modal */}
+      {isUserModalOpen && (
+        <UserDetailModal
+          isOpen={isUserModalOpen}
+          onClose={() => setIsUserModalOpen(false)}
+          userId={postOwnerId}
+          initialData={{
+            fullName: authorName,
+            avatarUrl: post.user?.avatarUrl
+          }}
+        />
       )}
     </div>
   );
