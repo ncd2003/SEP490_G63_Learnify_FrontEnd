@@ -68,6 +68,7 @@ export const PATH_TEACHER = {
     attendance: (id) => `/classrooms/${id}/attendance`,
     attendanceSession: (id, sessionId) =>
       `/classrooms/${id}/attendance/${sessionId}`,
+    gradebook: (id) => `/classrooms/${id}/gradebook`,
   },
   assignments: path(ROOTS_TEACHER, "/assignments"),
   assignmentCreateMethod: path(ROOTS_TEACHER, "/assignments/create-method"),
@@ -78,8 +79,18 @@ export const PATH_TEACHER = {
     ROOTS_TEACHER,
     "/assignments/create/manual/questions",
   ),
+  assignmentCreateManualQuestionsPreview: path(
+    ROOTS_TEACHER,
+    "/assignments/create/manual/questions/preview",
+  ),
   assignmentDetail: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}`),
+  assignmentEdit: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/setup`),
+  assignmentEditQuestions: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/questions`),
+  assignmentEditor: (assignmentId) =>
+    path(ROOTS_TEACHER, `/assignments/${assignmentId}/editor`),
   assignmentSubmissions: (assignmentId) =>
     path(ROOTS_TEACHER, `/assignments/${assignmentId}/submissions`),
   assignmentAssignClasses: (assignmentId) =>

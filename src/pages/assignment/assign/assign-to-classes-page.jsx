@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { assignmentApi } from "@/apis/assignment.api";
 import { PATH_TEACHER } from "@/routes/paths";
 
@@ -15,6 +16,8 @@ const defaultSettings = () => ({
   shuffleQuestions: false,
   limitTabs: "",
   requireFullScreen: false,
+  maxAttempts: 1,
+  maxAttemptsType: "UNLIMITED",
 });
 
 const SETTINGS_PANEL_CSS = `
@@ -30,6 +33,11 @@ const SETTINGS_PANEL_CSS = `
 .assign-label{display:block;font-size:11px;font-weight:700;color:#64748B;margin-bottom:5px;letter-spacing:.02em}
 .assign-input,.assign-select{width:100%;height:36px;border:1.5px solid #E2E8F0;border-radius:10px;padding:0 11px;font-size:12px;font-family:'Be Vietnam Pro','Segoe UI',sans-serif;color:#1E293B;background:#F8FAFC;transition:all .2s ease;outline:none}
 .assign-input:focus,.assign-select:focus{border-color:#3B82F6;background:#FFFFFF;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.assign-input-wrap{position:relative}
+.assign-input-wrap .assign-input{padding-right:38px}
+.assign-input-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#94A3B8;cursor:pointer;padding:4px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.assign-input-eye:hover{color:#2563EB;background:#EFF6FF}
+.assign-input-eye:focus-visible{outline:2px solid rgba(59,130,246,.35);outline-offset:2px}
 .assign-setting-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
 .assign-setting-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
 .assign-toggle-item{padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:12px;background:#FFFFFF}
@@ -87,6 +95,12 @@ const toOverridePayload = (config = {}, category = "HOMEWORK") => {
           ? Math.max(0, Math.round(limitTabs))
           : null,
     requireFullScreen: isTest ? Boolean(config.requireFullScreen) : false,
+    maxAttempts:
+      config.maxAttemptsType === "UNLIMITED"
+        ? null
+        : Number.isFinite(Number(config.maxAttempts))
+          ? Math.max(1, Math.round(Number(config.maxAttempts)))
+          : 1,
   };
 };
 
@@ -217,6 +231,7 @@ const AssignToClassesPage = () => {
   const [selected, setSelected] = useState(new Set());
   const [settings, setSettings] = useState({});
   const [openCards, setOpenCards] = useState({});
+  const [visiblePasswords, setVisiblePasswords] = useState({});
   const [toast, setToast] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [savingClassOverride, setSavingClassOverride] = useState({});
@@ -308,6 +323,8 @@ const AssignToClassesPage = () => {
               ? ""
               : String(setting.limitTabs),
           requireFullScreen: Boolean(setting.requireFullScreen),
+          maxAttemptsType: setting.maxAttempts ? "LIMITED" : "UNLIMITED",
+          maxAttempts: Number(setting.maxAttempts || 1),
         };
 
         setAssignmentCategory(category === "TEST" ? "TEST" : "HOMEWORK");
@@ -339,10 +356,16 @@ const AssignToClassesPage = () => {
           delete n[id];
           return n;
         });
+        setVisiblePasswords((current) => {
+          const nextVisibility = { ...current };
+          delete nextVisibility[id];
+          return nextVisibility;
+        });
       } else {
         next.add(id);
         setSettings((s) => ({ ...s, [id]: { ...baseSettings } }));
         setOpenCards((o) => ({ ...o, [id]: true }));
+        setVisiblePasswords((current) => ({ ...current, [id]: false }));
       }
       return next;
     });
@@ -360,6 +383,10 @@ const AssignToClassesPage = () => {
 
   const toggleCard = (id) => {
     setOpenCards((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const setPasswordVisibility = (classId, isVisible) => {
+    setVisiblePasswords((prev) => ({ ...prev, [classId]: isVisible }));
   };
 
   const selectedArr = useMemo(() => Array.from(selected), [selected]);
@@ -910,18 +937,69 @@ const AssignToClassesPage = () => {
                           <div className="assign-setting-grid">
                             <div className="assign-form-group">
                               <label className="assign-label">Mật khẩu</label>
-                              <input
-                                className="assign-input"
-                                value={settings[id]?.password || ""}
-                                onChange={(event) =>
-                                  updateSetting(
-                                    id,
-                                    "password",
-                                    event.target.value,
-                                  )
-                                }
-                                placeholder="Để trống nếu không dùng"
-                              />
+                              <div className="assign-input-wrap">
+                                <input
+                                  className="assign-input"
+                                  type={
+                                    visiblePasswords[id] ? "text" : "password"
+                                  }
+                                  value={settings[id]?.password || ""}
+                                  onChange={(event) =>
+                                    updateSetting(
+                                      id,
+                                      "password",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Để trống nếu không dùng"
+                                />
+                                <button
+                                  type="button"
+                                  className="assign-input-eye"
+                                  aria-label={
+                                    visiblePasswords[id]
+                                      ? "Ẩn mật khẩu"
+                                      : "Hiển thị mật khẩu"
+                                  }
+                                  onPointerDown={(event) => {
+                                    event.preventDefault();
+                                    setPasswordVisibility(id, true);
+                                  }}
+                                  onPointerUp={() =>
+                                    setPasswordVisibility(id, false)
+                                  }
+                                  onPointerLeave={() =>
+                                    setPasswordVisibility(id, false)
+                                  }
+                                  onPointerCancel={() =>
+                                    setPasswordVisibility(id, false)
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key === " " ||
+                                      event.key === "Enter"
+                                    ) {
+                                      event.preventDefault();
+                                      setPasswordVisibility(id, true);
+                                    }
+                                  }}
+                                  onKeyUp={(event) => {
+                                    if (
+                                      event.key === " " ||
+                                      event.key === "Enter"
+                                    ) {
+                                      event.preventDefault();
+                                      setPasswordVisibility(id, false);
+                                    }
+                                  }}
+                                >
+                                  {visiblePasswords[id] ? (
+                                    <EyeOff size={16} />
+                                  ) : (
+                                    <Eye size={16} />
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
                             <div className="assign-form-group">
@@ -1008,6 +1086,84 @@ const AssignToClassesPage = () => {
                                 </button>
                               </div>
                             </div>
+
+                            {!isTestCategory && (
+                              <div className="assign-toggle-item">
+                                <label className="assign-label">
+                                  Số lần làm bài tối đa
+                                </label>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <div
+                                    className="assign-pill-group"
+                                    style={{ flex: 1 }}
+                                  >
+                                    <button
+                                      type="button"
+                                      className={`assign-pill${settings[id]?.maxAttemptsType === "UNLIMITED" ? " active" : ""}`}
+                                      onClick={() =>
+                                        updateSetting(
+                                          id,
+                                          "maxAttemptsType",
+                                          "UNLIMITED",
+                                        )
+                                      }
+                                    >
+                                      Vô hạn
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`assign-pill${settings[id]?.maxAttemptsType === "LIMITED" ? " active" : ""}`}
+                                      onClick={() =>
+                                        updateSetting(
+                                          id,
+                                          "maxAttemptsType",
+                                          "LIMITED",
+                                        )
+                                      }
+                                    >
+                                      Giới hạn
+                                    </button>
+                                  </div>
+                                  {settings[id]?.maxAttemptsType ===
+                                    "LIMITED" && (
+                                    <div
+                                      style={{ position: "relative", width: 85 }}
+                                    >
+                                      <input
+                                        className="assign-input"
+                                        type="number"
+                                        min={1}
+                                        value={settings[id]?.maxAttempts ?? ""}
+                                        onChange={(event) =>
+                                          updateSetting(
+                                            id,
+                                            "maxAttempts",
+                                            event.target.value,
+                                          )
+                                        }
+                                        style={{
+                                          paddingRight: 32,
+                                          textAlign: "center",
+                                        }}
+                                      />
+                                      <span
+                                        style={{
+                                          position: "absolute",
+                                          right: 8,
+                                          top: "50%",
+                                          transform: "translateY(-50%)",
+                                          fontSize: 11,
+                                          color: "#64748B",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        lần
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
 
                             {isTestCategory ? (
                               <div className="assign-toggle-item">

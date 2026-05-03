@@ -953,19 +953,6 @@ export default function AssignmentHubPage() {
         }
       }
 
-      if (draftMode === DRAFT_MODE.AI) {
-        const query = buildAssignmentEditorQuery({
-          assignmentId: safeAssignmentId,
-          apiFormat,
-          apiCategory,
-          sectionId: resolvedSectionId,
-          sessionId: pendingSessionId,
-          includeDraftStatus: false,
-        });
-        navigate(`${PATH_TEACHER.assignmentCreateAi}?${query}`);
-        return;
-      }
-
       const query = buildAssignmentEditorQuery({
         assignmentId: safeAssignmentId,
         apiFormat,
@@ -974,7 +961,9 @@ export default function AssignmentHubPage() {
         sessionId: pendingSessionId,
         includeDraftStatus: true,
       });
-      navigate(`${PATH_TEACHER.assignmentCreateManualQuestions}?${query}`);
+      navigate(
+        `${PATH_TEACHER.assignmentCreateManualQuestionsPreview}?${query}`,
+      );
     } catch (err) {
       showToast(
         err?.response?.data?.message ||

@@ -104,9 +104,9 @@ const normalizeQuestion = (item, idx) => {
       source?.cognitiveLevel || item?.cognitiveLevel || "APPLYING",
     options: Array.isArray(source?.options)
       ? source.options.map((o) => ({
-          text: normalizeRichText(o.content || o.text || ""),
-          correct: Boolean(o.correct),
-        }))
+        text: normalizeRichText(o.content || o.text || ""),
+        correct: Boolean(o.correct),
+      }))
       : [],
     sampleAnswer: normalizeRichText(
       source?.sampleAnswer || item?.sampleAnswer || "",
@@ -117,30 +117,30 @@ const normalizeQuestion = (item, idx) => {
 const toDetailAssignment = (item) => {
   const sectionQuestions = Array.isArray(item.sections)
     ? [...item.sections]
-        .sort(
-          (left, right) =>
-            toOrderNumber(left?.orderIndex) - toOrderNumber(right?.orderIndex),
-        )
-        .flatMap((section) => {
-          const questions = Array.isArray(section?.questions)
-            ? section.questions
-            : [];
+      .sort(
+        (left, right) =>
+          toOrderNumber(left?.orderIndex) - toOrderNumber(right?.orderIndex),
+      )
+      .flatMap((section) => {
+        const questions = Array.isArray(section?.questions)
+          ? section.questions
+          : [];
 
-          return [...questions].sort(
-            (left, right) =>
-              toOrderNumber(left?.orderIndex) -
-              toOrderNumber(right?.orderIndex),
-          );
-        })
+        return [...questions].sort(
+          (left, right) =>
+            toOrderNumber(left?.orderIndex) -
+            toOrderNumber(right?.orderIndex),
+        );
+      })
     : [];
 
   const normalizedQuestions = Array.isArray(item.questions)
     ? [...item.questions]
-        .sort(
-          (left, right) =>
-            toOrderNumber(left?.orderIndex) - toOrderNumber(right?.orderIndex),
-        )
-        .map(normalizeQuestion)
+      .sort(
+        (left, right) =>
+          toOrderNumber(left?.orderIndex) - toOrderNumber(right?.orderIndex),
+      )
+      .map(normalizeQuestion)
     : sectionQuestions.map(normalizeQuestion);
 
   return {
@@ -153,9 +153,9 @@ const toDetailAssignment = (item) => {
     totalScore: Number(item.totalScore ?? 0),
     questionCount: Number(
       item.numberOfQuestions ??
-        item.questionCount ??
-        normalizedQuestions.length ??
-        0,
+      item.questionCount ??
+      normalizedQuestions.length ??
+      0,
     ),
     duration:
       item?.setting?.durationMinutes ??
@@ -182,6 +182,7 @@ const toDetailAssignment = (item) => {
     avgScore: Number(item.avgScore ?? item.averageScore ?? 0),
     questions: normalizedQuestions,
     description: item.description || "",
+    locked: item.locked === true,
   };
 };
 
@@ -750,7 +751,7 @@ const QuestionCard = ({ q, index }) => {
           )}
 
           {(q.type === "ESSAY" || q.type === "FILL_IN_THE_BLANK") &&
-          q.sampleAnswer ? (
+            q.sampleAnswer ? (
             <div>
               <div className="q-ans-label">Đáp án mẫu</div>
               <div className="q-sample-ans">{q.sampleAnswer}</div>
@@ -838,27 +839,14 @@ export default function AssignmentDetailPage() {
   const handleEditRawAssignment = () => {
     if (!assignment?.id) return;
     setEditModeModal(false);
-    navigate(
-      `${PATH_TEACHER.assignmentCreateManual}?assignmentId=${assignment.id}`,
-    );
+    navigate(PATH_TEACHER.assignmentEdit(assignment.id));
   };
 
   const handleEditQuestions = () => {
     if (!assignment?.id) return;
 
-    const formatParam =
-      assignment.format === "mc" ? "multiple_choice" : assignment.format;
-    const params = new URLSearchParams({
-      assignmentId: String(assignment.id),
-      format: String(formatParam || "mixed"),
-      category: String(assignment.category || "homework"),
-      status: String(assignment.status || "draft"),
-    });
-
     setEditModeModal(false);
-    navigate(
-      `${PATH_TEACHER.assignmentCreateManualQuestions}?${params.toString()}`,
-    );
+    navigate(PATH_TEACHER.assignmentEditQuestions(assignment.id));
   };
 
   const handleViewClassSubmissions = (classroom) => {
@@ -881,23 +869,23 @@ export default function AssignmentDetailPage() {
     ? qTab === "all"
       ? assignment.questions
       : assignment.questions.filter((q) => {
-          if (qTab === "mc") return q.type === "MULTIPLE_CHOICE";
-          if (qTab === "tf") return q.type === "TRUE_FALSE";
-          if (qTab === "fb") return q.type === "FILL_IN_THE_BLANK";
-          if (qTab === "essay") return q.type === "ESSAY";
-          return true;
-        })
+        if (qTab === "mc") return q.type === "MULTIPLE_CHOICE";
+        if (qTab === "tf") return q.type === "TRUE_FALSE";
+        if (qTab === "fb") return q.type === "FILL_IN_THE_BLANK";
+        if (qTab === "essay") return q.type === "ESSAY";
+        return true;
+      })
     : [];
 
   const qTypeCounts = assignment
     ? {
-        mc: assignment.questions.filter((q) => q.type === "MULTIPLE_CHOICE")
-          .length,
-        tf: assignment.questions.filter((q) => q.type === "TRUE_FALSE").length,
-        fb: assignment.questions.filter((q) => q.type === "FILL_IN_THE_BLANK")
-          .length,
-        essay: assignment.questions.filter((q) => q.type === "ESSAY").length,
-      }
+      mc: assignment.questions.filter((q) => q.type === "MULTIPLE_CHOICE")
+        .length,
+      tf: assignment.questions.filter((q) => q.type === "TRUE_FALSE").length,
+      fb: assignment.questions.filter((q) => q.type === "FILL_IN_THE_BLANK")
+        .length,
+      essay: assignment.questions.filter((q) => q.type === "ESSAY").length,
+    }
     : {};
 
   const scorePercent =
@@ -953,13 +941,12 @@ export default function AssignmentDetailPage() {
           <div className="dh-left">
             <div className="dh-badge-row">
               <span
-                className={`badge ${
-                  assignment.status === "published"
+                className={`badge ${assignment.status === "published"
                     ? "badge-pub"
                     : assignment.status === "draft"
                       ? "badge-draft"
                       : "badge-arch"
-                }`}
+                  }`}
               >
                 {statusLabel(assignment.status)}
               </span>
@@ -1206,11 +1193,10 @@ export default function AssignmentDetailPage() {
                             {classroom.classroomName}
                           </span>
                           <span
-                            className={`cls-status ${
-                              classroom.status === "revoked"
+                            className={`cls-status ${classroom.status === "revoked"
                                 ? "revoked"
                                 : "assigned"
-                            }`}
+                              }`}
                           >
                             {classroom.status === "revoked"
                               ? "Đã thu hồi"
@@ -1478,67 +1464,214 @@ export default function AssignmentDetailPage() {
           <div
             className="modal-box edit-mode-modal"
             onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '640px' }}
           >
-            <div className="modal-body-center">
-              <div className="edit-mode-hero">
-                <div className="edit-mode-badge">
+            <div className="modal-body-center" style={{ padding: '40px 32px' }}>
+              <div className="edit-mode-hero" style={{ marginBottom: '24px' }}>
+                <div className="edit-mode-badge" style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  padding: '5px 12px', 
+                  borderRadius: '999px', 
+                  background: 'var(--primary-light)', 
+                  color: 'var(--primary)',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '12px'
+                }}>
                   <Ic.Edit /> Chỉnh sửa bài tập
                 </div>
-                <div className="edit-mode-title">
+                <div className="edit-mode-title" style={{ 
+                  fontSize: '28px', 
+                  fontWeight: 800, 
+                  color: 'var(--text)',
+                  marginBottom: '10px'
+                }}>
                   Chọn kiểu chỉnh sửa phù hợp
                 </div>
-                <div className="edit-mode-sub">
-                  Bạn có thể chỉnh nhanh thông tin bài tập hoặc đi vào màn hình
-                  chỉnh sửa câu hỏi với auto save.
+                <div className="edit-mode-sub" style={{ 
+                  fontSize: '14px', 
+                  color: 'var(--text2)', 
+                  lineHeight: '1.6',
+                  opacity: 0.8
+                }}>
+                  Bạn có thể chỉnh nhanh thông tin bài tập hoặc đi vào màn hình chỉnh sửa câu hỏi với auto save.
                 </div>
+
+                {/* Thông báo locked */}
+                {assignment.locked && (
+                  <div
+                    style={{
+                      marginTop: 16,
+                      padding: "12px 16px",
+                      background: "#FFFBEB",
+                      border: "1px solid #FEF3C7",
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      fontSize: 13,
+                      color: "#92400E",
+                      fontWeight: 600,
+                      textAlign: "left",
+                      boxShadow: '0 2px 4px rgba(245,158,11,0.05)'
+                    }}
+                  >
+                    <div style={{ color: '#F59E0B' }}>
+                      <Ic.Lock />
+                    </div>
+                    <span>
+                      Bài tập đã có bài nộp — chỉ có thể sửa thông tin cơ bản. 
+                      Chỉnh sửa câu hỏi không khả dụng.
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="edit-choice-grid">
+              <div className="edit-choice-grid" style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(2, 1fr)', 
+                gap: '20px',
+                marginBottom: '28px'
+              }}>
+                {/* Option 1 — luôn cho phép */}
                 <button
                   className="edit-choice-btn setup"
                   onClick={handleEditRawAssignment}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '24px',
+                    borderRadius: '20px',
+                    border: '1.5px solid var(--border)',
+                    background: '#fff',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
                 >
-                  <div className="edit-choice-top">
-                    <div className="edit-choice-icon">
+                  <div className="edit-choice-top" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', width: '100%' }}>
+                    <div className="edit-choice-icon" style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '12px', 
+                      background: '#E0F2FE', 
+                      color: '#0369A1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
                       <Ic.FileText />
                     </div>
-                    <div className="edit-choice-tag">Thiết lập</div>
+                    <div className="edit-choice-tag" style={{ 
+                      fontSize: '10px', 
+                      fontWeight: 800, 
+                      padding: '4px 10px', 
+                      borderRadius: '999px', 
+                      background: '#F0F9FF', 
+                      color: '#0369A1',
+                      textTransform: 'uppercase'
+                    }}>
+                      Thiết lập
+                    </div>
                   </div>
-                  <div className="edit-choice-title">
-                    Sửa phần thô assignment
+                  <div className="edit-choice-title" style={{ fontSize: '16px', fontWeight: 800, marginBottom: '6px', color: 'var(--text)' }}>
+                    Thông tin chung
                   </div>
-                  <div className="edit-choice-desc">
-                    Mở màn hình setup để sửa title, mô tả, category, format và
-                    cấu hình hiện tại.
+                  <div className="edit-choice-desc" style={{ fontSize: '12px', color: 'var(--text2)', lineHeight: '1.5' }}>
+                    Sửa tiêu đề, mô tả, môn học và các cài đặt thời gian, bảo mật.
                   </div>
                 </button>
 
+                {/* Option 2 — chặn khi locked */}
                 <button
                   className="edit-choice-btn questions"
-                  onClick={handleEditQuestions}
+                  onClick={assignment.locked ? undefined : handleEditQuestions}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '24px',
+                    borderRadius: '20px',
+                    border: '1.5px solid var(--border)',
+                    background: '#fff',
+                    textAlign: 'left',
+                    cursor: assignment.locked ? "not-allowed" : "pointer",
+                    transition: 'all 0.2s ease',
+                    opacity: assignment.locked ? 0.6 : 1,
+                    filter: assignment.locked ? "grayscale(0.5)" : "none",
+                  }}
+                  title={
+                    assignment.locked
+                      ? "Bài tập đã có bài nộp, không thể chỉnh sửa câu hỏi"
+                      : ""
+                  }
                 >
-                  <div className="edit-choice-top">
-                    <div className="edit-choice-icon">
-                      <Ic.Layers />
+                  <div className="edit-choice-top" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', width: '100%' }}>
+                    <div className="edit-choice-icon" style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '12px', 
+                      background: assignment.locked ? '#F3F4F6' : '#DCFCE7', 
+                      color: assignment.locked ? '#6B7280' : '#166534',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {assignment.locked ? <Ic.Lock /> : <Ic.Layers />}
                     </div>
-                    <div className="edit-choice-tag">Nội dung đề</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className="edit-choice-tag" style={{ 
+                        fontSize: '10px', 
+                        fontWeight: 800, 
+                        padding: '4px 10px', 
+                        borderRadius: '999px', 
+                        background: '#F0FDF4', 
+                        color: '#166534',
+                        textTransform: 'uppercase'
+                      }}>
+                        Nội dung
+                      </div>
+                      {assignment.locked && (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "3px 8px",
+                            borderRadius: 999,
+                            background: "#FEF3C7",
+                            color: "#D97706",
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          <Ic.Lock style={{ width: 10, height: 10 }} /> Khóa
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="edit-choice-title">
-                    Sửa câu hỏi trong assignment
+                  <div className="edit-choice-title" style={{ fontSize: '16px', fontWeight: 800, marginBottom: '6px', color: 'var(--text)' }}>
+                    Chỉnh sửa câu hỏi
                   </div>
-                  <div className="edit-choice-desc">
-                    Mở màn hình soạn thủ công để thêm, sửa, xóa câu hỏi và tự
-                    động lưu mỗi thay đổi.
+                  <div className="edit-choice-desc" style={{ fontSize: '12px', color: 'var(--text2)', lineHeight: '1.5' }}>
+                    {assignment.locked
+                      ? "Không khả dụng vì bài tập đã có học sinh làm bài."
+                      : "Thêm, sửa, xóa câu hỏi và cập nhật nội dung đề thi trực tiếp."}
                   </div>
                 </button>
               </div>
 
-              <div className="confirm-btns" style={{ marginTop: 14 }}>
+              <div className="confirm-btns">
                 <button
                   className="btn btn-ghost"
+                  style={{ borderRadius: '999px', padding: '10px 28px', fontSize: '13px', fontWeight: 700 }}
                   onClick={() => setEditModeModal(false)}
                 >
-                  Hủy
+                  Hủy bỏ
                 </button>
               </div>
             </div>

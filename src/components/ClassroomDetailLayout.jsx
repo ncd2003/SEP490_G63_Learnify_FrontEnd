@@ -42,7 +42,7 @@ const MENU_ITEMS = [
     path: "/assignments",
   },
   { key: "folders", label: "Tài liệu", icon: FolderOpen, path: "/folders" },
-  { key: "grades", label: "Bảng điểm", icon: BarChart3, path: "/grades" },
+  { key: "grades", label: "Bảng điểm", icon: BarChart3, path: "/gradebook" },
   {
     key: "attendance",
     label: "Điểm danh",
@@ -275,7 +275,7 @@ const ClassroomDetailLayout = ({
     if (path.includes("/members")) return "members";
     if (path.includes("/assignments")) return "assignments";
     if (path.includes("/folders")) return "folders";
-    if (path.includes("/grades")) return "grades";
+    if (path.includes("/gradebook")) return "grades";
     return "feed";
   };
 
