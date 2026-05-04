@@ -28,8 +28,10 @@ export const adminApi = {
   sendAccountWarning: (userId, payload) => {
     return apiRequest.post(`${BASE}/users/${userId}/warnings`, payload);
   },
-  getReports: ({ status, page = 1, size = 10 } = {}) => {
+  getReports: ({ keyword, priority, status, page = 1, size = 10 } = {}) => {
     const params = { page, size };
+    if (keyword) params.keyword = keyword;
+    if (priority) params.priority = priority;
     if (status) params.status = status;
     return apiRequest.get(`${BASE}/reports`, { params });
   },
@@ -39,10 +41,11 @@ export const adminApi = {
   resolveReport: (reportId, payload) => {
     return apiRequest.patch(`${BASE}/reports/${reportId}/resolve`, payload);
   },
-  getSystemNotifications: ({ page = 1, size = 10 } = {}) => {
-    return apiRequest.get(`${BASE}/system-notifications`, {
-      params: { page, size },
-    });
+  getSystemNotifications: ({ keyword, status, page = 1, size = 10 } = {}) => {
+    const params = { page, size };
+    if (keyword) params.keyword = keyword;
+    if (status) params.status = status;
+    return apiRequest.get(`${BASE}/system-notifications`, { params });
   },
   getSystemDashboard: () => {
     return apiRequest.get(`${BASE}/system-dashboard`);

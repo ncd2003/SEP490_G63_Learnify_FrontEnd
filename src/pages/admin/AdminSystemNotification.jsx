@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Search, RotateCcw, AlertCircle, Trash2, Send } from "lucide-react";
 import { adminApi } from "@/apis/admin.api";
 
 const TARGET_AUDIENCE_OPTIONS = [
@@ -88,7 +89,9 @@ const AdminSystemNotificationPage = () => {
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [showCreateTemplates, setShowCreateTemplates] = useState(true);
+  const [keywordInput, setKeywordInput] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const [selectedId, setSelectedId] = useState(null);
   const [revoking, setRevoking] = useState(false);
@@ -99,7 +102,12 @@ const AdminSystemNotificationPage = () => {
       setError("");
 
       try {
-        const response = await adminApi.getSystemNotifications({ page, size });
+        const response = await adminApi.getSystemNotifications({
+          keyword,
+          status: statusFilter,
+          page,
+          size,
+        });
         const result = response?.result || {};
         setItems(result.content || []);
         setTotalPages(result.totalPages || 1);
@@ -114,7 +122,20 @@ const AdminSystemNotificationPage = () => {
     };
 
     fetchHistory();
-  }, [page, size, reloadKey]);
+  }, [page, size, keyword, statusFilter, reloadKey]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setKeyword(keywordInput.trim());
+    setPage(1);
+  };
+
+  const resetFilters = () => {
+    setKeywordInput("");
+    setKeyword("");
+    setStatusFilter("");
+    setPage(1);
+  };
 
   const selectedNotification = useMemo(
     () => items.find((item) => item.id === selectedId) || null,
@@ -128,7 +149,8 @@ const AdminSystemNotificationPage = () => {
     setScheduledAt("");
     setFieldError("");
     setFormError("");
-    setShowCreateTemplates(true);
+    setFieldError("");
+    setFormError("");
   };
 
   const openCreateModal = () => {
@@ -148,7 +170,8 @@ const AdminSystemNotificationPage = () => {
     setScheduledAt("");
     setFieldError("");
     setFormError("");
-    setShowCreateTemplates(false);
+    setFieldError("");
+    setFormError("");
   };
 
   const handleCreate = async (e) => {
@@ -218,9 +241,54 @@ const AdminSystemNotificationPage = () => {
         </div>
       </section>
 
+      <section className="filter-box card">
+        <form className="filter-form" onSubmit={handleSearch}>
+          <div className="filter-inputs">
+            <div className="input-group">
+              <label>Tìm kiếm</label>
+              <div className="search-input-wrap">
+                <Search size={16} />
+                <input
+                  placeholder="Nhập tiêu đề thông báo..."
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label>Trạng thái</label>
+              <select value={statusFilter} onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}>
+                <option value="">Tất cả trạng thái</option>
+                <option value="SENT">Đã gửi</option>
+                <option value="SCHEDULED">Đã lên lịch</option>
+                <option value="REVOKED">Đã thu hồi</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="filter-actions">
+            <button type="submit" className="btn-primary">
+              <Search size={16} />
+              Tìm kiếm
+            </button>
+            <button type="button" className="btn-secondary" onClick={resetFilters}>
+              <RotateCcw size={16} />
+              Làm mới
+            </button>
+          </div>
+        </form>
+      </section>
+
       <section className="content-grid">
         <div className="history-panel card">
-          <h2>Lịch sử thông báo đã gửi (Mới nhất trước)</h2>
+          <div className="panel-header">
+            <h2>Lịch sử thông báo</h2>
+            <span className="items-count">Tổng: {items.length} bản ghi</span>
+          </div>
 
           {error && <div className="error-banner">{error}</div>}
 
@@ -261,10 +329,10 @@ const AdminSystemNotificationPage = () => {
                         {item.status === "SENT" || item.status === "SCHEDULED" ? (
                           <button
                             type="button"
-                            className="btn-outline"
+                            className="btn-outline btn-revoke"
                             onClick={() => setSelectedId(item.id)}
                           >
-                            Thu hồi
+                            {item.status === "SCHEDULED" ? "Hủy lịch" : "Thu hồi"}
                           </button>
                         ) : (
                           <span className="dash">-</span>
@@ -300,17 +368,20 @@ const AdminSystemNotificationPage = () => {
       {isCreateModalOpen && (
         <div className="create-modal-overlay" onClick={closeCreateModal}>
           <div className="create-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Tạo thông báo mới</h3>
+            <div className="modal-header">
+              <h3>Tạo thông báo mới</h3>
+              <p className="modal-subtitle">Gửi thông báo hệ thống đến các nhóm người dùng cụ thể.</p>
+            </div>
 
-            <form className="create-form" onSubmit={handleCreate}>
-              {showCreateTemplates ? (
-                <div className="template-list">
-                  <p className="template-label">Mẫu thông báo nhanh</p>
+            <div className="modal-body">
+              <div className="template-section">
+                <p className="section-label">Mẫu thông báo nhanh</p>
+                <div className="chip-list">
                   {SYSTEM_NOTIFICATION_TEMPLATES.map((template) => (
                     <button
                       key={template.id}
                       type="button"
-                      className="template-btn"
+                      className={`chip-item ${title === template.title ? "active" : ""}`}
                       onClick={() => handleSelectTemplate(template)}
                       disabled={submitting}
                     >
@@ -318,16 +389,9 @@ const AdminSystemNotificationPage = () => {
                     </button>
                   ))}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  className="template-reset-btn"
-                  onClick={() => setShowCreateTemplates(true)}
-                  disabled={submitting}
-                >
-                  Chọn mẫu khác
-                </button>
-              )}
+              </div>
+
+              <form className="create-form" id="create-notification-form" onSubmit={handleCreate}>
 
               <label>
                 Tiêu đề *
@@ -380,18 +444,19 @@ const AdminSystemNotificationPage = () => {
               </label>
 
               {formError && <p className="form-error">{formError}</p>}
-
-              <div className="form-actions">
-                <button type="button" className="btn-outline" onClick={closeCreateModal} disabled={submitting}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn-dark" disabled={submitting}>
-                  {submitting ? "Đang gửi..." : "Gửi thông báo"}
-                </button>
-              </div>
             </form>
           </div>
+
+          <div className="modal-footer">
+            <button type="button" className="btn-secondary" onClick={closeCreateModal} disabled={submitting}>
+              Hủy
+            </button>
+            <button type="submit" form="create-notification-form" className="btn-primary" disabled={submitting}>
+              {submitting ? "Đang gửi..." : "Gửi thông báo"}
+            </button>
+          </div>
         </div>
+      </div>
       )}
 
       {selectedNotification && (
@@ -416,8 +481,9 @@ const AdminSystemNotificationPage = () => {
 
       <style>{`
         .admin-system-notification-page {
-          display: grid;
-          gap: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
           color: #0f172a;
         }
 
@@ -425,122 +491,262 @@ const AdminSystemNotificationPage = () => {
           border: 1px solid #dbe5ef;
           border-radius: 12px;
           background: #fff;
-          padding: 14px;
-        }
-
-        .header-box h1 {
-          margin: 0;
-          font-size: clamp(24px, 2.4vw, 30px);
-          line-height: 1.15;
+          padding: 16px;
         }
 
         .header-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
+          gap: 16px;
           flex-wrap: wrap;
+        }
+
+        .header-row h1 {
+          margin: 0;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .filter-box {
+          border: 1px solid #dbe5ef;
+          border-radius: 12px;
+          background: #fff;
+          padding: 20px;
+        }
+
+        .filter-form {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+
+        .filter-inputs {
+          display: flex;
+          gap: 20px;
+          flex: 1;
+          flex-wrap: wrap;
+        }
+
+        .input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          flex: 1;
+          min-width: 240px;
+        }
+
+        .input-group label {
+          font-size: 12px;
+          font-weight: 700;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .search-input-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: 1px solid #cbd5e1;
+          border-radius: 10px;
+          padding: 0 14px;
+          min-height: 44px;
+          background: #fff;
+          transition: border-color 0.2s;
+        }
+
+        .search-input-wrap:focus-within {
+          border-color: #0f766e;
+        }
+
+        .search-input-wrap input {
+          border: none;
+          outline: none;
+          width: 100%;
+          font-size: 14px;
+          color: #0f172a;
+        }
+
+        .input-group select {
+          min-height: 44px;
+          border: 1px solid #cbd5e1;
+          border-radius: 10px;
+          padding: 0 12px;
+          font-size: 14px;
+          outline: none;
+          background: #fff;
+          cursor: pointer;
+        }
+
+        .filter-actions {
+          display: flex;
+          gap: 12px;
+        }
+
+        .btn-primary {
+          background: #0f766e;
+          color: #fff;
+          border: none;
+        }
+
+        .btn-secondary {
+          background: #fff;
+          color: #475569;
+          border: 1px solid #cbd5e1;
+        }
+
+        .btn-dark {
+          background: #0f172a;
+          color: #fff;
+          border: none;
+        }
+
+        .btn-primary, .btn-secondary, .btn-dark, .btn-outline {
+          min-height: 40px;
+          padding: 0 18px;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .btn-primary:hover, .btn-dark:hover {
+          opacity: 0.9;
+          transform: translateY(-1px);
+        }
+
+        .btn-secondary:hover {
+          background: #f8fafc;
+          border-color: #94a3b8;
         }
 
         .content-grid {
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 14px;
+          gap: 16px;
         }
 
         .card {
           border: 1px solid #dbe5ef;
           border-radius: 12px;
           background: #fff;
-          padding: 12px;
+          padding: 20px;
         }
 
-        .card h2 {
-          margin: 0 0 10px;
-          font-size: 17px;
+        .panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+
+        .panel-header h2 {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+        }
+
+        .items-count {
+          font-size: 13px;
+          color: #64748b;
+          font-weight: 500;
         }
 
         .table-wrap {
           border: 1px solid #e2e8f0;
-          border-radius: 10px;
+          border-radius: 12px;
           overflow: auto;
-          max-height: 62vh;
+          max-height: 65vh;
         }
 
         table {
           width: 100%;
           border-collapse: collapse;
-          min-width: 760px;
-        }
-
-        th,
-        td {
-          border-bottom: 1px solid #edf2f7;
-          padding: 9px 8px;
-          font-size: 13px;
-          text-align: left;
-          vertical-align: middle;
+          min-width: 900px;
         }
 
         th {
           background: #f8fafc;
+          padding: 12px 16px;
           font-size: 12px;
+          font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.4px;
-          color: #475569;
+          letter-spacing: 0.05em;
+          color: #64748b;
+          text-align: left;
+          border-bottom: 1px solid #e2e8f0;
+          position: sticky;
+          top: 0;
+          z-index: 10;
         }
 
-        .state-cell {
-          text-align: center;
-          color: #64748b;
-          padding: 16px 8px;
+        td {
+          padding: 14px 16px;
+          font-size: 14px;
+          color: #334155;
+          border-bottom: 1px solid #f1f5f9;
         }
 
         .content-cell {
-          white-space: pre-wrap;
-          word-break: break-word;
-          line-height: 1.45;
+          max-width: 320px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: #64748b;
         }
 
         .status-pill {
           display: inline-flex;
-          border-radius: 999px;
-          padding: 3px 8px;
+          padding: 4px 12px;
+          border-radius: 20px;
           font-size: 12px;
           font-weight: 700;
-          border: 1px solid transparent;
         }
 
         .status-pill.sent {
-          background: #ecfdf3;
-          border-color: #a7f3d0;
-          color: #047857;
+          background: #f0fdf4;
+          color: #166534;
         }
 
         .status-pill.scheduled {
           background: #fffbeb;
-          border-color: #fde68a;
-          color: #b45309;
+          color: #92400e;
         }
 
         .status-pill.revoked {
           background: #f1f5f9;
-          border-color: #cbd5e1;
-          color: #334155;
+          color: #475569;
         }
 
-        .dash {
-          color: #94a3b8;
+        .btn-revoke {
+          color: #dc2626;
+          border-color: #fecaca;
+          background: transparent;
+          min-height: 32px;
+          padding: 0 12px;
+          font-size: 12px;
+        }
+
+        .btn-revoke:hover {
+          background: #fef2f2;
+          border-color: #ef4444;
         }
 
         .pager-row {
-          margin-top: 10px;
+          margin-top: 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
-          font-size: 13px;
-          color: #475569;
+          color: #64748b;
+          font-size: 14px;
         }
 
         .pager-actions {
@@ -548,237 +754,213 @@ const AdminSystemNotificationPage = () => {
           gap: 8px;
         }
 
-        .pager-actions button,
-        .btn-outline,
-        .btn-dark {
-          min-height: 34px;
-          padding: 0 12px;
+        .pager-actions button {
+          min-height: 36px;
+          padding: 0 14px;
           border-radius: 8px;
-          font-size: 12px;
-          font-weight: 700;
-          border: 1px solid transparent;
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          font-size: 13px;
+          font-weight: 600;
           cursor: pointer;
         }
 
-        .pager-actions button,
-        .btn-outline {
-          background: #f8fafc;
-          color: #0f172a;
-          border-color: #cbd5e1;
-        }
-
-        .btn-dark {
-          background: #0f172a;
-          color: #fff;
-        }
-
-        .pager-actions button:disabled,
-        .btn-outline:disabled,
-        .btn-dark:disabled {
-          opacity: 0.55;
+        .pager-actions button:disabled {
+          opacity: 0.5;
           cursor: not-allowed;
         }
 
-        .revoke-modal-overlay {
+        .create-modal-overlay, .revoke-modal-overlay {
           position: fixed;
           inset: 0;
-          z-index: 1200;
-          background: rgba(15, 23, 42, 0.35);
+          background: rgba(15, 23, 42, 0.4);
+          backdrop-filter: blur(4px);
           display: flex;
           align-items: center;
           justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+
+        .create-modal {
+          width: min(720px, 100%);
+          background: #fff;
+          border-radius: 16px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          display: flex;
+          flex-direction: column;
+          max-height: 90vh;
+          overflow: hidden;
+        }
+
+        .modal-header {
+          padding: 24px;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-header h3 {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 700;
+        }
+
+        .modal-subtitle {
+          margin: 4px 0 0;
+          font-size: 14px;
+          color: #64748b;
+        }
+
+        .modal-body {
+          padding: 24px;
           overflow-y: auto;
-          padding: 20px 16px;
-          backdrop-filter: blur(2px);
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .template-section {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .section-label {
+          font-size: 12px;
+          font-weight: 700;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .chip-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .chip-item {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 1px solid #e2e8f0;
+          background: #f8fafc;
+          font-size: 13px;
+          font-weight: 600;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .chip-item:hover {
+          background: #f1f5f9;
+          border-color: #cbd5e1;
+        }
+
+        .chip-item.active {
+          background: #f0fdfa;
+          border-color: #0f766e;
+          color: #0f766e;
+        }
+
+        .create-form {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .create-form label {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #334155;
+        }
+
+        .create-form input, .create-form textarea, .create-form select {
+          padding: 12px;
+          border-radius: 10px;
+          border: 1px solid #cbd5e1;
+          font-size: 14px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        .create-form input:focus, .create-form textarea:focus, .create-form select:focus {
+          border-color: #0f766e;
+        }
+
+        .modal-footer {
+          padding: 20px 24px;
+          border-top: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          background: #f8fafc;
         }
 
         .revoke-modal {
-          width: min(460px, calc(100vw - 32px));
-          max-height: calc(100vh - 40px);
-          border: 1px solid #dbe5ef;
-          border-radius: 12px;
+          width: min(440px, 100%);
           background: #fff;
-          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
-          padding: 16px;
-          display: grid;
-          gap: 10px;
-          overflow-y: auto;
+          border-radius: 16px;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
         }
 
         .revoke-modal h3 {
           margin: 0;
           font-size: 18px;
+          font-weight: 700;
           color: #0f172a;
         }
 
         .revoke-modal p {
           margin: 0;
           font-size: 14px;
-          color: #334155;
-          line-height: 1.45;
+          color: #475569;
+          line-height: 1.5;
         }
 
         .revoke-modal-meta {
-          font-size: 13px;
-          color: #475569;
+          padding: 12px;
           background: #f8fafc;
-          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 8px 10px;
+          font-size: 13px;
         }
 
         .revoke-modal-actions {
           display: flex;
           justify-content: flex-end;
-          gap: 8px;
+          gap: 12px;
         }
 
-        .create-modal-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 1200;
-          background: rgba(15, 23, 42, 0.35);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow-y: auto;
-          padding: 20px 16px;
-          backdrop-filter: blur(2px);
-        }
-
-        .create-modal {
-          width: min(680px, calc(100vw - 32px));
-          max-height: calc(100vh - 40px);
-          border: 1px solid #dbe5ef;
-          border-radius: 12px;
-          background: #fff;
-          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
-          padding: 16px;
-          display: grid;
-          gap: 10px;
-          overflow-y: auto;
-        }
-
-        .create-modal h3 {
-          margin: 0;
-          font-size: 18px;
-          color: #0f172a;
-        }
-
-        .template-list {
-          display: grid;
-          gap: 8px;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 10px;
-          background: #f8fafc;
-        }
-
-        .template-label {
-          margin: 0;
-          font-size: 12px;
-          font-weight: 700;
-          color: #334155;
-          text-transform: uppercase;
-          letter-spacing: 0.4px;
-        }
-
-        .template-btn,
-        .template-reset-btn {
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          color: #334155;
-          border-radius: 8px;
-          padding: 8px 10px;
-          font-size: 13px;
-          text-align: left;
-          cursor: pointer;
-        }
-
-        .template-btn:hover,
-        .template-reset-btn:hover {
-          border-color: #94a3b8;
-          background: #f1f5f9;
-        }
-
-        .create-form {
-          display: grid;
-          gap: 10px;
-        }
-
-        .create-form label {
-          display: grid;
-          gap: 6px;
-          font-size: 13px;
-          font-weight: 600;
-          color: #334155;
-        }
-
-        .create-form input,
-        .create-form textarea,
-        .create-form select {
-          border: 1px solid #cbd5e1;
-          border-radius: 8px;
-          padding: 9px 10px;
-          font-size: 14px;
-          color: #0f172a;
-          outline: none;
-          background: #fff;
-        }
-
-        .create-form input:focus,
-        .create-form textarea:focus,
-        .create-form select:focus {
-          border-color: #0f766e;
-          box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
-        }
-
-        .field-error {
-          margin: -2px 0 0;
+        .field-error, .form-error {
           color: #dc2626;
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 600;
-        }
-
-        .form-error {
-          margin: -2px 0 0;
-          color: #b91c1c;
-          font-size: 12px;
-          font-weight: 600;
-        }
-
-        .form-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 8px;
         }
 
         .error-banner {
-          margin-bottom: 8px;
+          padding: 12px 16px;
+          background: #fef2f2;
           border: 1px solid #fecaca;
-          background: #fff1f2;
-          color: #b91c1c;
-          border-radius: 10px;
-          padding: 10px 12px;
-          font-size: 13px;
+          color: #991b1b;
+          border-radius: 8px;
+          font-size: 14px;
+          margin-bottom: 16px;
         }
 
-        @media (max-width: 1180px) {
-          .content-grid {
-            grid-template-columns: 1fr;
+        @media (max-width: 768px) {
+          .filter-form {
+            flex-direction: column;
+            align-items: stretch;
           }
-        }
-
-        @media (max-width: 680px) {
-          .create-modal-overlay,
-          .revoke-modal-overlay {
-            padding: 12px;
+          .input-group {
+            min-width: 100%;
           }
-
-          .create-modal,
-          .revoke-modal {
-            width: calc(100vw - 24px);
-            max-height: calc(100vh - 24px);
+          .filter-actions {
+            justify-content: flex-end;
           }
         }
       `}</style>

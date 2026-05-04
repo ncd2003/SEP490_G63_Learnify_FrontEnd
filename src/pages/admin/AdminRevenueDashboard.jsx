@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DollarSign, RefreshCw, UserCheck, TrendingDown, BarChart2 } from "lucide-react";
 import {
   CartesianGrid,
   Cell,
@@ -106,6 +107,7 @@ const AdminRevenueDashboardPage = () => {
         : "Không có dữ liệu kỳ trước",
       note2: "Chỉ gồm giao dịch SUCCESS",
       isCurrency: true,
+      icon: <DollarSign size={24} className="rev-card-icon" />,
     },
     {
       title: "Doanh thu định kỳ hàng tháng (MRR)",
@@ -113,6 +115,7 @@ const AdminRevenueDashboardPage = () => {
       note1: "Ảnh chụp tại thời điểm hiện tại",
       note2: "Không đổi theo bộ lọc thời gian",
       isCurrency: true,
+      icon: <RefreshCw size={24} className="rev-card-icon" />,
     },
     {
       title: "Người đăng ký đang hoạt động",
@@ -120,6 +123,7 @@ const AdminRevenueDashboardPage = () => {
       note1: "Tổng người dùng đang dùng gói trả phí",
       note2: "",
       isCurrency: false,
+      icon: <UserCheck size={24} className="rev-card-icon" />,
     },
     {
       title: "Tỷ lệ rời bỏ (30 ngày)",
@@ -127,8 +131,12 @@ const AdminRevenueDashboardPage = () => {
       note1: "Tỷ lệ không gia hạn trong 30 ngày gần nhất",
       note2: "",
       isCurrency: false,
+      icon: <TrendingDown size={24} color="#dc2626" className="rev-card-icon" />,
     },
   ];
+
+  const isLineChartEmpty = !trends?.revenueTrend || trends.revenueTrend.length === 0;
+  const isPieChartEmpty = !trends?.revenueByPlan || trends.revenueByPlan.length === 0;
 
   return (
     <div className="rev-dashboard-page">
@@ -169,8 +177,11 @@ const AdminRevenueDashboardPage = () => {
         <div className="rev-overview-grid">
           {overviewCards.map((card) => (
             <article key={card.title} className="rev-card">
-              <h3>{card.title}</h3>
-              <p className="rev-card-value">
+              <div className="rev-card-header">
+                <h3>{card.title}</h3>
+                {card.icon}
+              </div>
+              <p className={`rev-card-value ${card.isCurrency ? "rev-currency-value" : ""}`}>
                 {typeof card.value === "number"
                   ? card.isCurrency
                     ? formatCurrency(card.value)
@@ -190,72 +201,86 @@ const AdminRevenueDashboardPage = () => {
           <article className="rev-panel">
             <h4>Xu hướng doanh thu (Line Chart)</h4>
             <div className="rev-chart-wrap">
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={trends.revenueTrend}>
-                  <CartesianGrid stroke="#c9d2e3" strokeDasharray="4 4" />
-                  <XAxis dataKey="date" stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} />
-                  <YAxis
-                    stroke="#283142"
-                    tick={{ fontSize: 11, fill: "#283142" }}
-                    tickFormatter={(value) => `${Math.round(value / 1000)}k`}
-                  />
-                  <Tooltip
-                    formatter={(value) => formatCurrency(value)}
-                    contentStyle={{
-                      background: "#ffffff",
-                      border: "1px solid #aebad1",
-                      color: "#111827",
-                      borderRadius: 10,
-                    }}
-                    labelStyle={{ color: "#111827" }}
-                  />
-                  <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="doanhThu"
-                    name="Doanh thu"
-                    stroke="#3158a2"
-                    strokeWidth={2.6}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {isLineChartEmpty ? (
+                <div className="rev-chart-empty">
+                  <BarChart2 size={40} opacity={0.2} />
+                  <p>Chưa có dữ liệu doanh thu trong khoảng thời gian này</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={trends.revenueTrend}>
+                    <CartesianGrid stroke="#c9d2e3" strokeDasharray="4 4" />
+                    <XAxis dataKey="date" stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} />
+                    <YAxis
+                      stroke="#283142"
+                      tick={{ fontSize: 11, fill: "#283142" }}
+                      tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+                    />
+                    <Tooltip
+                      formatter={(value) => formatCurrency(value)}
+                      contentStyle={{
+                        background: "#ffffff",
+                        border: "1px solid #aebad1",
+                        color: "#111827",
+                        borderRadius: 10,
+                      }}
+                      labelStyle={{ color: "#111827" }}
+                    />
+                    <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="doanhThu"
+                      name="Doanh thu"
+                      stroke="#3158a2"
+                      strokeWidth={2.6}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </article>
 
           <article className="rev-panel">
             <h4>Doanh thu theo gói (Pie Chart)</h4>
             <div className="rev-chart-wrap">
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={trends.revenueByPlan}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={92}
-                    stroke="#ffffff"
-                    strokeWidth={1}
-                    label={({ name, value }) => `${name} ${value}%`}
-                  >
-                    {trends.revenueByPlan.map((item, idx) => (
-                      <Cell key={item.name} fill={pieColors[idx % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => `${value}%`}
-                    contentStyle={{
-                      background: "#ffffff",
-                      border: "1px solid #aebad1",
-                      color: "#111827",
-                      borderRadius: 10,
-                    }}
-                    labelStyle={{ color: "#111827" }}
-                  />
-                  <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
+              {isPieChartEmpty ? (
+                <div className="rev-chart-empty">
+                  <BarChart2 size={40} opacity={0.2} />
+                  <p>Chưa có dữ liệu doanh thu trong khoảng thời gian này</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={trends.revenueByPlan}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={92}
+                      stroke="#ffffff"
+                      strokeWidth={1}
+                      label={({ name, value }) => `${name} ${value}%`}
+                    >
+                      {trends.revenueByPlan.map((item, idx) => (
+                        <Cell key={item.name} fill={pieColors[idx % pieColors.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => `${value}%`}
+                      contentStyle={{
+                        background: "#ffffff",
+                        border: "1px solid #aebad1",
+                        color: "#111827",
+                        borderRadius: 10,
+                      }}
+                      labelStyle={{ color: "#111827" }}
+                    />
+                    <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </article>
         </div>
@@ -267,11 +292,11 @@ const AdminRevenueDashboardPage = () => {
           <table className="rev-table">
             <thead>
               <tr>
-                <th>User Name</th>
-                <th>Plan</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th>Transaction ID</th>
+                <th>Tên người dùng</th>
+                <th>Gói dịch vụ</th>
+                <th style={{ textAlign: "right" }}>Số tiền</th>
+                <th>Ngày giao dịch</th>
+                <th>Mã giao dịch</th>
               </tr>
             </thead>
             <tbody>
@@ -280,7 +305,7 @@ const AdminRevenueDashboardPage = () => {
                   <tr key={item.transactionId}>
                     <td>{item.userName}</td>
                     <td>{item.plan}</td>
-                    <td>{formatCurrency(item.amount)}</td>
+                    <td style={{ textAlign: "right", fontWeight: 500 }}>{formatCurrency(item.amount)}</td>
                     <td>{item.date}</td>
                     <td>{item.transactionId}</td>
                   </tr>
@@ -419,9 +444,21 @@ const AdminRevenueDashboardPage = () => {
         .rev-card h3,
         .rev-panel h4 {
           margin: 0 0 10px;
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 700;
-          color: #22304b;
+          color: #1e293b;
+        }
+
+        .rev-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .rev-card-icon {
+          color: #cbd5e1;
+          opacity: 0.8;
+          margin-top: -10px;
         }
 
         .rev-card-value {
@@ -430,6 +467,11 @@ const AdminRevenueDashboardPage = () => {
           font-weight: 700;
           line-height: 1;
           color: #0f172a;
+        }
+
+        .rev-currency-value {
+          color: #16a34a;
+          font-size: clamp(34px, 3.5vw, 42px);
         }
 
         .rev-muted {
@@ -454,6 +496,23 @@ const AdminRevenueDashboardPage = () => {
             #ffffff;
           padding: 10px;
           min-height: 300px;
+        }
+
+        .rev-chart-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 280px;
+          color: #94a3b8;
+          text-align: center;
+          gap: 12px;
+        }
+
+        .rev-chart-empty p {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 500;
         }
 
         .rev-note {

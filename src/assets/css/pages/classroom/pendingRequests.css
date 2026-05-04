@@ -42,7 +42,7 @@
 
 .class-members-table-wrapper {
   overflow-x: auto;
-  max-width: 900px;
+  width: 100%;
 }
 
 .class-members-table {
@@ -1108,6 +1108,9 @@
   background: #ffffff;
   color: #64748b;
   padding: 0 12px;
+  width: 50%;
+  min-width: 300px;
+  max-width: 600px;
 }
 
 .members-search-box input {
@@ -1572,29 +1575,289 @@
 }
 
 /* ─── UC-52: 3-DOT ACTION MENU ─── */
-.member-action-menu {
-  position: relative;
-  display: inline-flex;
+/* ─── UC-52: STUDENT FLEX LIST ─── */
+.student-list-flex {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
 }
 
-.member-menu-trigger {
-  display: inline-flex;
+.student-list-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.student-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.student-item-row:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background: #f8fafc;
+}
+
+.student-info-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.student-main-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.student-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-role-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.student-contact-group {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 20px;
+}
+
+.contact-item {
+  font-size: 13px;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-item.sub {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.student-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.icon-only-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid #e2e8f0;
+  background: #fff;
   color: #64748b;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
 }
 
-.member-menu-trigger:hover {
+.icon-only-btn:hover {
   background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.remove-member-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-member-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+/* ─── UC-52: UNIFIED MEMBER LIST ─── */
+.roster-section {
+  margin-bottom: 30px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.roster-section-banner {
+  background: #f8fafc;
+  padding: 10px 16px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.roster-section-banner h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.column-headers-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.col-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.025em;
+}
+
+.col-name { flex: 2; min-width: 0; }
+.col-email { flex: 2; min-width: 0; }
+.col-phone { flex: 1.2; min-width: 0; }
+.col-joined { flex: 1.5; min-width: 0; }
+.col-actions { width: 100px; text-align: right; flex-shrink: 0; }
+
+.member-item-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.member-item-row:hover {
+  background: #f9fafb;
+}
+
+.member-item-row:last-child {
+  border-bottom: none;
+}
+
+.member-info-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.member-main-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.member-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-subtext {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.member-data-cell {
+  font-size: 14px;
   color: #334155;
-  border-color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 12px;
+}
+
+.member-actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-icon-detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon-detail:hover {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.btn-remove-sm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #fee2e2;
+  background: #fef2f2;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-remove-sm:hover {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+@media (max-width: 800px) {
+  .col-email, .col-phone, .col-joined { display: none; }
 }
 
 .member-menu-dropdown {

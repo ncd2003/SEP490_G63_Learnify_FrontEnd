@@ -177,7 +177,6 @@ const AdminUserDetailPage = () => {
     if (!canSendWarning || warningSubmitting) return;
     setWarningModalOpen(true);
     setWarningContent("");
-    setShowWarningTemplates(true);
     setWarningContentError("");
     setWarningMessage("");
     setWarningError("");
@@ -187,12 +186,10 @@ const AdminUserDetailPage = () => {
     if (warningSubmitting) return;
     setWarningModalOpen(false);
     setWarningContentError("");
-    setShowWarningTemplates(true);
   };
 
   const handleSelectWarningTemplate = (template) => {
     setWarningContent(template);
-    setShowWarningTemplates(false);
     setWarningContentError("");
   };
 
@@ -374,6 +371,9 @@ const AdminUserDetailPage = () => {
             </div>
           </section>
 
+          <div className="admin-user-detail-grid">
+            <div className="admin-user-detail-col-left">
+
           <section className="status-update-card">
             <h2>Cập nhật trạng thái người dùng</h2>
             <p className="status-helper-text">Chọn một thao tác phù hợp với trạng thái hiện tại của tài khoản.</p>
@@ -433,7 +433,7 @@ const AdminUserDetailPage = () => {
             }
             description={
               pendingStatus === "BANNED"
-                ? "Lý do sẽ được gửi trong email thông báo đến người dùng."
+                ? "Tài khoản này sẽ ngay lập tức bị đăng xuất và không thể truy cập hệ thống. Bạn có chắc chắn? Lý do sẽ được gửi trong email thông báo đến người dùng."
                 : "Người dùng sẽ được kích hoạt lại và nhận email xác nhận mở khóa."
             }
             confirmText="Xác nhận"
@@ -554,30 +554,19 @@ const AdminUserDetailPage = () => {
             <div className="modal-reason-field">
               <label htmlFor="warning-content">Nội dung cảnh báo *</label>
 
-              {showWarningTemplates ? (
-                <div className="warning-template-list">
-                  {WARNING_TEMPLATES.map((template, index) => (
-                    <button
-                      key={`warning-template-${index}`}
-                      type="button"
-                      className="warning-template-btn"
-                      onClick={() => handleSelectWarningTemplate(template)}
-                      disabled={warningSubmitting}
-                    >
-                      {template}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="warning-template-reset-btn"
-                  onClick={() => setShowWarningTemplates(true)}
-                  disabled={warningSubmitting}
-                >
-                  Chọn mẫu khác
-                </button>
-              )}
+              <div className="warning-template-list">
+                {WARNING_TEMPLATES.map((template, index) => (
+                  <button
+                    key={`warning-template-${index}`}
+                    type="button"
+                    className="warning-template-btn"
+                    onClick={() => handleSelectWarningTemplate(template)}
+                    disabled={warningSubmitting}
+                  >
+                    {template}
+                  </button>
+                ))}
+              </div>
 
               <textarea
                 id="warning-content"
@@ -596,38 +585,39 @@ const AdminUserDetailPage = () => {
             </div>
           </CenteredConfirmModal>
 
-          <section className={`grid-two ${showSubscription ? "" : "single"}`.trim()}>
-            <div className="info-card contact-card">
-              <h2>Thông tin liên hệ</h2>
-              <div className="info-item">
-                <Mail size={14} />
-                <span>{user.email || "-"}</span>
-              </div>
-              <div className="info-item">
-                <Phone size={14} />
-                <span>{user.phoneNumber || "-"}</span>
-              </div>
-              <div className="info-item">
-                <Clock3 size={14} />
-                <span>Ngày tạo: {formatDateTime(user.createdAt)}</span>
-              </div>
+          <div className="info-card contact-card">
+            <h2>Thông tin liên hệ</h2>
+            <div className="info-item">
+              <Mail size={14} />
+              <span>{user.email || "-"}</span>
             </div>
+            <div className="info-item">
+              <Phone size={14} />
+              <span>{user.phoneNumber || "-"}</span>
+            </div>
+            <div className="info-item">
+              <Clock3 size={14} />
+              <span>Ngày tạo: {formatDateTime(user.createdAt)}</span>
+            </div>
+          </div>
 
-            {showSubscription && (
-              <div className="info-card">
-                <h2>Lịch sử gói đăng ký</h2>
-                {subscriptionHistory.length === 0 ? (
-                  <p className="muted">Không có dữ liệu gói đăng ký.</p>
-                ) : (
-                  <ul className="simple-list">
-                    {subscriptionHistory.map((item, index) => (
-                      <li key={`${item}-${index}`}>{item}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </section>
+          {showSubscription && (
+            <div className="info-card">
+              <h2>Lịch sử gói đăng ký</h2>
+              {subscriptionHistory.length === 0 ? (
+                <p className="muted">Không có dữ liệu gói đăng ký.</p>
+              ) : (
+                <ul className="simple-list">
+                  {subscriptionHistory.map((item, index) => (
+                    <li key={`${item}-${index}`}>{item}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="admin-user-detail-col-right">
 
           {!isStudent && !isAdmin && (
             <section className="data-card">
@@ -716,14 +706,37 @@ const AdminUserDetailPage = () => {
               </div>
             )}
           </section>
+          </div>
+          </div>
         </>
       )}
 
       <style>{`
         .admin-user-detail-page {
-          display: grid;
+          display: flex;
+          flex-direction: column;
           gap: 14px;
           color: #0f172a;
+        }
+
+        .admin-user-detail-grid {
+          display: grid;
+          grid-template-columns: 320px 1fr;
+          gap: 14px;
+          align-items: start;
+        }
+
+        .admin-user-detail-col-left {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .admin-user-detail-col-right {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          min-width: 0;
         }
 
         .top-row {
@@ -894,8 +907,8 @@ const AdminUserDetailPage = () => {
         }
 
         .status-action-btn.warning {
-          border-color: #d97706;
-          background: #d97706;
+          border-color: #f59e0b;
+          background: #f59e0b;
         }
 
         .status-action-btn.protected {
@@ -953,27 +966,29 @@ const AdminUserDetailPage = () => {
         }
 
         .warning-template-list {
-          display: grid;
-          gap: 8px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-bottom: 8px;
         }
 
-        .warning-template-btn,
-        .warning-template-reset-btn {
+        .warning-template-btn {
           border: 1px solid #cbd5e1;
           background: #f8fafc;
           color: #334155;
-          border-radius: 8px;
-          padding: 9px 10px;
+          border-radius: 20px;
+          padding: 6px 12px;
           text-align: left;
-          font-size: 13px;
+          font-size: 12px;
           line-height: 1.4;
           cursor: pointer;
+          transition: all 0.2s;
         }
 
-        .warning-template-btn:hover,
-        .warning-template-reset-btn:hover {
-          border-color: #94a3b8;
-          background: #f1f5f9;
+        .warning-template-btn:hover {
+          border-color: #0f766e;
+          background: #f0fdfa;
+          color: #0f766e;
         }
 
         .update-success,
@@ -1143,7 +1158,7 @@ const AdminUserDetailPage = () => {
         }
 
         @media (max-width: 900px) {
-          .grid-two {
+          .admin-user-detail-grid {
             grid-template-columns: 1fr;
           }
         }
