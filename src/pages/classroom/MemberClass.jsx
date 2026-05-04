@@ -1186,8 +1186,14 @@ const MemberClass = () => {
                   <h3>Thêm học sinh</h3>
                   <p className="invite-modal-subtitle">Tìm và chọn email, hoặc nhập trực tiếp nhiều email cùng lúc.</p>
                 </div>
-                <button type="button" className="member-detail-close" onClick={closeInviteModal} disabled={inviteSubmitting}>
-                  Đóng
+                <button 
+                  type="button" 
+                  className="member-modal-close-icon" 
+                  onClick={closeInviteModal} 
+                  disabled={inviteSubmitting}
+                  aria-label="Đóng"
+                >
+                  <X size={20} />
                 </button>
               </div>
 
@@ -1198,7 +1204,7 @@ const MemberClass = () => {
               </div>
 
               <label className="invite-field">
-                <span>Tìm kiếm theo email</span>
+                <span>Nhập email cần mời</span>
                 <div className={`invite-picker ${inviteInputFocused ? 'focused' : ''}`}>
                   <div className="invite-chip-row">
                     {inviteEmails.map((email) => (
@@ -1277,12 +1283,22 @@ const MemberClass = () => {
               {inviteError && <div className="pending-requests-alert alert-error sidebar-alert">{inviteError}</div>}
 
               <div className="invite-modal-actions">
-                <button type="button" className="member-detail-close" onClick={closeInviteModal} disabled={inviteSubmitting}>
+                <button 
+                  type="button" 
+                  className="invite-btn-secondary" 
+                  onClick={closeInviteModal} 
+                  disabled={inviteSubmitting}
+                >
                   Hủy
                 </button>
-                <button type="button" className="member-report-btn invite-submit-btn" onClick={handleInviteSubmit} disabled={inviteSubmitting}>
-                  {inviteSubmitting ? <Loader2 size={14} className="spin" /> : null}
-                  Gửi lời mời
+                <button 
+                  type="button" 
+                  className="invite-btn-primary" 
+                  onClick={handleInviteSubmit} 
+                  disabled={inviteSubmitting || inviteEmails.length === 0}
+                >
+                  {inviteSubmitting ? <Loader2 size={16} className="spin" /> : null}
+                  <span>Gửi lời mời</span>
                 </button>
               </div>
             </div>
