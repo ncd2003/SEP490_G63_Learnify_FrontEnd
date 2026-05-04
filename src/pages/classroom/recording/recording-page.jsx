@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Download, Search, Video, X } from "lucide-react";
+import { toast } from "sonner";
 import ClassroomDetailLayout from "@/components/ClassroomDetailLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import useSchedule from "@/hooks/useSchedule";
@@ -22,25 +23,77 @@ const formatTimeRange = (session) => {
   return `${session.startTime.slice(0, 5)} - ${session.endTime.slice(0, 5)}`;
 };
 
-const parseTimeToSeconds = (timeStr) => {
-  if (!timeStr) return 0;
-  const [hour = 0, minute = 0, second = 0] = timeStr.split(":").map(Number);
-  return hour * 3600 + minute * 60 + second;
+const getFileSize = async (url) => {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    if (!response.ok) return null;
+    const size = response.headers.get("content-length");
+    return size ? parseInt(size, 10) : null;
+  } catch (error) {
+    // If HEAD fails, try a GET with a range header to minimize data but check availability
+    // Or just return null for now as HEAD is the standard way
+    return null;
+  }
 };
 
-const formatDuration = (session) => {
-  if (!session?.startTime || !session?.endTime) return "-";
-  const startSeconds = parseTimeToSeconds(session.startTime);
-  const endSeconds = parseTimeToSeconds(session.endTime);
-  const total = Math.max(0, endSeconds - startSeconds);
-  const hours = String(Math.floor(total / 3600)).padStart(2, "0");
-  const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const seconds = String(total % 60).padStart(2, "0");
-  return `${hours}:${minutes}:${seconds}`;
+const formatFileSize = (bytes) => {
+  if (bytes === null || bytes === undefined || isNaN(bytes)) return "-";
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
+
 
 const endsWithAny = (value, suffixes) =>
   suffixes.some((suffix) => value.endsWith(suffix));
+
+const handleDownload = async (url, title) => {
+  if (!url) return;
+
+  const toastId = toast.loading("Đang chuẩn bị tải xuống...");
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Không thể tải file");
+
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+
+    // Try to get file extension from the URL
+    let extension = "mp4";
+    try {
+      const urlPath = new URL(url).pathname;
+      const parts = urlPath.split(".");
+      if (parts.length > 1) {
+        extension = parts.pop();
+      }
+    } catch (e) {
+      console.error("Error parsing URL extension:", e);
+    }
+
+    const fileName = `${title || "recording"}.${extension}`;
+
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+
+    toast.success("Bắt đầu tải xuống: " + fileName, { id: toastId });
+  } catch (error) {
+    console.error("Download failed:", error);
+    toast.error("Không thể tải trực tiếp. Đang mở tệp trong tab mới...", {
+      id: toastId,
+    });
+    // Fallback: Open in new tab
+    window.open(url, "_blank");
+  }
+};
 
 const resolveRecordingPreviewType = (url) => {
   const normalizedUrl = String(url ?? "").trim().toLowerCase();
@@ -96,10 +149,49 @@ const ClassroomRecordingPage = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedRecordingId, setSelectedRecordingId] = useState(null);
+  const [fileSizes, setFileSizes] = useState({});
 
   const recordingSessions = useMemo(() => {
     return sessions.filter((session) => Boolean(session.recordingLink));
   }, [sessions]);
+
+  useEffect(() => {
+    const fetchAllSizes = async () => {
+      const sessionsToFetch = recordingSessions.filter(
+        (s) => s.recordingLink && fileSizes[s.id] === undefined
+      );
+
+      if (sessionsToFetch.length === 0) return;
+
+      // Mark as being fetched (null) to avoid duplicate requests
+      setFileSizes((prev) => {
+        const initial = { ...prev };
+        sessionsToFetch.forEach((s) => {
+          if (initial[s.id] === undefined) initial[s.id] = null;
+        });
+        return initial;
+      });
+
+      const results = await Promise.all(
+        sessionsToFetch.map(async (session) => {
+          const size = await getFileSize(session.recordingLink);
+          return { id: session.id, size };
+        }),
+      );
+
+      setFileSizes((prev) => {
+        const updated = { ...prev };
+        results.forEach((res) => {
+          updated[res.id] = res.size;
+        });
+        return updated;
+      });
+    };
+
+    if (recordingSessions.length > 0) {
+      fetchAllSizes();
+    }
+  }, [recordingSessions, fileSizes]);
 
   const filteredSessions = useMemo(() => {
     const keyword = titleKeyword.trim().toLowerCase();
@@ -288,14 +380,14 @@ const ClassroomRecordingPage = () => {
                   )}
                 </div>
                 <div className="recording-preview-actions">
-                  <a
+                  <button
+                    type="button"
                     className="recording-action-btn recording-action-btn--ghost"
-                    href={selectedRecording.recordingLink}
-                    download
+                    onClick={() => handleDownload(selectedRecording.recordingLink, selectedRecording.title)}
                   >
                     <Download size={14} />
                     Tải xuống
-                  </a>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -313,7 +405,7 @@ const ClassroomRecordingPage = () => {
                     <th>STT</th>
                     <th>Tên recording</th>
                     <th>Buổi học</th>
-                    <th>Thời lượng</th>
+                    <th>Dung lượng</th>
                     <th>Ngày ghi</th>
                     <th>Người tải lên</th>
                     <th>Hành động</th>
@@ -337,7 +429,7 @@ const ClassroomRecordingPage = () => {
                           <span>{formatTimeRange(session)}</span>
                         </div>
                       </td>
-                      <td>{formatDuration(session)}</td>
+                      <td>{formatFileSize(fileSizes[session.id])}</td>
                       <td>{formatDate(session.sessionDate)}</td>
                       <td>{user?.fullName || user?.username || "Giáo viên"}</td>
                       <td>
@@ -352,14 +444,18 @@ const ClassroomRecordingPage = () => {
                           >
                             Bật xem
                           </a>
-                          <a
+                          <button
+                            type="button"
                             className="recording-action-btn recording-action-btn--ghost"
-                            href={session.recordingLink}
-                            download
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDownload(session.recordingLink, session.title);
+                            }}
                           >
                             <Download size={14} />
                             Tải xuống
-                          </a>
+                          </button>
                         </div>
                       </td>
                     </tr>
