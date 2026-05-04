@@ -28,6 +28,8 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
 
   // Step 1: Upload
   const [file, setFile] = useState(null);
@@ -56,6 +58,46 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
   // Step 4: Preview
   const [previewData, setPreviewData] = useState(null);
   const [previewWeekOffset, setPreviewWeekOffset] = useState(0);
+
+  // Load draft on mount
+  React.useEffect(() => {
+    if (isOpen) {
+      const fetchDraft = async () => {
+        try {
+          const res = await apiRequest.get(`/classrooms/${classroomId}/syllabus/draft`);
+          if (res.result && res.result.length > 0) {
+            setSessions(res.result);
+            setStep(2);
+            // toast.info('Đã khôi phục bản nháp giáo án cũ.');
+          }
+        } catch (err) {
+          console.error('Error fetching syllabus draft:', err);
+        }
+      };
+      fetchDraft();
+    }
+  }, [isOpen, classroomId]);
+
+  // Auto-save debounced
+  React.useEffect(() => {
+    if (step === 2 && sessions.length > 0) {
+      const timer = setTimeout(async () => {
+        setSavingDraft(true);
+        try {
+          await apiRequest.post(`/classrooms/${classroomId}/syllabus/draft`, sessions);
+          setLastSaved(new Date());
+        } catch (err) {
+          console.error('Auto-save failed:', err);
+        } finally {
+          setSavingDraft(false);
+        }
+      }, 2000); // Save after 2 seconds of inactivity
+
+      return () => clearTimeout(timer);
+    }
+  }, [sessions, step, classroomId]);
+
+
 
   if (!isOpen) return null;
   if (isStudentRole(user?.role)) return null;
@@ -170,6 +212,19 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
       newS[index] = { ...newS[index], [field]: value };
       return newS;
     });
+  };
+
+  const saveDraft = async () => {
+    if (sessions.length === 0) return;
+    setSavingDraft(true);
+    try {
+      await apiRequest.post(`/classrooms/${classroomId}/syllabus/draft`, sessions);
+      setLastSaved(new Date());
+    } catch (err) {
+      toast.error('Lỗi khi lưu bản nháp.');
+    } finally {
+      setSavingDraft(false);
+    }
   };
 
   const removeSession = (index) => {
@@ -421,10 +476,21 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
           {step === 2 && (
             <div className="syl-fade-in">
               <div className="syl-edit-header">
-                <span className="syl-ai-badge">✓ AI phân tích thành công: {sessions.length} tiết học (~{totalEstimatedMinutes} phút)</span>
-                <button className="syl-btn-outline btn-sm" onClick={addSession}><Plus size={14}/> Thêm tiết mới</button>
+                <div className="syl-header-info">
+                  <span className="syl-ai-badge">✓ {sessions.length} tiết học</span>
+                  <div className="syl-save-indicator">
+                    {savingDraft ? (
+                      <span className="syl-saving-text"><Loader2 className="animate-spin" size={12}/> Đang tự động lưu...</span>
+                    ) : lastSaved ? (
+                      <span className="syl-saved-text">Đã lưu lúc {lastSaved.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                    ) : null}
+                  </div>
+                </div>
+                <button className="syl-btn-add-session" onClick={addSession}>
+                  <Plus size={16}/> Thêm tiết học
+                </button>
               </div>
-              <p className="syl-help-text">Vui lòng kiểm tra và chỉnh sửa nội dung các tiết học trước khi xếp lịch.</p>
+              <p className="syl-help-text">Dữ liệu được tự động lưu. Bạn có thể chỉnh sửa nội dung bên dưới.</p>
               
               <div className="syl-session-list">
                 {sessions.map((s, idx) => (
