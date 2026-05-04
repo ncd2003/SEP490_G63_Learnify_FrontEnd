@@ -14,7 +14,7 @@ const AuthGuard = ({ children }) => {
   if (!isAuthenticated) {
     return (
       <Navigate
-        to="/"
+        to="/login"
         state={{ from: location }}
         replace
       />

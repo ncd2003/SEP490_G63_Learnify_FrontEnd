@@ -20,6 +20,21 @@ const defaultSettings = () => ({
   maxAttemptsType: "UNLIMITED",
 });
 
+const RESULT_VISIBILITY_OPTIONS = [
+  { value: "", label: "Không thiết lập" },
+  { value: "NONE", label: "Không cho phép xem lại" },
+  { value: "SCORE_ONLY", label: "Chỉ xem điểm" },
+  { value: "SCORE_AND_ANSWERS", label: "Xem điểm và đáp án" },
+  { value: "FULL_DETAILS", label: "Xem chi tiết đầy đủ" },
+];
+
+const RESULT_RELEASE_TIME_OPTIONS = [
+  { value: "", label: "Không thiết lập" },
+  { value: "IMMEDIATELY", label: "Ngay lập tức" },
+  { value: "AFTER_DEADLINE", label: "Sau deadline" },
+  { value: "MANUAL", label: "Giáo viên tự mở" },
+];
+
 const SETTINGS_PANEL_CSS = `
 .assign-setting-panel{background:#FFFFFF;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(26,35,50,.04)}
 .assign-step-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -39,6 +54,7 @@ const SETTINGS_PANEL_CSS = `
 .assign-input-eye:hover{color:#2563EB;background:#EFF6FF}
 .assign-input-eye:focus-visible{outline:2px solid rgba(59,130,246,.35);outline-offset:2px}
 .assign-setting-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+.assign-full-width{grid-column:1 / -1}
 .assign-setting-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
 .assign-toggle-item{padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:12px;background:#FFFFFF}
 .assign-pill-group{display:flex;gap:8px;flex-wrap:nowrap}
@@ -87,7 +103,9 @@ const toOverridePayload = (config = {}, category = "HOMEWORK") => {
     startTime: toIsoDateTime(config.startTime),
     deadline: toIsoDateTime(config.deadline),
     allowLateSubmission: Boolean(config.allowLateSubmission),
-    shuffleQuestions: isTest ? Boolean(config.shuffleQuestions) : false,
+    shuffleQuestions: Boolean(config.shuffleQuestions),
+    resultVisibility: String(config.resultVisibility || "").trim() || null,
+    resultReleaseTime: String(config.resultReleaseTime || "").trim() || null,
     limitTabs:
       !isTest || String(config.limitTabs || "").trim() === ""
         ? null
@@ -318,6 +336,8 @@ const AssignToClassesPage = () => {
           deadline: toLocalDateTimeInput(setting.deadline),
           allowLateSubmission: Boolean(setting.allowLateSubmission),
           shuffleQuestions: Boolean(setting.shuffleQuestions),
+          resultVisibility: String(setting.resultVisibility || ""),
+          resultReleaseTime: String(setting.resultReleaseTime || ""),
           limitTabs:
             setting.limitTabs === null || setting.limitTabs === undefined
               ? ""
@@ -1053,6 +1073,52 @@ const AssignToClassesPage = () => {
                               />
                             </div>
 
+                            <div className="assign-form-group">
+                              <label className="assign-label">
+                                Hiển thị kết quả
+                              </label>
+                              <select
+                                className="assign-select"
+                                value={settings[id]?.resultVisibility || ""}
+                                onChange={(event) =>
+                                  updateSetting(
+                                    id,
+                                    "resultVisibility",
+                                    event.target.value,
+                                  )
+                                }
+                              >
+                                {RESULT_VISIBILITY_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="assign-form-group">
+                              <label className="assign-label">
+                                Thời điểm công bố điểm
+                              </label>
+                              <select
+                                className="assign-select"
+                                value={settings[id]?.resultReleaseTime || ""}
+                                onChange={(event) =>
+                                  updateSetting(
+                                    id,
+                                    "resultReleaseTime",
+                                    event.target.value,
+                                  )
+                                }
+                              >
+                                {RESULT_RELEASE_TIME_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
                             <div className="assign-toggle-item">
                               <label className="assign-label">
                                 Cho phép nộp muộn
@@ -1087,8 +1153,42 @@ const AssignToClassesPage = () => {
                               </div>
                             </div>
 
+                            <div className="assign-toggle-item">
+                              <label className="assign-label">
+                                Trộn câu hỏi
+                              </label>
+                              <div className="assign-pill-group">
+                                <button
+                                  type="button"
+                                  className={`assign-pill${settings[id]?.shuffleQuestions ? " active" : ""}`}
+                                  onClick={() =>
+                                    updateSetting(
+                                      id,
+                                      "shuffleQuestions",
+                                      true,
+                                    )
+                                  }
+                                >
+                                  Bật
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`assign-pill${!settings[id]?.shuffleQuestions ? " active" : ""}`}
+                                  onClick={() =>
+                                    updateSetting(
+                                      id,
+                                      "shuffleQuestions",
+                                      false,
+                                    )
+                                  }
+                                >
+                                  Tắt
+                                </button>
+                              </div>
+                            </div>
+
                             {!isTestCategory && (
-                              <div className="assign-toggle-item">
+                              <div className="assign-toggle-item assign-full-width">
                                 <label className="assign-label">
                                   Số lần làm bài tối đa
                                 </label>
@@ -1127,7 +1227,10 @@ const AssignToClassesPage = () => {
                                   {settings[id]?.maxAttemptsType ===
                                     "LIMITED" && (
                                     <div
-                                      style={{ position: "relative", width: 85 }}
+                                      style={{
+                                        position: "relative",
+                                        width: 120, // Tăng width một chút cho cân đối khi ở hàng ngang dài
+                                      }}
                                     >
                                       <input
                                         className="assign-input"
@@ -1164,42 +1267,6 @@ const AssignToClassesPage = () => {
                                 </div>
                               </div>
                             )}
-
-                            {isTestCategory ? (
-                              <div className="assign-toggle-item">
-                                <label className="assign-label">
-                                  Trộn câu hỏi
-                                </label>
-                                <div className="assign-pill-group">
-                                  <button
-                                    type="button"
-                                    className={`assign-pill${settings[id]?.shuffleQuestions ? " active" : ""}`}
-                                    onClick={() =>
-                                      updateSetting(
-                                        id,
-                                        "shuffleQuestions",
-                                        true,
-                                      )
-                                    }
-                                  >
-                                    Bật
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={`assign-pill${!settings[id]?.shuffleQuestions ? " active" : ""}`}
-                                    onClick={() =>
-                                      updateSetting(
-                                        id,
-                                        "shuffleQuestions",
-                                        false,
-                                      )
-                                    }
-                                  >
-                                    Tắt
-                                  </button>
-                                </div>
-                              </div>
-                            ) : null}
                           </div>
 
                           {isTestCategory ? (

@@ -26,4 +26,6 @@ export const authApi = {
     apiRequest.post(`${BASE}/forgot-password/verify-otp`, data),
 
   resetPassword: (data) => apiRequest.post(`${BASE}/reset-password`, data),
+
+  checkEmail: (email) => apiRequest.get(`${BASE}/check-email`, { params: { email } }),
 };

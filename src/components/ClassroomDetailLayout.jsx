@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   CheckCheck,
@@ -75,6 +75,8 @@ const ClassroomDetailLayout = ({
   const [notifications, setNotifications] = useState([]);
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showNewNotificationToast, setShowNewNotificationToast] = useState(false);
+  const toastTimerRef = useRef(null);
 
   const formatTimeAgo = (dateString) => {
     if (!dateString) return "Vừa xong";
@@ -149,7 +151,24 @@ const ClassroomDetailLayout = ({
     const disconnect = createNotificationSocket({
       token,
       onConnected: refreshUnread,
-      onNotification: refreshUnread,
+      onNotification: (incomingNotification) => {
+        if (!isMounted) return;
+        if (!incomingNotification?.id) return;
+        
+        setShowNewNotificationToast(true);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = setTimeout(() => setShowNewNotificationToast(false), 5000);
+
+        setNotifications((prev) => {
+          const exists = prev.some((item) => item.id === incomingNotification.id);
+          if (exists) return prev;
+          return [incomingNotification, ...prev];
+        });
+      },
+      onUnreadCount: (nextUnreadCount) => {
+        if (!isMounted) return;
+        setUnreadCount(Math.max(0, Number(nextUnreadCount || 0)));
+      },
       onError: (error) => {
         console.error("Notification socket error:", error);
       },
@@ -158,6 +177,7 @@ const ClassroomDetailLayout = ({
     return () => {
       isMounted = false;
       window.clearInterval(timer);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       disconnect();
     };
   }, [fetchNotificationData]);
@@ -275,7 +295,7 @@ const ClassroomDetailLayout = ({
     if (path.includes("/members")) return "members";
     if (path.includes("/assignments")) return "assignments";
     if (path.includes("/folders")) return "folders";
-    if (path.includes("/gradebook")) return "grades";
+    if (path.includes("/grades")) return "grades";
     return "feed";
   };
 
@@ -286,7 +306,11 @@ const ClassroomDetailLayout = ({
   const normalizedRole = normalizeRole(user?.role);
   const isTeacher = normalizedRole === "TEACHER";
   const visibleMenuItems = MENU_ITEMS.filter(
-    (item) => !(normalizedRole === "STUDENT" && item.key === "attendance"),
+    (item) =>
+      !(
+        normalizedRole === "STUDENT" &&
+        (item.key === "attendance" || item.key === "grades")
+      ),
   );
 
   const roleLabel = (() => {
@@ -299,10 +323,10 @@ const ClassroomDetailLayout = ({
   const classroomTeacherName =
     String(
       classroom?.teacherName ||
-        classroom?.teacher?.fullName ||
-        classroom?.ownerName ||
-        classroom?.createdByName ||
-        "",
+      classroom?.teacher?.fullName ||
+      classroom?.ownerName ||
+      classroom?.createdByName ||
+      "",
     ).trim() ||
     user?.fullName ||
     user?.username ||
@@ -471,7 +495,7 @@ const ClassroomDetailLayout = ({
                   }
                 }}
               >
-                <Icon size={20} />
+                <Icon size={20} strokeWidth={1.5} />
                 {!collapsed && <span>{item.label}</span>}
               </button>
             );
@@ -517,9 +541,8 @@ const ClassroomDetailLayout = ({
       <main className="classroom-main-content">
         <header className="classroom-workspace-header">
           <div className="classroom-workspace-left">
-            <div className="classroom-workspace-label">KHU VỰC LÀM VIỆC</div>
             <div className="classroom-workspace-title-row">
-              <div className="classroom-workspace-title">{activeMenuLabel}</div>
+              <div className="classroom-workspace-title" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{activeMenuLabel}</div>
             </div>
           </div>
 
@@ -539,6 +562,51 @@ const ClassroomDetailLayout = ({
                   </span>
                 )}
               </button>
+
+              {showNewNotificationToast && (
+                <div style={{
+                  position: "absolute",
+                  top: "50%",
+                  right: "calc(100% + 16px)",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                }}>
+                  <style>{`
+                    @keyframes popInLeft {
+                      0% { opacity: 0; transform: translateX(10px) scale(0.95); }
+                      100% { opacity: 1; transform: translateX(0) scale(1); }
+                    }
+                  `}</style>
+                  <div style={{
+                    position: "relative",
+                    background: "linear-gradient(135deg, #f43f5e, #e11d48)",
+                    color: "white",
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    boxShadow: "0 4px 14px rgba(225, 29, 72, 0.4)",
+                    animation: "popInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}>
+                    <span style={{ fontSize: "16px" }}>👋</span> Bạn có 1 thông báo mới!
+                    <div style={{
+                      position: "absolute",
+                      top: "50%",
+                      right: "-5px",
+                      transform: "translateY(-50%)",
+                      borderTop: "6px solid transparent",
+                      borderBottom: "6px solid transparent",
+                      borderLeft: "6px solid #e11d48",
+                      width: 0,
+                      height: 0
+                    }} />
+                  </div>
+                </div>
+              )}
 
               {isNotificationOpen && (
                 <div className="classroom-notification-dropdown">

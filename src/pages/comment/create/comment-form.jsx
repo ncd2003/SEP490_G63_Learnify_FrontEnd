@@ -16,8 +16,11 @@ import { CreateCommentSchema } from "@/schema/comment.schema";
 const CommentForm = ({ postId, classroomId, onSubmit, submitting, initialComment = null, onCancel, parentId, parentAuthorName }) => {
   const [content, setContent] = useState(initialComment?.content ?? "");
   const [error, setError] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const isEditing = !!initialComment;
+  const isReply = !!parentId;
+  const shouldExpand = isExpanded || content.length > 0 || isEditing || isReply;
   const charCount = content.length;
   const maxChars = 500;
 
@@ -40,6 +43,7 @@ const CommentForm = ({ postId, classroomId, onSubmit, submitting, initialComment
     const result = await onSubmit(payload);
     if (result?.success) {
       setContent("");
+      setIsExpanded(false);
       onCancel?.();
     } else {
       setError(result?.message ?? "Không thể đăng bình luận. Vui lòng thử lại.");
@@ -49,52 +53,60 @@ const CommentForm = ({ postId, classroomId, onSubmit, submitting, initialComment
   const handleCancel = () => {
     setContent(initialComment?.content ?? "");
     setError("");
+    setIsExpanded(false);
     onCancel?.();
   };
 
   return (
-    <form className="comment-form" onSubmit={handleSubmit}>
-      <h3 className="comment-form-title">
-        {parentId && parentAuthorName ? `Trả lời ${parentAuthorName}` : "Thêm bình luận"}
-      </h3>
+    <form className={`comment-form ${shouldExpand ? 'expanded' : 'collapsed'}`} onSubmit={handleSubmit}>
+      {shouldExpand && (
+        <h3 className="comment-form-title">
+          {parentId && parentAuthorName ? `Trả lời ${parentAuthorName}` : isEditing ? "Chỉnh sửa bình luận" : "Thêm bình luận"}
+        </h3>
+      )}
       <textarea
         className="comment-form-textarea"
-        placeholder="Nhập nội dung bình luận của bạn..."
+        placeholder={shouldExpand ? "Nhập nội dung bình luận của bạn..." : "Viết bình luận..."}
         value={content}
+        onFocus={() => setIsExpanded(true)}
         onChange={(e) => { 
           if (e.target.value.length <= maxChars) {
             setContent(e.target.value); 
             setError(""); 
           }
         }}
-        rows={4}
+        rows={shouldExpand ? 3 : 1}
         disabled={submitting}
       />
       
       {error && <p className="comment-form-error">{error}</p>}
       
-      <div className="comment-form-footer">
-        <span className={`comment-char-count ${charCount > maxChars ? 'limit-exceeded' : ''}`}>
-          {charCount} / {maxChars}
-        </span>
-        <div className="comment-form-actions">
-          <button
-            type="button"
-            className="btn-cancel"
-            onClick={handleCancel}
-            disabled={submitting}
-          >
-            Hủy
-          </button>
-          <button 
-            type="submit" 
-            className="btn-primary" 
-            disabled={submitting || !content.trim() || charCount > maxChars}
-          >
-            {submitting ? "Đang đăng..." : isEditing ? "Lưu" : "Đăng bình luận"}
-          </button>
+      {shouldExpand && (
+        <div className="comment-form-footer">
+          <span className={`comment-char-count ${charCount > maxChars ? 'limit-exceeded' : ''}`}>
+            {charCount} / {maxChars}
+          </span>
+          <div className="comment-form-actions">
+            {(isEditing || isReply || isExpanded) && (
+              <button
+                type="button"
+                className="btn-cancel"
+                onClick={handleCancel}
+                disabled={submitting}
+              >
+                Hủy
+              </button>
+            )}
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              disabled={submitting || !content.trim() || charCount > maxChars}
+            >
+              {submitting ? "Đang đăng..." : isEditing ? "Lưu" : "Đăng bình luận"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </form>
   );
 };

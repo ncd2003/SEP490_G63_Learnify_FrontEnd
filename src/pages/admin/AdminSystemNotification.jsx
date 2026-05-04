@@ -48,6 +48,8 @@ const formatStatus = (value) => {
   switch (value) {
     case "SENT":
       return "Đã gửi";
+    case "SCHEDULED":
+      return "Đã lên lịch";
     case "REVOKED":
       return "Đã thu hồi";
     default:
@@ -81,6 +83,7 @@ const AdminSystemNotificationPage = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [targetAudience, setTargetAudience] = useState("ALL");
+  const [scheduledAt, setScheduledAt] = useState("");
   const [fieldError, setFieldError] = useState("");
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -102,7 +105,7 @@ const AdminSystemNotificationPage = () => {
         setTotalPages(result.totalPages || 1);
       } catch (err) {
         const backendMessage = err?.response?.data?.message;
-        setError(backendMessage || "MSG90: Không thể tải nội dung trang. Vui lòng làm mới hoặc thử lại sau.");
+        setError(backendMessage || "Không thể tải nội dung trang. Vui lòng làm mới hoặc thử lại sau.");
         setItems([]);
         setTotalPages(1);
       } finally {
@@ -122,6 +125,7 @@ const AdminSystemNotificationPage = () => {
     setTitle("");
     setContent("");
     setTargetAudience("ALL");
+    setScheduledAt("");
     setFieldError("");
     setFormError("");
     setShowCreateTemplates(true);
@@ -141,6 +145,7 @@ const AdminSystemNotificationPage = () => {
     setTitle(template.title);
     setContent(template.content);
     setTargetAudience(template.targetAudience);
+    setScheduledAt("");
     setFieldError("");
     setFormError("");
     setShowCreateTemplates(false);
@@ -152,7 +157,7 @@ const AdminSystemNotificationPage = () => {
     setFormError("");
 
     if (!title.trim() || !content.trim()) {
-      setFieldError("MSG132: Vui lòng điền đầy đủ tiêu đề và nội dung thông báo.");
+      setFieldError("Vui lòng điền đầy đủ tiêu đề và nội dung thông báo.");
       return;
     }
 
@@ -162,6 +167,7 @@ const AdminSystemNotificationPage = () => {
         title: title.trim(),
         content: content.trim(),
         targetAudience,
+        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
       });
 
       resetForm();
@@ -171,7 +177,7 @@ const AdminSystemNotificationPage = () => {
     } catch (err) {
       const backendMessage = err?.response?.data?.message;
       if (/tiêu đề|nội dung|đầy đủ/i.test(backendMessage || "")) {
-        setFieldError(`MSG132: ${backendMessage}`);
+        setFieldError(`${backendMessage}`);
       } else {
         setFormError(backendMessage || "Không thể gửi thông báo. Vui lòng thử lại.");
       }
@@ -222,7 +228,7 @@ const AdminSystemNotificationPage = () => {
             <table>
               <thead>
                 <tr>
-                  <th>Thời gian gửi</th>
+                  <th>Thời gian gửi / Lên lịch</th>
                   <th>Tiêu đề</th>
                   <th>Nội dung</th>
                   <th>Đối tượng nhận</th>
@@ -242,17 +248,17 @@ const AdminSystemNotificationPage = () => {
                 ) : (
                   items.map((item) => (
                     <tr key={item.id}>
-                      <td>{formatDateTime(item.createdAt)}</td>
+                      <td>{formatDateTime(item.scheduledAt || item.createdAt)}</td>
                       <td>{item.title || "-"}</td>
                       <td className="content-cell" title={item.content || ""}>{item.content || "-"}</td>
                       <td>{formatAudience(item.targetAudience)}</td>
                       <td>
-                        <span className={`status-pill ${item.status === "REVOKED" ? "revoked" : "sent"}`}>
+                        <span className={`status-pill ${item.status === "REVOKED" ? "revoked" : item.status === "SCHEDULED" ? "scheduled" : "sent"}`}>
                           {formatStatus(item.status)}
                         </span>
                       </td>
                       <td>
-                        {item.status === "SENT" ? (
+                        {item.status === "SENT" || item.status === "SCHEDULED" ? (
                           <button
                             type="button"
                             className="btn-outline"
@@ -361,6 +367,16 @@ const AdminSystemNotificationPage = () => {
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label>
+                Thời gian gửi (Để trống nếu muốn gửi ngay)
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                />
               </label>
 
               {formError && <p className="form-error">{formError}</p>}
@@ -499,6 +515,12 @@ const AdminSystemNotificationPage = () => {
           background: #ecfdf3;
           border-color: #a7f3d0;
           color: #047857;
+        }
+
+        .status-pill.scheduled {
+          background: #fffbeb;
+          border-color: #fde68a;
+          color: #b45309;
         }
 
         .status-pill.revoked {

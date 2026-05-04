@@ -239,7 +239,7 @@ const EditResourceBankPage = () => {
         <div className="edit-rb-alert is-success">
           <CheckCircle2 size={17} />
           <div>
-            <strong>MSG81: Cập nhật thành công</strong>
+            <strong>Cập nhật thành công</strong>
             <p>Ngân hàng câu hỏi đã được cập nhật. Tất cả thay đổi đã được lưu.</p>
           </div>
           <button type="button" onClick={() => setStatus(null)}>
@@ -252,7 +252,7 @@ const EditResourceBankPage = () => {
         <div className="edit-rb-alert is-error">
           <AlertCircle size={17} />
           <div>
-            <strong>MSG82: Thông tin không hợp lệ</strong>
+            <strong>Thông tin không hợp lệ</strong>
             <p>{MSG82}</p>
           </div>
           <button type="button" onClick={() => setStatus(null)}>

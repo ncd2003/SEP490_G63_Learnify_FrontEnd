@@ -104,6 +104,7 @@ const OTPVerifyScreen = () => {
       navigate("/login", {
         state: {
           message: "Xác thực thành công! Vui lòng đăng nhập.",
+          from: location.state?.from,
         },
       });
     } catch (err) {

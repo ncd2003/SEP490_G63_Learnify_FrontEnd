@@ -49,7 +49,10 @@ const AdminManageReportPage = () => {
   const [selectedAction, setSelectedAction] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
   const [actionNote, setActionNote] = useState("");
+  const [actionTargetNote, setActionTargetNote] = useState("");
   const [actionError, setActionError] = useState("");
+  const [showReporterTemplates, setShowReporterTemplates] = useState(true);
+  const [showTargetTemplates, setShowTargetTemplates] = useState(true);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -69,9 +72,10 @@ const AdminManageReportPage = () => {
               return {
                 ...item,
                 detailedDescription: detailResponse?.result?.detailedDescription || "",
+                evidenceUrl: detailResponse?.result?.evidenceUrl || "",
               };
             } catch {
-              return { ...item, detailedDescription: "" };
+              return { ...item, detailedDescription: "", evidenceUrl: "" };
             }
           }),
         );
@@ -82,7 +86,7 @@ const AdminManageReportPage = () => {
         const backendMessage = err?.response?.data?.message;
         setError(
           backendMessage ||
-            "MSG90: Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
+          "Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
         );
         setItems([]);
         setTotalPages(1);
@@ -99,7 +103,7 @@ const AdminManageReportPage = () => {
     navigate(PATH_ADMIN.users.detail(userId));
   };
 
-  const resolveReport = async (reportId, action, note) => {
+  const resolveReport = async (reportId, action, note, targetNote) => {
     if (!reportId) return;
 
     try {
@@ -108,15 +112,16 @@ const AdminManageReportPage = () => {
       await adminApi.resolveReport(reportId, {
         action,
         note: note || null,
+        targetNote: targetNote || null,
       });
 
       setItems((prev) =>
         prev.map((item) =>
           item.reportId === reportId
             ? {
-                ...item,
-                status: action === "DISMISS" ? "REJECTED" : "REVIEWED",
-              }
+              ...item,
+              status: action === "DISMISS" ? "REJECTED" : "REVIEWED",
+            }
             : item,
         ),
       );
@@ -131,7 +136,10 @@ const AdminManageReportPage = () => {
     setSelectedReport(report);
     setSelectedAction(action);
     setActionNote("");
+    setActionTargetNote("");
     setActionError("");
+    setShowReporterTemplates(true);
+    setShowTargetTemplates(true);
     setIsActionModalOpen(true);
   };
 
@@ -141,20 +149,30 @@ const AdminManageReportPage = () => {
     setSelectedAction("");
     setSelectedReport(null);
     setActionNote("");
+    setActionTargetNote("");
     setActionError("");
+    setShowReporterTemplates(true);
+    setShowTargetTemplates(true);
   };
 
   const handleConfirmAction = async () => {
     if (!selectedReport?.reportId || !selectedAction) return;
 
     const trimmedNote = actionNote.trim();
-    const requiresNote = selectedAction === "DISMISS" || selectedAction === "LOCK_ACCOUNT";
+    const trimmedTargetNote = actionTargetNote.trim();
+
+    const requiresNote = selectedAction === "DISMISS" || selectedAction === "LOCK_ACCOUNT" || selectedAction === "WARN";
     if (requiresNote && !trimmedNote) {
-      setActionError("Vui lòng nhập nội dung trước khi xác nhận.");
+      setActionError("Vui lòng nhập nội dung cho người báo cáo.");
       return;
     }
 
-    await resolveReport(selectedReport.reportId, selectedAction, trimmedNote);
+    if (selectedAction === "WARN" && !trimmedTargetNote) {
+      setActionError("Vui lòng nhập nội dung cho người bị báo cáo.");
+      return;
+    }
+
+    await resolveReport(selectedReport.reportId, selectedAction, trimmedNote, trimmedTargetNote);
     if (selectedReport.reportId !== resolvingReportId) {
       closeActionModal();
     } else {
@@ -162,7 +180,10 @@ const AdminManageReportPage = () => {
       setSelectedAction("");
       setSelectedReport(null);
       setActionNote("");
+      setActionTargetNote("");
       setActionError("");
+      setShowReporterTemplates(true);
+      setShowTargetTemplates(true);
     }
   };
 
@@ -171,23 +192,46 @@ const AdminManageReportPage = () => {
       return {
         title: "Bỏ qua báo cáo",
         helper:
-          "Nhập nội dung phản hồi để gửi kết quả xử lý báo cáo cho người báo cáo.",
-        placeholder: "Nhập nội dung phản hồi...",
+          "Nhập nội dung phản hồi để gửi kết quả xử lý báo cáo qua thông báo in-app cho người báo cáo.",
+        placeholder: "Nội dung gửi cho người báo cáo...",
+        reporterTemplates: [
+          "Chúng tôi không nhận thấy có dấu hiệu vi phạm tiêu chuẩn cộng đồng từ người dùng này.",
+          "Bằng chứng bạn cung cấp chưa đủ để chúng tôi có thể xử lý, vui lòng cung cấp thêm thông tin.",
+          "Hành vi của người dùng không vi phạm các điều khoản dịch vụ của hệ thống."
+        ],
+        targetTemplates: []
       };
     }
     if (selectedAction === "WARN") {
       return {
         title: "Gửi cảnh báo",
         helper:
-          "Hệ thống sẽ gửi thông báo cảnh báo cho người bị báo cáo và gửi kết quả xử lý cho người báo cáo.",
-        placeholder: "Nội dung bổ sung (không bắt buộc)...",
+          "Hệ thống sẽ gửi thông báo cảnh báo in-app cho người bị báo cáo và gửi kết quả xử lý cho người báo cáo.",
+        placeholder: "Nội dung gửi cho người báo cáo...",
+        targetPlaceholder: "Nội dung cảnh báo (gửi in-app)...",
+        reporterTemplates: [
+          "Đã nhận thấy dấu hiệu vi phạm và chúng tôi đã gửi cảnh báo cho người dùng, nếu còn tái phạm sẽ khóa tài khoản.",
+          "Chúng tôi đã ghi nhận hành vi vi phạm và gửi cảnh báo nhắc nhở đến người dùng này.",
+          "Cảm ơn bạn đã báo cáo, chúng tôi đã tiến hành cảnh báo và sẽ theo dõi sát sao tài khoản này."
+        ],
+        targetTemplates: [
+          "Chúng tôi nhận thấy bạn có hành vi vi phạm tiêu chuẩn cộng đồng. Yêu cầu bạn chấm dứt ngay hành vi này nếu không tài khoản sẽ bị khóa. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn.",
+          "Tài khoản của bạn đã vi phạm quy định. Bạn cần phải khắc phục trong vòng 24h nếu không sẽ bị khóa tài khoản. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn.",
+          "Đây là thông báo cảnh báo về việc bạn vi phạm nội quy. Hãy tuân thủ quy định để tránh bị khóa vĩnh viễn. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn."
+        ]
       };
     }
     return {
       title: "Khóa tài khoản",
       helper:
-        "Nhập lý do khóa tài khoản. Hệ thống sẽ gửi mail cho người bị khóa và gửi kết quả cho người báo cáo.",
-      placeholder: "Nhập lý do khóa tài khoản...",
+        "Hệ thống sẽ khóa tài khoản vĩnh viễn và gửi thông báo in-app kết quả xử lý cho người báo cáo.",
+      placeholder: "Nội dung gửi cho người báo cáo...",
+      reporterTemplates: [
+        "Cảm ơn bạn đã báo cáo. Chúng tôi đã xác minh và tiến hành khóa vĩnh viễn tài khoản vi phạm này.",
+        "Hành vi vi phạm là nghiêm trọng, tài khoản này đã bị khóa khỏi hệ thống thành công.",
+        "Chúng tôi đã khóa tài khoản này do vi phạm nhiều lần. Cảm ơn sự đóng góp của bạn."
+      ],
+      targetTemplates: []
     };
   };
 
@@ -229,6 +273,7 @@ const AdminManageReportPage = () => {
                   <th>Người bị báo cáo</th>
                   <th>Lý do chính</th>
                   <th>Mô tả chi tiết</th>
+                  <th>Minh chứng</th>
                   <th>Số báo cáo chờ</th>
                   <th>Trạng thái</th>
                   <th>Ưu tiên</th>
@@ -238,13 +283,13 @@ const AdminManageReportPage = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="state-cell">
+                    <td colSpan={10} className="state-cell">
                       Đang tải dữ liệu...
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="state-cell">
+                    <td colSpan={10} className="state-cell">
                       Không có dữ liệu.
                     </td>
                   </tr>
@@ -273,6 +318,15 @@ const AdminManageReportPage = () => {
                       <td>{formatReason(item.reason)}</td>
                       <td className="desc-cell" title={item.detailedDescription || "-"}>
                         {item.detailedDescription || "-"}
+                      </td>
+                      <td>
+                        {item.evidenceUrl ? (
+                          <a href={item.evidenceUrl} target="_blank" rel="noopener noreferrer" className="user-link-btn" style={{ fontSize: '12px' }}>
+                            Xem file
+                          </a>
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td>{item.pendingReportCountForTarget}</td>
                       <td>{formatStatus(item.status)}</td>
@@ -349,16 +403,89 @@ const AdminManageReportPage = () => {
               Báo cáo: RP-{selectedReport.reportId} | Người báo cáo: {selectedReport.reporterName || `USR-${selectedReport.reporterId}`} | Người bị báo cáo: {selectedReport.reportedUserName || `USR-${selectedReport.reportedUserId}`}
             </div>
 
-            <textarea
-              className="action-note-input"
-              value={actionNote}
-              onChange={(event) => {
-                setActionNote(event.target.value);
-                if (actionError) setActionError("");
-              }}
-              placeholder={getActionModalMeta().placeholder}
-              rows={5}
-            />
+            <div className="action-note-section">
+              <label className="action-note-label">
+                <span className="badge-reporter">Người báo cáo</span>
+                Nội dung phản hồi (in-app):
+              </label>
+              <textarea
+                className="action-note-input"
+                value={actionNote}
+                onChange={(event) => {
+                  setActionNote(event.target.value);
+                  if (actionError) setActionError("");
+                }}
+                placeholder={getActionModalMeta().placeholder}
+                rows={3}
+              />
+              <div className="action-templates">
+                {showReporterTemplates ? (
+                  getActionModalMeta().reporterTemplates.map((text, idx) => (
+                    <button
+                      key={`rep-${idx}`}
+                      className="template-badge"
+                      onClick={() => {
+                        setActionNote(text);
+                        setActionError("");
+                        setShowReporterTemplates(false);
+                      }}
+                    >
+                      {text}
+                    </button>
+                  ))
+                ) : (
+                  <button
+                    className="template-badge change-template-btn"
+                    onClick={() => setShowReporterTemplates(true)}
+                  >
+                    🔄 Chọn mẫu khác
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {selectedAction === "WARN" && (
+              <div className="action-note-section">
+                <label className="action-note-label">
+                  <span className="badge-target">Người bị báo cáo</span>
+                  Nội dung cảnh báo (in-app):
+                </label>
+                <textarea
+                  className="action-note-input"
+                  value={actionTargetNote}
+                  onChange={(event) => {
+                    setActionTargetNote(event.target.value);
+                    if (actionError) setActionError("");
+                  }}
+                  placeholder={getActionModalMeta().targetPlaceholder}
+                  rows={3}
+                />
+                <div className="action-templates">
+                  {showTargetTemplates ? (
+                    getActionModalMeta().targetTemplates.map((text, idx) => (
+                      <button
+                        key={`tar-${idx}`}
+                        className="template-badge"
+                        onClick={() => {
+                          setActionTargetNote(text);
+                          setActionError("");
+                          setShowTargetTemplates(false);
+                        }}
+                      >
+                        {text}
+                      </button>
+                    ))
+                  ) : (
+                    <button
+                      className="template-badge change-template-btn"
+                      onClick={() => setShowTargetTemplates(true)}
+                    >
+                      🔄 Chọn mẫu khác
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {actionError && <div className="action-error-text">{actionError}</div>}
 
@@ -632,6 +759,73 @@ const AdminManageReportPage = () => {
           line-height: 1.45;
         }
 
+        .action-note-section {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .action-note-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: #334155;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .badge-reporter {
+          background: #dbeafe;
+          color: #1e40af;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 11px;
+        }
+
+        .badge-target {
+          background: #fee2e2;
+          color: #991b1b;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 11px;
+        }
+
+        .action-templates {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .template-badge {
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          color: #475569;
+          font-size: 11px;
+          padding: 4px 8px;
+          border-radius: 12px;
+          cursor: pointer;
+          text-align: left;
+          max-width: 100%;
+          transition: all 0.2s;
+        }
+
+        .template-badge:hover {
+          background: #e2e8f0;
+          color: #0f172a;
+        }
+
+        .change-template-btn {
+          background: #e0f2fe;
+          border-color: #bae6fd;
+          color: #0369a1;
+          font-weight: 600;
+        }
+
+        .change-template-btn:hover {
+          background: #bae6fd;
+          color: #0c4a6e;
+        }
+
         .action-note-input {
           width: 100%;
           border: 1px solid #cbd5e1;
@@ -640,7 +834,7 @@ const AdminManageReportPage = () => {
           font-size: 14px;
           color: #0f172a;
           resize: vertical;
-          min-height: 110px;
+          min-height: 80px;
           outline: none;
         }
 
@@ -658,6 +852,7 @@ const AdminManageReportPage = () => {
           display: flex;
           justify-content: flex-end;
           gap: 8px;
+          margin-top: 8px;
         }
 
         .modal-btn {

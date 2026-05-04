@@ -39,4 +39,10 @@ export const userApi = {
    */
   chooseRole: (roleName) =>
     apiRequest.patch(`${BASE}/choose-role`, { roleName }),
+
+  /**
+   * @param {string} email
+   */
+  searchStudentsByEmail: (email) =>
+    apiRequest.get(`${BASE}/search-students`, { params: { email } }),
 };
