@@ -1600,9 +1600,6 @@ const AttemptHistoryModal = ({
 
 const STUDENT_TABS = [
   { key: "assignments", label: "Bài tập" },
-  { key: "materials", label: "Tài liệu" },
-  { key: "members", label: "Thành viên" },
-  { key: "attendance", label: "Điểm danh" },
 ];
 
 const getTabPath = (key, classId) => {

@@ -306,7 +306,11 @@ const ClassroomDetailLayout = ({
   const normalizedRole = normalizeRole(user?.role);
   const isTeacher = normalizedRole === "TEACHER";
   const visibleMenuItems = MENU_ITEMS.filter(
-    (item) => !(normalizedRole === "STUDENT" && item.key === "attendance"),
+    (item) =>
+      !(
+        normalizedRole === "STUDENT" &&
+        (item.key === "attendance" || item.key === "grades")
+      ),
   );
 
   const roleLabel = (() => {
@@ -319,10 +323,10 @@ const ClassroomDetailLayout = ({
   const classroomTeacherName =
     String(
       classroom?.teacherName ||
-        classroom?.teacher?.fullName ||
-        classroom?.ownerName ||
-        classroom?.createdByName ||
-        "",
+      classroom?.teacher?.fullName ||
+      classroom?.ownerName ||
+      classroom?.createdByName ||
+      "",
     ).trim() ||
     user?.fullName ||
     user?.username ||

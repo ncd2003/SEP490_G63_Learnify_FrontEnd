@@ -141,7 +141,7 @@ const normalizeSubmission = (item, idx) => ({
   needsGrading:
     toUpper(item?.status || item?.gradingStatus || "SUBMITTED") !== "GRADED" &&
     Number(item?.totalEssayQuestions ?? 0) >
-      Number(item?.gradedEssayQuestions ?? 0),
+    Number(item?.gradedEssayQuestions ?? 0),
 });
 
 const normalizeEssayAnswer = (item, idx) => ({
@@ -221,14 +221,14 @@ const CSS = `
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px}
 
-.root{display:flex;height:100vh;overflow:hidden;font-family:var(--font);background:var(--bg)}
+.root{display:flex;height:calc(100vh - 64px);overflow:hidden;font-family:var(--font);background:var(--bg)}
 
 .panel-left{width:320px;flex-shrink:0;display:flex;flex-direction:column;border-right:1.5px solid var(--border);background:var(--card);overflow:hidden}
 .asn-hdr{padding:16px 18px;background:var(--gradient);position:relative;overflow:hidden;flex-shrink:0}
 .asn-hdr::before{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08)}
-.asn-hdr-title{font-family:var(--font-d);font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;position:relative}
-.asn-hdr-sub{font-size:11px;color:rgba(255,255,255,.72);position:relative;line-height:1.5}
-.back-btn{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,.7);margin-bottom:8px;cursor:pointer;position:relative;transition:color .12s}
+.asn-hdr-title{font-family:var(--font-d);font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asn-hdr-sub{font-size:11px;color:rgba(255,255,255,.72);position:relative;line-height:1.5;display:block;word-break:break-word}
+.back-btn{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,.7);margin-bottom:8px;cursor:pointer;position:relative;transition:color .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .back-btn:hover{color:#fff}
 
 .stats-strip{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1.5px solid var(--border);flex-shrink:0}
@@ -263,14 +263,14 @@ const CSS = `
 .badge-mc{background:var(--primary-light);color:var(--primary-dark)}
 .badge-es{background:var(--purple-l);color:var(--purple-d)}
 
-.panel-right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.panel-right{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .empty-panel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;opacity:.5;padding:24px}
 .empty-panel p{font-size:13px;color:var(--text3);text-align:center}
 
 .grade-topbar{padding:13px 20px;background:var(--card);border-bottom:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .grade-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
-.grade-name{font-size:13px;font-weight:700;color:var(--text)}
-.grade-meta{font-size:11px;color:var(--text3);margin-top:1px}
+.grade-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.grade-meta{font-size:11px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grade-score-big{font-family:var(--font-d);font-size:24px;font-weight:700;line-height:1}
 .grade-score-sub{font-size:10px;color:var(--text3);font-weight:600;margin-top:1px}
 
@@ -285,7 +285,8 @@ const CSS = `
 .itab.active{color:var(--primary);border-bottom-color:var(--primary)}
 .itab:hover:not(.active){color:var(--text2)}
 
-.grade-scroll{flex:1;overflow-y:auto;padding:16px 20px}
+.grade-scroll{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;align-items:center}
+.grade-content-inner{width:100%;max-width:1200px}
 .section-heading{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:7px}
 .section-heading-bar{width:3px;height:12px;border-radius:2px;flex-shrink:0}
 
@@ -300,7 +301,7 @@ const CSS = `
 .qg-num.wrong{background:#FEE2E2;color:#991B1B}
 .qg-num.essay-pending{background:#EDE9FE;color:#5B21B6}
 .qg-num.essay-graded{background:#DCFCE7;color:#15803D}
-.qg-content{flex:1;font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qg-content{flex:1;font-size:12px;font-weight:600;color:var(--text2);line-height:1.5;word-break:break-word}
 .pts-chip{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0}
 .pts-chip.correct{background:#DCFCE7;color:#15803D}
 .pts-chip.wrong{background:#FEE2E2;color:#991B1B}
@@ -358,6 +359,14 @@ const CSS = `
 .toast.error{background:var(--red);color:#fff}
 
 .loading-state{flex:1;display:flex;align-items:center;justify-content:center;opacity:.5}
+
+.grade-panel-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 
 @media(max-width:900px){.panel-left{width:280px}}
 @media(max-width:680px){.panel-left{display:none}}
@@ -734,7 +743,7 @@ const GradingPanel = ({
   }
 
   return (
-    <>
+    <div className="grade-panel-wrap">
       <div className="grade-topbar">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
@@ -834,59 +843,61 @@ const GradingPanel = ({
       </div>
 
       <div className="grade-scroll">
-        {(activeTab === "essay" || activeTab === "all") &&
-        (submission.essayAnswers || []).length > 0 ? (
-          <>
-            <div className="section-heading">
-              <div
-                className="section-heading-bar"
-                style={{ background: "var(--purple)" }}
-              />
-              Câu tự luận — chấm thủ công
-            </div>
-            {(submission.essayAnswers || []).map((answer) => (
-              <EssayGradingCard
-                key={answer.questionId}
-                answer={answer}
-                grade={grades[answer.questionId] ?? null}
-                comment={comments[answer.questionId] ?? ""}
-                onGrade={(value) =>
-                  setGrades((prev) => ({ ...prev, [answer.questionId]: value }))
-                }
-                onComment={(value) =>
-                  setComments((prev) => ({
-                    ...prev,
-                    [answer.questionId]: value,
-                  }))
-                }
-              />
-            ))}
-          </>
-        ) : null}
+        <div className="grade-content-inner">
+          {(activeTab === "essay" || activeTab === "all") &&
+            (submission.essayAnswers || []).length > 0 ? (
+            <>
+              <div className="section-heading">
+                <div
+                  className="section-heading-bar"
+                  style={{ background: "var(--purple)" }}
+                />
+                Câu tự luận — chấm thủ công
+              </div>
+              {(submission.essayAnswers || []).map((answer) => (
+                <EssayGradingCard
+                  key={answer.questionId}
+                  answer={answer}
+                  grade={grades[answer.questionId] ?? null}
+                  comment={comments[answer.questionId] ?? ""}
+                  onGrade={(value) =>
+                    setGrades((prev) => ({ ...prev, [answer.questionId]: value }))
+                  }
+                  onComment={(value) =>
+                    setComments((prev) => ({
+                      ...prev,
+                      [answer.questionId]: value,
+                    }))
+                  }
+                />
+              ))}
+            </>
+          ) : null}
 
-        {(activeTab === "mc" || activeTab === "all") &&
-        (submission.mcAnswers || []).length > 0 ? (
-          <>
-            <div
-              className="section-heading"
-              style={{ marginTop: activeTab === "all" ? 16 : 0 }}
-            >
+          {(activeTab === "mc" || activeTab === "all") &&
+            (submission.mcAnswers || []).length > 0 ? (
+            <>
               <div
-                className="section-heading-bar"
-                style={{ background: "var(--primary)" }}
-              />
-              Câu trắc nghiệm
-            </div>
-            {(submission.mcAnswers || []).map((answer) => (
-              <McAnswerCard
-                key={answer.questionId}
-                answer={answer}
-                isOpen={openMc.has(answer.questionId)}
-                onToggle={() => toggleMc(answer.questionId)}
-              />
-            ))}
-          </>
-        ) : null}
+                className="section-heading"
+                style={{ marginTop: activeTab === "all" ? 16 : 0 }}
+              >
+                <div
+                  className="section-heading-bar"
+                  style={{ background: "var(--primary)" }}
+                />
+                Câu trắc nghiệm
+              </div>
+              {(submission.mcAnswers || []).map((answer) => (
+                <McAnswerCard
+                  key={answer.questionId}
+                  answer={answer}
+                  isOpen={openMc.has(answer.questionId)}
+                  onToggle={() => toggleMc(answer.questionId)}
+                />
+              ))}
+            </>
+          ) : null}
+        </div>
       </div>
 
       <div className="grade-footer">
@@ -930,7 +941,7 @@ const GradingPanel = ({
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
@@ -1032,9 +1043,9 @@ export default function AssignmentSubmissionListPage() {
         const rawAnswers = Array.isArray(data?.answers)
           ? data.answers
           : [
-              ...(Array.isArray(data?.essayAnswers) ? data.essayAnswers : []),
-              ...(Array.isArray(data?.mcAnswers) ? data.mcAnswers : []),
-            ];
+            ...(Array.isArray(data?.essayAnswers) ? data.essayAnswers : []),
+            ...(Array.isArray(data?.mcAnswers) ? data.mcAnswers : []),
+          ];
 
         const essayAnswers = rawAnswers
           .filter((answer) => toUpper(answer?.questionType) === "ESSAY")
@@ -1045,14 +1056,14 @@ export default function AssignmentSubmissionListPage() {
 
         const totalEssayQuestions = Number(
           data?.totalEssayQuestions ??
-            basic?.totalEssayQuestions ??
-            essayAnswers.length,
+          basic?.totalEssayQuestions ??
+          essayAnswers.length,
         );
         const gradedEssayQuestions = Number(
           data?.gradedEssayQuestions ??
-            basic?.gradedEssayQuestions ??
-            essayAnswers.filter((answer) => answer.gradingStatus === "GRADED")
-              .length,
+          basic?.gradedEssayQuestions ??
+          essayAnswers.filter((answer) => answer.gradingStatus === "GRADED")
+            .length,
         );
         const status = toUpper(data?.status || basic?.status || "SUBMITTED");
         const usedMinutesFromTimeline = getDurationMinutes(
@@ -1197,14 +1208,14 @@ export default function AssignmentSubmissionListPage() {
           prev.map((s) =>
             s.id === activeSubId
               ? {
-                  ...s,
-                  status: nextStatus,
-                  totalScore:
-                    totalEarnedScore !== null ? totalEarnedScore : s.totalScore,
-                  totalEssayQuestions,
-                  gradedEssayQuestions,
-                  needsGrading: !isFullyGraded,
-                }
+                ...s,
+                status: nextStatus,
+                totalScore:
+                  totalEarnedScore !== null ? totalEarnedScore : s.totalScore,
+                totalEssayQuestions,
+                gradedEssayQuestions,
+                needsGrading: !isFullyGraded,
+              }
               : s,
           ),
         );

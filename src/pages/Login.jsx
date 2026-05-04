@@ -434,7 +434,7 @@ const LoginPage = () => {
           z-index: 1;
           display: flex;
           width: 95%;
-          max-width: 1200px;
+          max-width: 1000px;
           background: white;
           border-radius: 24px;
           overflow: hidden;
@@ -456,7 +456,7 @@ const LoginPage = () => {
         .brand-section {
           flex: 1;
           background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-          padding: 60px;
+          padding: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -504,12 +504,12 @@ const LoginPage = () => {
           display: flex;
           align-items: center;
           gap: 16px;
-          margin-bottom: 16px;
+          margin-bottom: 12px;
         }
 
         .logo-icon {
-          width: 56px;
-          height: 56px;
+          width: 48px;
+          height: 48px;
           background: rgba(255, 255, 255, 0.2);
           border-radius: 16px;
           display: flex;
@@ -519,7 +519,7 @@ const LoginPage = () => {
         }
 
         .brand-name {
-          font-size: 42px;
+          font-size: 32px;
           font-weight: 700;
           letter-spacing: -0.5px;
         }
@@ -527,12 +527,12 @@ const LoginPage = () => {
         .tagline {
           font-size: 18px;
           opacity: 0.95;
-          margin-bottom: 48px;
+          margin-bottom: 24px;
           font-weight: 300;
         }
 
         .feature-list {
-          margin-bottom: 48px;
+          margin-bottom: 24px;
         }
 
         .feature-item {
@@ -577,7 +577,7 @@ const LoginPage = () => {
 
         .form-section {
           flex: 1;
-          padding: 60px;
+          padding: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -586,11 +586,11 @@ const LoginPage = () => {
 
         .form-container {
           width: 100%;
-          max-width: 420px;
+          max-width: 380px;
         }
 
         .form-header {
-          margin-bottom: 40px;
+          margin-bottom: 24px;
         }
 
         .form-header h2 {
@@ -617,7 +617,7 @@ const LoginPage = () => {
         }
 
         .input-group {
-          margin-bottom: 24px;
+          margin-bottom: 16px;
           position: relative;
         }
 
@@ -638,10 +638,10 @@ const LoginPage = () => {
 
         .input-group input {
           width: 100%;
-          padding: 14px 16px;
+          padding: 12px 16px;
           border: 2px solid #e0e0e0;
           border-radius: 12px;
-          font-size: 15px;
+          font-size: 14px;
           transition: all 0.3s ease;
           background: white;
           color: #1a1a1a;
@@ -685,7 +685,7 @@ const LoginPage = () => {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 32px;
+          margin-bottom: 20px;
         }
 
         .checkbox-label {
@@ -788,12 +788,12 @@ const LoginPage = () => {
 
         .login-button {
           width: 100%;
-          padding: 16px;
+          padding: 14px;
           background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
           color: white;
           border: none;
           border-radius: 12px;
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s;
@@ -846,7 +846,7 @@ const LoginPage = () => {
 
         .divider {
           text-align: center;
-          margin: 32px 0;
+          margin: 20px 0;
           position: relative;
         }
 
@@ -875,12 +875,12 @@ const LoginPage = () => {
         .social-login {
           display: flex;
           gap: 12px;
-          margin-bottom: 32px;
+          margin-bottom: 20px;
         }
 
         .social-button {
           flex: 1;
-          padding: 14px;
+          padding: 12px;
           border: 2px solid #e0e0e0;
           border-radius: 12px;
           background: white;

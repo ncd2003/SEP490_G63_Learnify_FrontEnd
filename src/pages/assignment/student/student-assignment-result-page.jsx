@@ -102,10 +102,10 @@ const normalizeQuestionResult = (item, idx) => {
 
   const rawStudentAnswer = String(
     item.studentAnswer ??
-      item.myAnswer ??
-      item.essayAnswer ??
-      item.submittedText ??
-      "",
+    item.myAnswer ??
+    item.essayAnswer ??
+    item.submittedText ??
+    "",
   ).trim();
 
   let myAnswerIdx =
@@ -126,20 +126,20 @@ const normalizeQuestionResult = (item, idx) => {
     type === "tf"
       ? normalizedStudentAnswer === "true"
         ? normalizedOptions.find((option) =>
-            ["đúng", "dung", "true"].includes(
+          ["đúng", "dung", "true"].includes(
+            String(option.text || "")
+              .trim()
+              .toLowerCase(),
+          ),
+        )?.text || "Đúng"
+        : normalizedStudentAnswer === "false"
+          ? normalizedOptions.find((option) =>
+            ["sai", "false"].includes(
               String(option.text || "")
                 .trim()
                 .toLowerCase(),
             ),
-          )?.text || "Đúng"
-        : normalizedStudentAnswer === "false"
-          ? normalizedOptions.find((option) =>
-              ["sai", "false"].includes(
-                String(option.text || "")
-                  .trim()
-                  .toLowerCase(),
-              ),
-            )?.text || "Sai"
+          )?.text || "Sai"
           : rawStudentAnswer
       : "";
 
@@ -231,12 +231,12 @@ const normalizeResult = (data) => {
     ),
     usedMinutes: Number(
       data.usedMinutes ??
-        data.timeSpentMinutes ??
-        (data.startTime && data.submitTime
-          ? (new Date(data.submitTime).getTime() -
-              new Date(data.startTime).getTime()) /
-            (1000 * 60)
-          : 0),
+      data.timeSpentMinutes ??
+      (data.startTime && data.submitTime
+        ? (new Date(data.submitTime).getTime() -
+          new Date(data.startTime).getTime()) /
+        (1000 * 60)
+        : 0),
     ),
     myScore: Number(
       data.totalEarnedScore ?? data.totalEarnedPoints ?? data.myScore ?? 0,

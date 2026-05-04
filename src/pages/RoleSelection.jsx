@@ -86,20 +86,18 @@ const RoleSelection = () => {
               <div className="card-text">
                 <h2 className="role-name">Học viên</h2>
                 <p className="role-desc">
-                  Khám phá và học hàng nghìn khóa học từ các chuyên gia hàng đầu
+                  Tham gia các lớp học tương tác, hoàn thành bài tập và theo dõi tiến độ cá nhân hàng ngày
                 </p>
               </div>
               <ul className="role-features">
                 <li>
-                  <span className="dot student-dot"></span>Truy cập 1000+ khóa
-                  học
+                  <span className="dot student-dot"></span>Tham gia lớp học tương tác
                 </li>
                 <li>
-                  <span className="dot student-dot"></span>Học mọi lúc, mọi nơi
+                  <span className="dot student-dot"></span>Làm bài tập & nhận phản hồi nhanh
                 </li>
                 <li>
-                  <span className="dot student-dot"></span>Nhận chứng chỉ được
-                  công nhận
+                  <span className="dot student-dot"></span>Theo dõi kết quả học tập chi tiết
                 </li>
               </ul>
               <div
@@ -129,21 +127,18 @@ const RoleSelection = () => {
               <div className="card-text">
                 <h2 className="role-name">Giáo viên</h2>
                 <p className="role-desc">
-                  Tạo và chia sẻ kiến thức của bạn với hàng triệu học viên trên
-                  khắp thế giới
+                  Xây dựng môi trường giáo dục số, quản lý lớp học và tối ưu quy trình giảng dạy hiện đại
                 </p>
               </div>
               <ul className="role-features">
                 <li>
-                  <span className="dot teacher-dot"></span>Tạo & quản lý khóa
-                  học
+                  <span className="dot teacher-dot"></span>Quản lý lớp học & tài liệu thông minh
                 </li>
                 <li>
-                  <span className="dot teacher-dot"></span>Theo dõi tiến độ học
-                  viên
+                  <span className="dot teacher-dot"></span>Tạo bài tập & chấm điểm tự động
                 </li>
                 <li>
-                  <span className="dot teacher-dot"></span>Thu nhập từ khóa học
+                  <span className="dot teacher-dot"></span>Báo cáo năng lực học sinh chi tiết
                 </li>
               </ul>
               <div
