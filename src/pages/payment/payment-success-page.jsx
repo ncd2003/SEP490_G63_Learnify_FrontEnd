@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CheckCircle2, LogIn } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { paymentService } from "@/apis/payment.api";
@@ -27,6 +27,30 @@ const PaymentSuccessPage = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const hasLoggedOutRef = useRef(false);
+
+  useEffect(() => {
+    if (hasLoggedOutRef.current) {
+      return;
+    }
+
+    hasLoggedOutRef.current = true;
+
+    const logoutAndClearClientData = async () => {
+      try {
+        await Promise.race([
+          logout(),
+          new Promise((resolve) => {
+            window.setTimeout(resolve, LOGOUT_TIMEOUT_MS);
+          }),
+        ]);
+      } finally {
+        clearClientAuthData();
+      }
+    };
+
+    logoutAndClearClientData();
+  }, [logout]);
 
   useEffect(() => {
     let isUnmounted = false;
@@ -79,17 +103,6 @@ const PaymentSuccessPage = () => {
       if (status !== PAID_STATUS) {
         redirectToPaymentPage();
         return;
-      }
-
-      try {
-        await Promise.race([
-          logout(),
-          new Promise((resolve) => {
-            window.setTimeout(resolve, LOGOUT_TIMEOUT_MS);
-          }),
-        ]);
-      } finally {
-        clearClientAuthData();
       }
 
       if (!isUnmounted) {
