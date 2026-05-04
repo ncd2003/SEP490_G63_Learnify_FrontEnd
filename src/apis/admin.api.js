@@ -59,4 +59,13 @@ export const adminApi = {
   setTemporaryPassword: (userId, payload) => {
     return apiRequest.put(`${BASE}/users/${userId}/password-temporary`, payload);
   },
+  getRevenueDashboard: (timeframe) => {
+    return apiRequest.get(`${BASE}/revenue-dashboard`, { params: { timeframe } });
+  },
+  exportRevenueDashboard: (timeframe) => {
+    return apiRequest.get(`${BASE}/revenue-dashboard/export`, {
+      params: { timeframe },
+      responseType: "blob",
+    });
+  },
 };

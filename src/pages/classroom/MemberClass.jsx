@@ -80,15 +80,15 @@ const MemberClass = () => {
 
   const [pendingRequests, setPendingRequests] = useState([]);
   const [members, setMembers] = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal]   = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // { type: 'approve'|'reject', ids: number[] }
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [classroomInfo, setClassroomInfo] = useState(null);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -102,6 +102,7 @@ const MemberClass = () => {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState('');
   const [reportSuccess, setReportSuccess] = useState('');
+  const [evidenceFile, setEvidenceFile] = useState(null);
   const [activeTeacherTab, setActiveTeacherTab] = useState('members');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteInput, setInviteInput] = useState('');
@@ -560,7 +561,7 @@ const MemberClass = () => {
     if (event.key === 'Enter' || event.key === ',' || event.key === 'Tab') {
       if (inviteInput.trim()) {
         event.preventDefault();
-        
+
         const keyword = normalizeEmail(inviteInput);
         const exactMatch = inviteLookupResults.find(r => normalizeEmail(r.email) === keyword);
         if (exactMatch) {
@@ -603,6 +604,7 @@ const MemberClass = () => {
     setReportDetail('');
     setReportError('');
     setReportSuccess('');
+    setEvidenceFile(null);
     setIsReportModalOpen(true);
   };
 
@@ -635,8 +637,8 @@ const MemberClass = () => {
         payload.detailedDescription = reportDetail.trim();
       }
 
-      await reportApi.createUserReport(payload);
-      setReportSuccess('MSG134 (Success): Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét sớm nhất có thể.');
+      await reportApi.createUserReport(payload, evidenceFile);
+      setReportSuccess('Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét sớm nhất có thể.');
       setIsReportModalOpen(false);
       setTimeout(() => setReportSuccess(''), 3500);
     } catch (err) {
@@ -697,7 +699,7 @@ const MemberClass = () => {
 
   // Separate teachers and students
   const teacherMembers = filteredMembers.filter(m => (m.roleName || '').toUpperCase().includes('TEACHER'));
-  
+
   // Add from classroomInfo if not found in list (fallback)
   if (teacherMembers.length === 0 && classroomInfo?.teacherId) {
     teacherMembers.push({
@@ -814,7 +816,7 @@ const MemberClass = () => {
                           </thead>
                           <tbody>
                             {teacherMembers.map((member) => (
-                              <tr 
+                              <tr
                                 key={`teacher-${member.studentId}`}
                                 onClick={() => openMemberDetail(member)}
                                 style={{ cursor: 'pointer' }}
@@ -869,7 +871,7 @@ const MemberClass = () => {
                           </thead>
                           <tbody>
                             {studentMembers.map((member) => (
-                              <tr 
+                              <tr
                                 key={`student-${member.studentId}`}
                                 onClick={() => openMemberDetail(member)}
                                 style={{ cursor: 'pointer' }}
@@ -1032,9 +1034,9 @@ const MemberClass = () => {
                   <h3>Thông tin {formatRoleLabel(selectedMember?.roleName).toLowerCase()}</h3>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button 
-                      type="button" 
-                      className="member-detail-back-btn" 
+                    <button
+                      type="button"
+                      className="member-detail-back-btn"
                       onClick={closeReportModal}
                       disabled={reportSubmitting}
                       title="Quay lại thông tin"
@@ -1045,9 +1047,9 @@ const MemberClass = () => {
                     <h3>Báo cáo người dùng</h3>
                   </div>
                 )}
-                <button 
-                  type="button" 
-                  className="member-detail-close-icon" 
+                <button
+                  type="button"
+                  className="member-detail-close-icon"
                   onClick={closeMemberModal}
                   title="Đóng"
                   style={{ border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer' }}
@@ -1145,6 +1147,22 @@ const MemberClass = () => {
                       placeholder="Nhập nội dung chi tiết..."
                       disabled={reportSubmitting}
                     />
+                  </label>
+
+                  <label className="report-field">
+                    Minh chứng (tùy chọn)
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={(e) => setEvidenceFile(e.target.files[0] || null)}
+                      disabled={reportSubmitting}
+                      style={{ marginTop: '4px' }}
+                    />
+                    {evidenceFile && (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                        Đã chọn: {evidenceFile.name} ({(evidenceFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    )}
                   </label>
 
                   {reportError && <div className="pending-requests-alert alert-error sidebar-alert">{reportError}</div>}

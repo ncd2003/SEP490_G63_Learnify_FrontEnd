@@ -360,9 +360,9 @@ const AdminUserDetailPage = () => {
                   <ShieldCheck size={14} /> {formatRole(user.role)}
                 </span>
                 <StatusPill status={user.status} />
-                <button 
-                  type="button" 
-                  className="reset-password-btn" 
+                <button
+                  type="button"
+                  className="reset-password-btn"
                   onClick={handleOpenResetModal}
                   title="Đặt lại mật khẩu"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: 'auto', padding: '6px 12px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
@@ -480,8 +480,8 @@ const AdminUserDetailPage = () => {
                 <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>Đã cập nhật mật khẩu tạm thời. Người dùng sẽ bị yêu cầu đổi mật khẩu ở lần đăng nhập tiếp theo.</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px' }}>
                   <span style={{ fontWeight: '500', fontFamily: 'monospace', fontSize: '15px' }}>{shownTempPassword}</span>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(shownTempPassword);
                       toast.success("Đã sao chép mật khẩu", { id: 'copy' });
