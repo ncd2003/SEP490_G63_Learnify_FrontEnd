@@ -86,7 +86,7 @@ const AdminManageReportPage = () => {
         const backendMessage = err?.response?.data?.message;
         setError(
           backendMessage ||
-            "Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
+          "Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
         );
         setItems([]);
         setTotalPages(1);
@@ -119,9 +119,9 @@ const AdminManageReportPage = () => {
         prev.map((item) =>
           item.reportId === reportId
             ? {
-                ...item,
-                status: action === "DISMISS" ? "REJECTED" : "REVIEWED",
-              }
+              ...item,
+              status: action === "DISMISS" ? "REJECTED" : "REVIEWED",
+            }
             : item,
         ),
       );
@@ -215,9 +215,9 @@ const AdminManageReportPage = () => {
           "Cảm ơn bạn đã báo cáo, chúng tôi đã tiến hành cảnh báo và sẽ theo dõi sát sao tài khoản này."
         ],
         targetTemplates: [
-          "Chúng tôi nhận thấy bạn có hành vi vi phạm tiêu chuẩn cộng đồng. Yêu cầu bạn chấm dứt ngay hành vi này nếu không tài khoản sẽ bị khóa.",
-          "Tài khoản của bạn đã vi phạm quy định. Bạn cần phải khắc phục trong vòng 24h nếu không sẽ bị khóa tài khoản.",
-          "Đây là thông báo cảnh báo về việc bạn vi phạm nội quy. Hãy tuân thủ quy định để tránh bị khóa vĩnh viễn."
+          "Chúng tôi nhận thấy bạn có hành vi vi phạm tiêu chuẩn cộng đồng. Yêu cầu bạn chấm dứt ngay hành vi này nếu không tài khoản sẽ bị khóa. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn.",
+          "Tài khoản của bạn đã vi phạm quy định. Bạn cần phải khắc phục trong vòng 24h nếu không sẽ bị khóa tài khoản. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn.",
+          "Đây là thông báo cảnh báo về việc bạn vi phạm nội quy. Hãy tuân thủ quy định để tránh bị khóa vĩnh viễn. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn."
         ]
       };
     }
@@ -321,7 +321,7 @@ const AdminManageReportPage = () => {
                       </td>
                       <td>
                         {item.evidenceUrl ? (
-                          <a href={item.evidenceUrl} target="_blank" rel="noopener noreferrer" className="user-link-btn" style={{fontSize: '12px'}}>
+                          <a href={item.evidenceUrl} target="_blank" rel="noopener noreferrer" className="user-link-btn" style={{ fontSize: '12px' }}>
                             Xem file
                           </a>
                         ) : (
@@ -405,7 +405,7 @@ const AdminManageReportPage = () => {
 
             <div className="action-note-section">
               <label className="action-note-label">
-                <span className="badge-reporter">Người báo cáo</span> 
+                <span className="badge-reporter">Người báo cáo</span>
                 Nội dung phản hồi (in-app):
               </label>
               <textarea
@@ -421,21 +421,21 @@ const AdminManageReportPage = () => {
               <div className="action-templates">
                 {showReporterTemplates ? (
                   getActionModalMeta().reporterTemplates.map((text, idx) => (
-                    <button 
-                      key={`rep-${idx}`} 
-                      className="template-badge" 
-                      onClick={() => { 
-                        setActionNote(text); 
-                        setActionError(""); 
-                        setShowReporterTemplates(false); 
+                    <button
+                      key={`rep-${idx}`}
+                      className="template-badge"
+                      onClick={() => {
+                        setActionNote(text);
+                        setActionError("");
+                        setShowReporterTemplates(false);
                       }}
                     >
                       {text}
                     </button>
                   ))
                 ) : (
-                  <button 
-                    className="template-badge change-template-btn" 
+                  <button
+                    className="template-badge change-template-btn"
                     onClick={() => setShowReporterTemplates(true)}
                   >
                     🔄 Chọn mẫu khác
@@ -463,21 +463,21 @@ const AdminManageReportPage = () => {
                 <div className="action-templates">
                   {showTargetTemplates ? (
                     getActionModalMeta().targetTemplates.map((text, idx) => (
-                      <button 
-                        key={`tar-${idx}`} 
-                        className="template-badge" 
-                        onClick={() => { 
-                          setActionTargetNote(text); 
-                          setActionError(""); 
-                          setShowTargetTemplates(false); 
+                      <button
+                        key={`tar-${idx}`}
+                        className="template-badge"
+                        onClick={() => {
+                          setActionTargetNote(text);
+                          setActionError("");
+                          setShowTargetTemplates(false);
                         }}
                       >
                         {text}
                       </button>
                     ))
                   ) : (
-                    <button 
-                      className="template-badge change-template-btn" 
+                    <button
+                      className="template-badge change-template-btn"
                       onClick={() => setShowTargetTemplates(true)}
                     >
                       🔄 Chọn mẫu khác
