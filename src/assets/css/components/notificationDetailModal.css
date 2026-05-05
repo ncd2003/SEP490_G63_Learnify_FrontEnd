@@ -33,6 +33,7 @@
   margin: 0;
   font-size: 18px;
   color: #0f172a;
+  word-break: break-word;
 }
 
 .notification-detail-close {
@@ -43,6 +44,7 @@
   padding: 6px 10px;
   font-weight: 600;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .notification-detail-meta {
@@ -60,6 +62,8 @@
   white-space: pre-wrap;
   color: #1e293b;
   line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 @media (max-width: 640px) {
