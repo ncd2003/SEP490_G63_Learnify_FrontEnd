@@ -251,7 +251,24 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
   };
 
   const generatePreview = async () => {
+    // Check for duplicate slots (same day and same start time)
     const enabledRules = weeklyRules.filter(r => r.enabled);
+    const seenRules = new Set();
+    const duplicates = [];
+
+    for (const rule of enabledRules) {
+      const key = `${rule.dayOfWeek}-${rule.startTime}`;
+      if (seenRules.has(key)) {
+        duplicates.push(`${DAYS_OF_WEEK.find(d => d.value === rule.dayOfWeek)?.label} lúc ${rule.startTime}`);
+      }
+      seenRules.add(key);
+    }
+
+    if (duplicates.length > 0) {
+      toast.error(`Phát hiện ca học trùng lặp: ${[...new Set(duplicates)].join(', ')}. Vui lòng điều chỉnh lại.`);
+      return;
+    }
+
     if (enabledRules.length === 0) {
       toast.error('Vui lòng chọn ít nhất 1 khung giờ trong tuần.');
       return;
@@ -288,7 +305,7 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
 
   const confirmSchedule = async () => {
     if (!previewData || !previewData.scheduledSessions) return;
-    
+
     setLoading(true);
     try {
       const payload = {
@@ -314,22 +331,22 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
   };
 
   // --- Rendering ---
-  
+
   // Weekly grid rendering for Preview
   // Weekly grid rendering for Preview
   const renderPreviewGrid = () => {
     if (!previewData?.scheduledSessions) return null;
-    
+
     // Determine the start date of the current view week
     const firstDateStr = previewData.scheduledSessions[0]?.proposedDate;
     const baseDate = firstDateStr ? new Date(firstDateStr) : new Date();
     baseDate.setDate(baseDate.getDate() + (previewWeekOffset * 7));
-    
+
     // Get Monday of that week
     const day = baseDate.getDay();
     const diff = baseDate.getDate() - day + (day === 0 ? -6 : 1);
     const startOfWeek = new Date(baseDate.setDate(diff));
-    
+
     const weekDays = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
@@ -338,22 +355,22 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
 
     const isToday = (date) => {
       const today = new Date();
-      return date.getDate() === today.getDate() && 
-             date.getMonth() === today.getMonth() && 
-             date.getFullYear() === today.getFullYear();
+      return date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear();
     };
 
     return (
       <div className="syl-preview-content">
         <div className="syl-preview-nav">
           <div className="syl-preview-nav-title">
-            <CalendarIcon size={18} /> 
+            <CalendarIcon size={18} />
             Bản xem trước lịch học ({previewData.scheduledSessions.length} buổi) - Tuần {startOfWeek.toLocaleDateString('vi-VN')}
           </div>
           <div className="syl-preview-nav-actions">
             <button className="syl-btn-outline btn-sm" onClick={() => setPreviewWeekOffset(p => p - 1)}>❮ Trước</button>
             <button className="syl-btn-outline btn-sm" onClick={() => setPreviewWeekOffset(p => p + 1)}>Sau ❯</button>
-            <button className="syl-btn-outline btn-sm" onClick={generatePreview} title="Tính toán lại lịch"><RefreshCw size={14}/></button>
+            <button className="syl-btn-outline btn-sm" onClick={generatePreview} title="Tính toán lại lịch"><RefreshCw size={14} /></button>
           </div>
         </div>
 
@@ -363,19 +380,19 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
             const daySessions = previewData.scheduledSessions.filter(s => s.proposedDate === dateStr);
             const isSkipped = previewData.skippedDates?.some(sk => sk.date === dateStr);
             const todayClass = isToday(d) ? 'today' : '';
-            
+
             return (
               <div className={`syl-week-col ${isSkipped ? 'skipped-day' : ''} ${todayClass}`} key={i}>
                 <div className="syl-col-header">
                   <div className="syl-col-day">{DAYS_OF_WEEK[i].label}</div>
                   <div className="syl-col-date" style={{ color: isSkipped ? '#ef4444' : 'inherit' }}>
-                    {d.getDate()}/{d.getMonth()+1}
+                    {d.getDate()}/{d.getMonth() + 1}
                   </div>
                 </div>
                 <div className="syl-col-body">
                   {daySessions.map((s, j) => (
                     <div className={`syl-event ${s.note ? 'warn' : ''}`} key={j}>
-                      <div className="syl-ev-time">{s.startTime.slice(0,5)} - {s.endTime.slice(0,5)}</div>
+                      <div className="syl-ev-time">{s.startTime.slice(0, 5)} - {s.endTime.slice(0, 5)}</div>
                       <div className="syl-ev-title">Tiết {s.sessionNumber}: {s.title}</div>
                       {s.note && <div className="syl-ev-note">⚠ {s.note}</div>}
                     </div>
@@ -391,10 +408,10 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
             );
           })}
         </div>
-        
+
         {previewData.skippedDates?.length > 0 && (
           <div className="syl-skipped-box">
-            <div className="syl-skipped-title"><AlertCircle size={16}/> Có {previewData.skippedDates.length} ngày bị dời do trùng lịch:</div>
+            <div className="syl-skipped-title"><AlertCircle size={16} /> Có {previewData.skippedDates.length} ngày bị dời do trùng lịch:</div>
             <ul className="syl-skipped-list">
               {previewData.skippedDates.map((sk, idx) => (
                 <li key={idx}>- {sk.date}: {sk.reason}</li>
@@ -410,7 +427,7 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
     <div className="syl-modal-overlay">
       <div className="syl-modal">
         <div className="syl-modal-header">
-          <h2>✨ Tạo lịch học tự động từ Giáo án</h2>
+          <h2> Tạo lịch học tự động từ Giáo án</h2>
           <button className="syl-btn-close" onClick={handleClose}><X size={20} /></button>
         </div>
 
@@ -427,8 +444,8 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
           {/* STEP 1: UPLOAD */}
           {step === 1 && (
             <div className="syl-fade-in">
-              <label 
-                className={`syl-upload-area ${isDragging ? 'drag-active' : ''} ${file ? 'has-file' : ''}`} 
+              <label
+                className={`syl-upload-area ${isDragging ? 'drag-active' : ''} ${file ? 'has-file' : ''}`}
                 htmlFor="syl-file-upload"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -449,12 +466,28 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
 
               <div className="syl-divider"><span>HOẶC NHẬP TRỰC TIẾP</span></div>
 
-              <textarea 
-                className="syl-textarea" 
-                placeholder="Dán nội dung giáo án (text) của bạn vào đây..." 
+              <textarea
+                className="syl-textarea"
+                placeholder="Dán nội dung giáo án (text) của bạn vào đây..."
                 value={rawText}
-                onChange={e => { setRawText(e.target.value); if(e.target.value) setFile(null); }}
+                onChange={e => { setRawText(e.target.value); if (e.target.value) setFile(null); }}
               ></textarea>
+
+              <div className="syl-hints-box" style={{ marginBottom: '15px' }}>
+                <div className="syl-hints-title">Tài liệu mẫu cho Giáo án (Template)</div>
+                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '10px' }}>
+                  Tải template mẫu dạng Text (.txt) hoặc tự tạo file Word (.docx) theo đúng cấu trúc để AI phân tích chính xác nhất.
+                </p>
+                <a
+                  href="/syllabus_template.txt"
+                  download="Syllabus_Template_70_Sessions.txt"
+                  className="syl-btn syl-btn-outline"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', textDecoration: 'none', padding: '6px 12px', fontSize: '13px', width: 'fit-content' }}
+                >
+                  <FileText size={16} />
+                  Tải Template Mẫu (.txt)
+                </a>
+              </div>
 
               <div className="syl-hints-box">
                 <div className="syl-hints-title">Gợi ý cho AI (Tuỳ chọn)</div>
@@ -480,18 +513,18 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
                   <span className="syl-ai-badge">✓ {sessions.length} tiết học</span>
                   <div className="syl-save-indicator">
                     {savingDraft ? (
-                      <span className="syl-saving-text"><Loader2 className="animate-spin" size={12}/> Đang tự động lưu...</span>
+                      <span className="syl-saving-text"><Loader2 className="animate-spin" size={12} /> Đang tự động lưu...</span>
                     ) : lastSaved ? (
                       <span className="syl-saved-text">Đã lưu lúc {lastSaved.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
                     ) : null}
                   </div>
                 </div>
                 <button className="syl-btn-add-session" onClick={addSession}>
-                  <Plus size={16}/> Thêm tiết học
+                  <Plus size={16} /> Thêm tiết học
                 </button>
               </div>
               <p className="syl-help-text">Dữ liệu được tự động lưu. Bạn có thể chỉnh sửa nội dung bên dưới.</p>
-              
+
               <div className="syl-session-list">
                 {sessions.map((s, idx) => (
                   <div className="syl-scard" key={idx}>
@@ -501,7 +534,7 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
                       <textarea value={s.description} onChange={e => updateSession(idx, 'description', e.target.value)} rows={2} placeholder="Mô tả nội dung" className="syl-scard-desc-input" />
                       <div className="syl-scard-footer">
                         <div className="syl-dur-wrap">
-                          ⏱ Ước tính: <input type="number" value={s.estimatedMinutes} onChange={e => updateSession(idx, 'estimatedMinutes', e.target.value)} className="syl-dur-input"/> phút
+                          ⏱ Ước tính: <input type="number" value={s.estimatedMinutes} onChange={e => updateSession(idx, 'estimatedMinutes', e.target.value)} className="syl-dur-input" /> phút
                         </div>
                         <button className="syl-btn-text-danger" onClick={() => removeSession(idx)}>Xóa</button>
                       </div>
@@ -532,20 +565,27 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
               <div className="syl-rules-box">
                 <div className="syl-rules-header">
                   <label>Lịch học trong tuần (Các khung giờ có thể xếp)</label>
-                  <button className="syl-btn-text-primary" onClick={handleAddRule}><Plus size={14}/> Thêm ca</button>
+                  <button className="syl-btn-text-primary" onClick={handleAddRule}><Plus size={14} /> Thêm ca</button>
                 </div>
-                
-                {weeklyRules.map((rule) => (
-                  <div className="syl-rule-row" key={rule.id}>
-                    <input type="checkbox" checked={rule.enabled} onChange={e => handleUpdateRule(rule.id, 'enabled', e.target.checked)} className="syl-rule-check"/>
-                    <select value={rule.dayOfWeek} onChange={e => handleUpdateRule(rule.id, 'dayOfWeek', e.target.value)} className="syl-rule-select">
-                      {DAYS_OF_WEEK.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                    </select>
-                    <span className="syl-rule-sep">Bắt đầu lúc:</span>
-                    <input type="time" value={rule.startTime} onChange={e => handleUpdateRule(rule.id, 'startTime', e.target.value)} className="syl-rule-time"/>
-                    <button className="syl-btn-icon-danger" onClick={() => handleRemoveRule(rule.id)}><X size={16}/></button>
-                  </div>
-                ))}
+
+                {weeklyRules.map((rule) => {
+                  const isDuplicate = rule.enabled && weeklyRules.some(r => 
+                    r.enabled && r.id !== rule.id && r.dayOfWeek === rule.dayOfWeek && r.startTime === rule.startTime
+                  );
+                  
+                  return (
+                    <div className={`syl-rule-row ${isDuplicate ? 'syl-rule-duplicate' : ''}`} key={rule.id}>
+                      <input type="checkbox" checked={rule.enabled} onChange={e => handleUpdateRule(rule.id, 'enabled', e.target.checked)} className="syl-rule-check" />
+                      <select value={rule.dayOfWeek} onChange={e => handleUpdateRule(rule.id, 'dayOfWeek', e.target.value)} className="syl-rule-select">
+                        {DAYS_OF_WEEK.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                      </select>
+                      <span className="syl-rule-sep">Bắt đầu lúc:</span>
+                      <input type="time" value={rule.startTime} onChange={e => handleUpdateRule(rule.id, 'startTime', e.target.value)} className="syl-rule-time" />
+                      <button className="syl-btn-icon-danger" onClick={() => handleRemoveRule(rule.id)}><X size={16} /></button>
+                      {isDuplicate && <span className="syl-duplicate-badge">Trùng lặp</span>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -563,7 +603,7 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
             <>
               <button className="syl-btn syl-btn-outline" onClick={handleClose}>Hủy</button>
               <button className="syl-btn syl-btn-primary" onClick={analyzeSyllabus} disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" size={18} /> : 'Phân tích AI ✨'}
+                {loading ? <Loader2 className="animate-spin" size={18} /> : 'Phân tích Giáo án'}
               </button>
             </>
           )}
@@ -577,7 +617,7 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
             <>
               <button className="syl-btn syl-btn-outline" onClick={() => setStep(2)}>← Chỉnh sửa danh sách</button>
               <button className="syl-btn syl-btn-primary" onClick={generatePreview} disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" size={18} /> : '🔍 Xem trước Lịch học'}
+                {loading ? <Loader2 className="animate-spin" size={18} /> : 'Xem trước Lịch học'}
               </button>
             </>
           )}
@@ -585,7 +625,7 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
             <>
               <button className="syl-btn syl-btn-outline" onClick={() => setStep(3)}>← Sửa cài đặt lịch</button>
               <button className="syl-btn syl-btn-primary" onClick={confirmSchedule} disabled={loading || !previewData?.scheduledSessions?.length}>
-                {loading ? <Loader2 className="animate-spin" size={18} /> : '✅ Xác nhận tạo lịch'}
+                {loading ? <Loader2 className="animate-spin" size={18} /> : 'Xác nhận tạo lịch'}
               </button>
             </>
           )}
