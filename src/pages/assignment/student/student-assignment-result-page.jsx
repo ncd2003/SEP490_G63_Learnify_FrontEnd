@@ -42,9 +42,9 @@ const toDisplayDateTime = (v) => {
 
 const normalizeType = (t) => {
   const v = String(t || "").toUpperCase();
-  if (v === "MULTIPLE_CHOICE") return "mc";
-  if (v === "TRUE_FALSE") return "tf";
-  if (v === "FILL_IN_THE_BLANK" || v === "FILL_IN_BLANK") return "fb";
+  if (v.includes("MULTIPLE") || v === "MC") return "mc";
+  if (v.includes("TRUE") || v.includes("FALSE") || v === "TF") return "tf";
+  if (v.includes("BLANK")) return "fb";
   return "essay";
 };
 
@@ -192,6 +192,7 @@ const normalizeQuestionResult = (item, idx) => {
     myPoints: myPts,
     status,
     options: normalizedOptions,
+    correctOptions,
     correctIndex: correctIdx,
     myAnswerIndex: myAnswerIdx,
     correctTF:
@@ -677,20 +678,24 @@ const QuestionReviewCard = ({ q, index, isOpen, onToggle }) => {
     if (q.type === "fb") {
       return (
         <>
-          {q.myEssayText && q.status !== "wrong" ? (
+          {q.myEssayText ? (
             <div className="essay-block mine">
               <div className="essay-label" style={{ color: "var(--text3)" }}>
                 Bạn điền
               </div>
               <div
                 className="essay-text"
-                style={{ fontWeight: 700, fontSize: 13 }}
+                style={{
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: q.status === "correct" ? "var(--green)" : "var(--red)",
+                }}
               >
                 {q.myEssayText}
               </div>
             </div>
           ) : null}
-          {q.sampleAnswer ? (
+          {(q.sampleAnswer || (q.correctOptions && q.correctOptions.length > 0)) ? (
             <div style={{ marginTop: 4 }}>
               <div
                 className="essay-label"
@@ -698,7 +703,9 @@ const QuestionReviewCard = ({ q, index, isOpen, onToggle }) => {
               >
                 Đáp án đúng
               </div>
-              <div className="fb-fill-answer">{q.sampleAnswer}</div>
+              <div className="fb-fill-answer">
+                {q.sampleAnswer || q.correctOptions.map((o) => o.text).join(", ")}
+              </div>
             </div>
           ) : null}
         </>
@@ -715,6 +722,14 @@ const QuestionReviewCard = ({ q, index, isOpen, onToggle }) => {
             <div className="essay-text">{q.myEssayText}</div>
           </div>
         ) : null}
+        {q.correctOptions && q.correctOptions.length > 0 && (
+          <div className="essay-section">
+            <div className="essay-label">Đáp án đúng:</div>
+            <div className="essay-ans correct">
+              {q.correctOptions.map((o) => o.text).join(", ")}
+            </div>
+          </div>
+        )}
         {q.sampleAnswer ? (
           <div className="essay-block sample">
             <div className="essay-label" style={{ color: "var(--green-d)" }}>

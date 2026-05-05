@@ -1938,7 +1938,8 @@ const StudentAssignmentListPage = () => {
 
       // Nếu là bài tập nhiều lần làm và đã có ít nhất 1 lần nộp -> mở lịch sử
       // Điều này đảm bảo gọi API getSubmissionHistory như yêu cầu
-      if (isMultiAttempt && attemptsUsed > 0) {
+      // Nếu là bài tập nhiều lần làm HOẶC không tìm thấy submissionId trực tiếp -> mở lịch sử để lấy ID chính xác
+      if ((isMultiAttempt || !assignment.submissionId) && attemptsUsed > 0) {
         setModal({ assignment, mode: "history" });
         return;
       }
