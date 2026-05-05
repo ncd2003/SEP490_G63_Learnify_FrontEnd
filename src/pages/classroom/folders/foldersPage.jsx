@@ -463,7 +463,6 @@ const FoldersPage = () => {
     deleteMaterial,
   } = useMaterials(selectedId, Number(classroomId));
   const [uploading, setUploading] = useState(false);
-  const [files, setFiles] = useState([]);
 
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [formState, setFormState] = useState({ mode: null, targetId: null, parentId: null, name: "" });
@@ -484,6 +483,8 @@ const FoldersPage = () => {
 
   const fileInputRef = useRef(null);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [totalSizeBytes, setTotalSizeBytes] = useState(0);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   const guardTeacherMaterialAction = useCallback(() => {
     if (canManageMaterials) {
@@ -491,6 +492,35 @@ const FoldersPage = () => {
     }
     return false;
   }, [canManageMaterials]);
+
+  const persistStorageUsage = useCallback((totalBytes) => {
+    const storageKey = `classroom_${classroomId}_usage`;
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ totalBytes, updatedAt: new Date().toISOString() }),
+    );
+    localStorage.setItem("storage_usage_bytes", String(totalBytes));
+    window.dispatchEvent(
+      new CustomEvent("storage-usage-updated", { detail: { totalBytes } }),
+    );
+  }, [classroomId]);
+
+  // Restore total size from localStorage on mount
+  useEffect(() => {
+    const storageKey = `classroom_${classroomId}_usage`;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const { totalBytes } = JSON.parse(stored);
+        if (Number.isFinite(totalBytes)) {
+          setTotalSizeBytes(totalBytes);
+        }
+      }
+    } catch (error) {
+      // Silently fail if localStorage is unavailable or data is corrupted
+      console.warn("Failed to restore usage from localStorage:", error);
+    }
+  }, [classroomId]);
 
   const selectedFolder = useMemo(() => findFolderById(folders, selectedId), [folders, selectedId]);
 
@@ -550,6 +580,25 @@ const FoldersPage = () => {
       URL.revokeObjectURL(materialPreviewState.previewUrl);
     }
   }, [materialPreviewState.previewUrl]);
+
+  // Calculate total file size when materials change and persist to localStorage
+  useEffect(() => {
+    if (pendingDeleteId && materials.some((file) => file.id === pendingDeleteId)) {
+      return;
+    }
+
+    if (pendingDeleteId && !materials.some((file) => file.id === pendingDeleteId)) {
+      setPendingDeleteId(null);
+    }
+
+    const total = materials.reduce((sum, file) => {
+      const bytes = Number(file.fileSize);
+      return sum + (Number.isFinite(bytes) ? bytes : 0);
+    }, 0);
+    setTotalSizeBytes(total);
+    // Persist to localStorage with classroom ID as key
+    persistStorageUsage(total);
+  }, [materials, pendingDeleteId, persistStorageUsage]);
 
   const toggleExpand = (id) => {
     setExpandedIds((prev) => {
@@ -766,10 +815,31 @@ const FoldersPage = () => {
   const confirmMaterialDelete = async () => {
     if (!guardTeacherMaterialAction()) return;
     if (!materialDeleteState.material?.id) return;
+
+    const deletedMaterial = materialDeleteState.material;
+    const deletedFileBytes = Number(deletedMaterial.fileSize) || 0;
+    const previousTotalSize = totalSizeBytes;
+    const newTotal = Math.max(0, previousTotalSize - deletedFileBytes);
+
+    // Optimistically deduct file size before API call
+    setPendingDeleteId(deletedMaterial.id);
+    setTotalSizeBytes(newTotal);
+    persistStorageUsage(newTotal);
     setMaterialDeleteSubmitting(true);
-    await deleteMaterial(materialDeleteState.material.id);
-    setMaterialDeleteSubmitting(false);
-    closeMaterialDelete();
+
+    try {
+      await deleteMaterial(deletedMaterial.id);
+      // Success - keep optimistic size, real total will be recomputed when materials update
+    } catch {
+      // Rollback file size on error
+      setPendingDeleteId(null);
+      setTotalSizeBytes(previousTotalSize);
+      persistStorageUsage(previousTotalSize);
+      // Error is already handled by interceptors
+    } finally {
+      setMaterialDeleteSubmitting(false);
+      closeMaterialDelete();
+    }
   };
 
   const formatFileSize = (size) => {
@@ -963,7 +1033,15 @@ const FoldersPage = () => {
           </div>
 
           <div className="panel materials-panel">
-            <div className="panel-header materials-header">
+            <div className="panel-header materials-header" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div>
+                  <h2 className="panel-title" style={{ margin: 0 }}>Tài liệu</h2>
+                  <p className="muted-text" style={{ margin: '4px 0 0 0', fontSize: '12px' }}>
+                    Dung lượng: {formatFileSize(totalSizeBytes)}
+                  </p>
+                </div>
+              </div>
               <div className="material-actions">
                 <div className="material-filter-controls">
                   <input
@@ -1011,7 +1089,7 @@ const FoldersPage = () => {
                       className="btn btn-primary"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      {uploading ? <span className="spinner" /> : "☁️"}
+                      {uploading ? <span className="spinner" /> : ""}
                       {uploading ? "Đang tải..." : "Tải tài liệu lên"}
                     </button>
                   </div>

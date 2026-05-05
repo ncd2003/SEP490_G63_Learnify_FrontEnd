@@ -123,14 +123,9 @@ const normalizeSubmission = (item, idx) => ({
   studentName: item?.studentName || item?.name || `Học sinh ${idx + 1}`,
   submittedAt: item?.submitTime || item?.submittedAt || item?.createdAt || null,
   usedMinutes: Number(item?.usedMinutes ?? item?.timeSpentMinutes ?? 0),
-  totalScore:
-    item?.totalEarnedScore != null
-      ? Number(item.totalEarnedScore)
-      : item?.totalScore != null
-        ? Number(item.totalScore)
-        : null,
+  totalScore: item?.totalEarnedScore != null ? Number(item.totalEarnedScore) : null,
   maxScore: item?.totalScore != null ? Number(item.totalScore) : null,
-  autoScore: Number(item?.autoScore ?? item?.mcScore ?? 0),
+  autoScore: item?.autoScore != null ? Number(item.autoScore) : (item?.totalEssayQuestions === 0 ? Number(item?.totalEarnedScore ?? 0) : 0),
   essayScore: item?.essayScore != null ? Number(item.essayScore) : null,
   status: toUpper(item?.status || item?.gradingStatus || "SUBMITTED"),
   isLate: Boolean(item?.isLate),
@@ -691,7 +686,9 @@ const GradingPanel = ({
     const nextComments = {};
 
     (submission.essayAnswers || []).forEach((answer) => {
-      nextGrades[answer.questionId] = answer.earnedPoints;
+      if (answer.gradingStatus === "GRADED") {
+        nextGrades[answer.questionId] = answer.earnedPoints;
+      }
       nextComments[answer.questionId] = answer.teacherComment || "";
     });
 
@@ -699,23 +696,36 @@ const GradingPanel = ({
     setComments(nextComments);
   }, [submission?.id, submission]);
 
-  const gradedCount = (submission?.essayAnswers || []).filter(
-    (answer) => grades[answer.questionId] != null,
-  ).length;
+  const gradedCount =
+    submission?.gradedEssayQuestions != null
+      ? Number(submission.gradedEssayQuestions)
+      : (submission?.essayAnswers || []).filter(
+        (answer) => answer.gradingStatus === "GRADED",
+      ).length;
   const allEssayGraded =
     gradedCount === Number((submission?.essayAnswers || []).length);
-  const totalNow = useMemo(() => {
-    if (!submission) return 0;
-    const initialEssaySum = (submission.essayAnswers || []).reduce(
-      (sum, a) => sum + (a.earnedPoints || 0),
-      0,
-    );
-    const currentEssaySum = (submission.essayAnswers || []).reduce(
-      (sum, a) => sum + (grades[a.questionId] || 0),
-      0,
-    );
-    return (submission.totalScore || 0) + (currentEssaySum - initialEssaySum);
+  const { rawAuto, rawEssay, rawTotal } = useMemo(() => {
+    if (!submission) return { rawAuto: 0, rawEssay: 0, rawTotal: 0 };
+    const ra = (submission.mcAnswers || []).reduce((sum, a) => sum + (a.earnedPoints || 0), 0);
+    const re = (submission.essayAnswers || []).reduce((sum, a) => sum + (grades[a.questionId] || 0), 0);
+    const rt = [...(submission.mcAnswers || []), ...(submission.essayAnswers || [])].reduce((sum, q) => sum + (q.maxPoints || 0), 0);
+    return { rawAuto: ra, rawEssay: re, rawTotal: rt };
   }, [submission, grades]);
+
+  const assignmentMaxScore = assignmentInfo?.totalScore || 10;
+  
+  const autoScoreScaled = rawTotal > 0 ? (rawAuto / rawTotal) * assignmentMaxScore : 0;
+  const essayScoreScaled = rawTotal > 0 ? (rawEssay / rawTotal) * assignmentMaxScore : 0;
+  const totalNow = autoScoreScaled + essayScoreScaled;
+  const hasPendingEssay = submission?.needsGrading;
+  const displayTotal =
+    submission?.totalScore != null ? submission.totalScore : totalNow;
+  const displayAuto =
+    hasPendingEssay && submission?.totalScore != null
+      ? submission.totalScore
+      : autoScoreScaled;
+  const displayEssay = hasPendingEssay ? 0 : essayScoreScaled;
+
   const mcCorrect = (submission?.mcAnswers || []).filter(
     (answer) => answer.earnedPoints >= answer.maxPoints,
   ).length;
@@ -768,7 +778,7 @@ const GradingPanel = ({
                 color: allEssayGraded ? "var(--green)" : "var(--amber)",
               }}
             >
-              {totalNow.toFixed(2)}
+              {displayTotal.toFixed(2)}
             </div>
             <div className="grade-score-sub">
               / {assignmentInfo?.totalScore || 10} điểm
@@ -786,16 +796,13 @@ const GradingPanel = ({
       <div className="ov-strip">
         <div className="ov-item">
           <div className="ov-val" style={{ color: "var(--primary)" }}>
-            {submission.autoScore.toFixed(2)}
+            {displayAuto.toFixed(2)}
           </div>
           <div className="ov-label">Điểm tự động</div>
         </div>
         <div className="ov-item">
           <div className="ov-val" style={{ color: "var(--purple)" }}>
-            {((submission?.essayAnswers || []).reduce(
-              (sum, a) => sum + (grades[a.questionId] || 0),
-              0,
-            )).toFixed(2)}
+            {displayEssay.toFixed(2)}
           </div>
           <div className="ov-label">Điểm tự luận</div>
         </div>
@@ -1071,11 +1078,13 @@ export default function AssignmentSubmissionListPage() {
           data?.submitTime,
         );
 
-        const autoScore = mcAnswers.reduce((sum, a) => sum + (a.earnedPoints || 0), 0);
-        const essayScoreNow = essayAnswers.reduce(
+        const rawAuto = mcAnswers.reduce((sum, a) => sum + (a.earnedPoints || 0), 0);
+        const rawEssayNow = essayAnswers.reduce(
           (sum, a) => sum + (a.earnedPoints || 0),
           0,
         );
+        const rawTotal = [...mcAnswers, ...essayAnswers].reduce((sum, q) => sum + (q.maxPoints || 0), 0);
+        const assignmentMaxScore = data?.totalScore != null ? Number(data.totalScore) : (basic?.maxScore ?? 10);
 
         setSubDetail({
           ...basic,
@@ -1087,16 +1096,13 @@ export default function AssignmentSubmissionListPage() {
           submittedAt: data?.submitTime || basic?.submittedAt || null,
           usedMinutes:
             usedMinutesFromTimeline ?? Number(basic?.usedMinutes ?? 0),
-          autoScore,
-          essayScore: essayScoreNow,
+          autoScore: rawTotal > 0 ? (rawAuto / rawTotal) * assignmentMaxScore : 0,
+          essayScore: rawTotal > 0 ? (rawEssayNow / rawTotal) * assignmentMaxScore : 0,
           totalScore:
             data?.totalEarnedScore != null
               ? Number(data.totalEarnedScore)
-              : autoScore + essayScoreNow,
-          maxScore:
-            data?.totalScore != null
-              ? Number(data.totalScore)
-              : (basic?.maxScore ?? null),
+              : rawTotal > 0 ? ((rawAuto + rawEssayNow) / rawTotal) * assignmentMaxScore : 0,
+          maxScore: assignmentMaxScore,
           totalEssayQuestions,
           gradedEssayQuestions,
           needsGrading:

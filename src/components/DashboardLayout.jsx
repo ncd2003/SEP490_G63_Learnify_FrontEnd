@@ -52,6 +52,7 @@ const DashboardLayout = () => {
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [accountLockedNotice, setAccountLockedNotice] = useState("");
   const [showNewNotificationToast, setShowNewNotificationToast] = useState(false);
+  const [storageUsageOverride, setStorageUsageOverride] = useState(null);
   const toastTimerRef = useRef(null);
   const forcedLogoutTriggeredRef = useRef(false);
 
@@ -99,7 +100,10 @@ const DashboardLayout = () => {
     (item) => item?.benefitCode === "AI_REQUEST",
   );
 
-  const storageUsedBytes = Math.max(0, safeNumber(storageUsage?.used));
+  const resolvedStorageUsed = Number.isFinite(storageUsageOverride)
+    ? storageUsageOverride
+    : safeNumber(storageUsage?.used);
+  const storageUsedBytes = Math.max(0, resolvedStorageUsed);
   const storageUsedGb = bytesToGb(storageUsedBytes);
   const storageLimitBytes = Math.max(0, safeNumber(storageUsage?.limitValue));
   const storageLimitGb = bytesToGb(storageLimitBytes);
@@ -132,6 +136,11 @@ const DashboardLayout = () => {
     typeof user?.plan === "string"
       ? user.plan.replace(/_/g, " ")
       : user?.plan?.name || "FREE";
+
+  const readStorageUsageOverride = useCallback(() => {
+    const value = Number(localStorage.getItem("storage_usage_bytes"));
+    setStorageUsageOverride(Number.isFinite(value) ? value : null);
+  }, []);
 
   const handleLogoutClick = () => {
     setIsNotificationOpen(false);
@@ -442,6 +451,22 @@ const DashboardLayout = () => {
 
     return () => disconnect();
   }, [logout, navigate, user?.id]);
+
+  useEffect(() => {
+    readStorageUsageOverride();
+
+    const handleStorageUpdate = () => {
+      readStorageUsageOverride();
+    };
+
+    window.addEventListener("storage-usage-updated", handleStorageUpdate);
+    window.addEventListener("storage", handleStorageUpdate);
+
+    return () => {
+      window.removeEventListener("storage-usage-updated", handleStorageUpdate);
+      window.removeEventListener("storage", handleStorageUpdate);
+    };
+  }, [readStorageUsageOverride]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
