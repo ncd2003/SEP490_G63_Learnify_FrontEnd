@@ -1343,17 +1343,21 @@ const StudentAssignmentExamPage = () => {
     const MIN_INTERVAL_MS = 3000; // Tối thiểu 3 giây giữa 2 lần đếm
 
     const onWindowBlur = () => {
-      // Debounce — chờ 500ms xem có focus lại không (tránh false positive khi click address bar/devtools)
+      // Debounce — chờ 100ms xem có focus lại không (tránh false positive cực ngắn, nhưng bắt lỗi nhạy hơn)
       blurTimeout = window.setTimeout(() => {
-        const now = Date.now();
-        if (now - lastViolationTime < MIN_INTERVAL_MS) return;
-        lastViolationTime = now;
+        // Chỉ tính FOCUS_LOST nếu tab vẫn đang hiển thị (ví dụ: chia đôi màn hình hoặc dùng màn hình thứ 2)
+        // Nếu document.visibilityState === "hidden", đó là trường hợp chuyển tab và sẽ được xử lý bởi onVisibilityChange
+        if (document.visibilityState === "visible") {
+          const now = Date.now();
+          if (now - lastViolationTime < MIN_INTERVAL_MS) return;
+          lastViolationTime = now;
 
-        recordViolation(
-          VIOLATION_EVENT_TYPE.FOCUS_LOST,
-          "Học sinh đã rời khỏi cửa sổ làm bài.",
-        );
-      }, 500);
+          recordViolation(
+            VIOLATION_EVENT_TYPE.FOCUS_LOST,
+            "Học sinh đã rời khỏi cửa sổ làm bài (mất focus).",
+          );
+        }
+      }, 100);
     };
 
     const onWindowFocus = () => {
@@ -1366,6 +1370,16 @@ const StudentAssignmentExamPage = () => {
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
+        // Khi chuyển tab (hidden), hủy timeout của blur để tránh bị tính trùng (chỉ tính TAB_SWITCH)
+        if (blurTimeout) {
+          window.clearTimeout(blurTimeout);
+          blurTimeout = null;
+        }
+
+        // Ghi nhận ngay lập tức mỗi lần chuyển tab, không áp dụng giãn cách 3 giây
+        const now = Date.now();
+        lastViolationTime = now;
+
         recordViolation(
           VIOLATION_EVENT_TYPE.TAB_SWITCH,
           "Học sinh đã chuyển tab hoặc ẩn trình duyệt.",
