@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, RotateCcw, UserCog } from "lucide-react";
+import { Search, RotateCcw, UserCog, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { adminApi } from "@/apis/admin.api";
 import { PATH_ADMIN } from "@/routes/paths";
@@ -411,8 +411,9 @@ const AdminUserListPage = () => {
                         type="button"
                         className="btn-row-view"
                         onClick={() => navigate(PATH_ADMIN.users.detail(user.id))}
+                        title="Chi tiết"
                       >
-                        Chi tiết
+                        <Eye size={18} />
                       </button>
                     </td>
                   </tr>
@@ -885,15 +886,21 @@ const AdminUserListPage = () => {
         }
 
         .btn-row-view {
-          border: 1px solid #cbd5e1;
-          background: #f8fafc;
-          color: #0f172a;
-          border-radius: 8px;
-          min-height: 32px;
-          padding: 0 10px;
-          font-size: 12px;
-          font-weight: 600;
+          border: none;
+          background: transparent;
+          color: #64748b;
           cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s, color 0.15s;
+        }
+
+        .btn-row-view:hover {
+          background: #f1f5f9;
+          color: #0f766e;
         }
 
         .error-banner {
@@ -911,14 +918,17 @@ const AdminUserListPage = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          padding-top: 14px;
+          border-top: 1px solid #e2e8f0;
           gap: 12px;
           color: #475569;
           font-size: 13px;
+          font-weight: 600;
         }
 
         .pagination-actions {
           display: flex;
-          gap: 8px;
+          gap: 6px;
         }
 
         .pagination-actions button {

@@ -9,7 +9,7 @@ const DeleteClassroomDialog = ({ classroom, onClose, onSuccess }) => {
   const [confirmText, setConfirmText] = useState("");
 
   const handleDelete = async () => {
-    if (confirmText !== "DELETE") return;
+    if (confirmText !== "XÓA") return;
     
     setDeleting(true);
     setServerError("");
@@ -31,7 +31,7 @@ const DeleteClassroomDialog = ({ classroom, onClose, onSuccess }) => {
 
   if (!classroom) return null;
 
-  const isDeleteDisabled = confirmText !== "DELETE" || deleting;
+  const isDeleteDisabled = confirmText !== "XÓA" || deleting;
 
   return (
     <div
@@ -68,12 +68,12 @@ const DeleteClassroomDialog = ({ classroom, onClose, onSuccess }) => {
 
              <div className="confirmation-box" style={{ backgroundColor: '#f3f4f6', borderStyle: 'dashed' }}>
                 <span className="confirmation-label">Xác nhận xóa lớp học</span>
-                <p className="confirmation-subtext">Để xác nhận, vui lòng nhập chữ "DELETE" vào ô bên dưới:</p>
+                <p className="confirmation-subtext">Để xác nhận, vui lòng nhập chữ "XÓA" vào ô bên dưới:</p>
                 <div className="confirmation-input-wrapper">
                    <input
                        type="text"
                        className="confirmation-input"
-                       placeholder="Nhập DELETE để xác nhận"
+                       placeholder="Nhập XÓA để xác nhận"
                        value={confirmText}
                        onChange={(e) => setConfirmText(e.target.value)}
                        disabled={deleting}

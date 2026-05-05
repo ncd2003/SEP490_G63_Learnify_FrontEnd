@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Search, MoreVertical, Paperclip, RotateCcw, AlertTriangle, ShieldAlert, Eye, User, UserX } from "lucide-react";
 import { adminApi } from "@/apis/admin.api";
 import { PATH_ADMIN } from "@/routes/paths";
 
@@ -45,11 +46,21 @@ const AdminManageReportPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [keywordInput, setKeywordInput] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
   const [actionNote, setActionNote] = useState("");
+  const [actionTargetNote, setActionTargetNote] = useState("");
   const [actionError, setActionError] = useState("");
+  const [showReporterTemplates, setShowReporterTemplates] = useState(true);
+  const [showTargetTemplates, setShowTargetTemplates] = useState(true);
+
+  useEffect(() => {
+    // No dropdown click-outside needed anymore
+  }, []);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -57,7 +68,13 @@ const AdminManageReportPage = () => {
       setError("");
 
       try {
-        const response = await adminApi.getReports({ status, page, size });
+        const response = await adminApi.getReports({
+          keyword,
+          priority: priorityFilter,
+          status,
+          page,
+          size
+        });
         const result = response?.result || {};
         const content = Array.isArray(result.content) ? result.content : [];
 
@@ -69,9 +86,10 @@ const AdminManageReportPage = () => {
               return {
                 ...item,
                 detailedDescription: detailResponse?.result?.detailedDescription || "",
+                evidenceUrl: detailResponse?.result?.evidenceUrl || "",
               };
             } catch {
-              return { ...item, detailedDescription: "" };
+              return { ...item, detailedDescription: "", evidenceUrl: "" };
             }
           }),
         );
@@ -82,7 +100,7 @@ const AdminManageReportPage = () => {
         const backendMessage = err?.response?.data?.message;
         setError(
           backendMessage ||
-            "Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
+          "Không thể tải nội dung trang. Vui lòng làm mới trang hoặc thử lại sau.",
         );
         setItems([]);
         setTotalPages(1);
@@ -92,14 +110,28 @@ const AdminManageReportPage = () => {
     };
 
     fetchReports();
-  }, [status, page, size]);
+  }, [status, keyword, priorityFilter, page, size]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setKeyword(keywordInput.trim());
+    setPage(1);
+  };
+
+  const resetFilters = () => {
+    setKeywordInput("");
+    setKeyword("");
+    setPriorityFilter("");
+    setStatus("PENDING");
+    setPage(1);
+  };
 
   const handleOpenUserDetail = (userId) => {
     if (!userId) return;
     navigate(PATH_ADMIN.users.detail(userId));
   };
 
-  const resolveReport = async (reportId, action, note) => {
+  const resolveReport = async (reportId, action, note, targetNote) => {
     if (!reportId) return;
 
     try {
@@ -108,15 +140,16 @@ const AdminManageReportPage = () => {
       await adminApi.resolveReport(reportId, {
         action,
         note: note || null,
+        targetNote: targetNote || null,
       });
 
       setItems((prev) =>
         prev.map((item) =>
           item.reportId === reportId
             ? {
-                ...item,
-                status: action === "DISMISS" ? "REJECTED" : "REVIEWED",
-              }
+              ...item,
+              status: action === "DISMISS" ? "REJECTED" : "REVIEWED",
+            }
             : item,
         ),
       );
@@ -127,20 +160,30 @@ const AdminManageReportPage = () => {
     }
   };
 
-  const openActionModal = (report, action) => {
+  const openDetailModal = (report) => {
     setSelectedReport(report);
-    setSelectedAction(action);
+    setSelectedAction("");
     setActionNote("");
+    setActionTargetNote("");
     setActionError("");
-    setIsActionModalOpen(true);
+    setShowReporterTemplates(true);
+    setShowTargetTemplates(true);
+    setIsDetailModalOpen(true);
   };
 
-  const closeActionModal = () => {
-    if (selectedReport?.reportId === resolvingReportId) return;
-    setIsActionModalOpen(false);
-    setSelectedAction("");
+  const closeDetailModal = () => {
+    if (resolvingReportId === selectedReport?.reportId) return;
+    setIsDetailModalOpen(false);
     setSelectedReport(null);
+    setSelectedAction("");
     setActionNote("");
+    setActionTargetNote("");
+  };
+
+  const startProcessing = (action) => {
+    setSelectedAction(action);
+    setActionNote("");
+    setActionTargetNote("");
     setActionError("");
   };
 
@@ -148,21 +191,31 @@ const AdminManageReportPage = () => {
     if (!selectedReport?.reportId || !selectedAction) return;
 
     const trimmedNote = actionNote.trim();
-    const requiresNote = selectedAction === "DISMISS" || selectedAction === "LOCK_ACCOUNT";
+    const trimmedTargetNote = actionTargetNote.trim();
+
+    const requiresNote = selectedAction === "DISMISS" || selectedAction === "LOCK_ACCOUNT" || selectedAction === "WARN";
     if (requiresNote && !trimmedNote) {
-      setActionError("Vui lòng nhập nội dung trước khi xác nhận.");
+      setActionError("Vui lòng nhập nội dung cho người báo cáo.");
       return;
     }
 
-    await resolveReport(selectedReport.reportId, selectedAction, trimmedNote);
+    if (selectedAction === "WARN" && !trimmedTargetNote) {
+      setActionError("Vui lòng nhập nội dung cho người bị báo cáo.");
+      return;
+    }
+
+    await resolveReport(selectedReport.reportId, selectedAction, trimmedNote, trimmedTargetNote);
     if (selectedReport.reportId !== resolvingReportId) {
-      closeActionModal();
+      closeDetailModal();
     } else {
-      setIsActionModalOpen(false);
+      setIsDetailModalOpen(false);
       setSelectedAction("");
       setSelectedReport(null);
       setActionNote("");
+      setActionTargetNote("");
       setActionError("");
+      setShowReporterTemplates(true);
+      setShowTargetTemplates(true);
     }
   };
 
@@ -171,23 +224,46 @@ const AdminManageReportPage = () => {
       return {
         title: "Bỏ qua báo cáo",
         helper:
-          "Nhập nội dung phản hồi để gửi kết quả xử lý báo cáo cho người báo cáo.",
-        placeholder: "Nhập nội dung phản hồi...",
+          "Nhập nội dung phản hồi để gửi kết quả xử lý báo cáo qua thông báo in-app cho người báo cáo.",
+        placeholder: "Nội dung gửi cho người báo cáo...",
+        reporterTemplates: [
+          "Chúng tôi không nhận thấy có dấu hiệu vi phạm tiêu chuẩn cộng đồng từ người dùng này.",
+          "Bằng chứng bạn cung cấp chưa đủ để chúng tôi có thể xử lý, vui lòng cung cấp thêm thông tin.",
+          "Hành vi của người dùng không vi phạm các điều khoản dịch vụ của hệ thống."
+        ],
+        targetTemplates: []
       };
     }
     if (selectedAction === "WARN") {
       return {
         title: "Gửi cảnh báo",
         helper:
-          "Hệ thống sẽ gửi thông báo cảnh báo cho người bị báo cáo và gửi kết quả xử lý cho người báo cáo.",
-        placeholder: "Nội dung bổ sung (không bắt buộc)...",
+          "Hệ thống sẽ gửi thông báo cảnh báo in-app cho người bị báo cáo và gửi kết quả xử lý cho người báo cáo.",
+        placeholder: "Nội dung gửi cho người báo cáo...",
+        targetPlaceholder: "Nội dung cảnh báo (gửi in-app)...",
+        reporterTemplates: [
+          "Đã nhận thấy dấu hiệu vi phạm và chúng tôi đã gửi cảnh báo cho người dùng, nếu còn tái phạm sẽ khóa tài khoản.",
+          "Chúng tôi đã ghi nhận hành vi vi phạm và gửi cảnh báo nhắc nhở đến người dùng này.",
+          "Cảm ơn bạn đã báo cáo, chúng tôi đã tiến hành cảnh báo và sẽ theo dõi sát sao tài khoản này."
+        ],
+        targetTemplates: [
+          "Chúng tôi nhận thấy bạn có hành vi vi phạm tiêu chuẩn cộng đồng. Yêu cầu bạn chấm dứt ngay hành vi này nếu không tài khoản sẽ bị khóa. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn.",
+          "Tài khoản của bạn đã vi phạm quy định. Bạn cần phải khắc phục trong vòng 24h nếu không sẽ bị khóa tài khoản. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn.",
+          "Đây là thông báo cảnh báo về việc bạn vi phạm nội quy. Hãy tuân thủ quy định để tránh bị khóa vĩnh viễn. Nếu bạn thấy không chính xác, hãy gửi lại kháng cáo qua email admin@learnify.vn."
+        ]
       };
     }
     return {
       title: "Khóa tài khoản",
       helper:
-        "Nhập lý do khóa tài khoản. Hệ thống sẽ gửi mail cho người bị khóa và gửi kết quả cho người báo cáo.",
-      placeholder: "Nhập lý do khóa tài khoản...",
+        "Hệ thống sẽ khóa tài khoản vĩnh viễn và gửi thông báo in-app kết quả xử lý cho người báo cáo.",
+      placeholder: "Nội dung gửi cho người báo cáo...",
+      reporterTemplates: [
+        "Cảm ơn bạn đã báo cáo. Chúng tôi đã xác minh và tiến hành khóa vĩnh viễn tài khoản vi phạm này.",
+        "Hành vi vi phạm là nghiêm trọng, tài khoản này đã bị khóa khỏi hệ thống thành công.",
+        "Chúng tôi đã khóa tài khoản này do vi phạm nhiều lần. Cảm ơn sự đóng góp của bạn."
+      ],
+      targetTemplates: []
     };
   };
 
@@ -197,22 +273,65 @@ const AdminManageReportPage = () => {
         <h1>Quản lý báo cáo</h1>
       </section>
 
-      <section className="filter-box">
-        <label htmlFor="status-filter">Lọc trạng thái</label>
-        <select
-          id="status-filter"
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-        >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+      <section className="filter-box card">
+        <form className="filter-form" onSubmit={handleSearch}>
+          <div className="filter-inputs">
+            <div className="input-group">
+              <label>Tìm kiếm</label>
+              <div className="search-input-wrap">
+                <Search size={16} />
+                <input
+                  placeholder="Tên người bị báo cáo..."
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label>Trạng thái</label>
+              <select
+                value={status}
+                onChange={(e) => {
+                  setStatus(e.target.value);
+                  setPage(1);
+                }}
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="input-group">
+              <label>Ưu tiên</label>
+              <select
+                value={priorityFilter}
+                onChange={(e) => {
+                  setPriorityFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">Tất cả</option>
+                <option value="HIGH">Ưu tiên cao</option>
+                <option value="NORMAL">Thường</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="filter-actions">
+            <button type="submit" className="btn-primary">
+              <Search size={16} />
+              Tìm kiếm
+            </button>
+            <button type="button" className="btn-secondary" onClick={resetFilters}>
+              <RotateCcw size={16} />
+              Làm mới
+            </button>
+          </div>
+        </form>
       </section>
 
       <section className="content-grid">
@@ -225,89 +344,91 @@ const AdminManageReportPage = () => {
               <thead>
                 <tr>
                   <th>Mã</th>
-                  <th>Người báo cáo</th>
-                  <th>Người bị báo cáo</th>
-                  <th>Lý do chính</th>
-                  <th>Mô tả chi tiết</th>
-                  <th>Số báo cáo chờ</th>
+                  <th>Đối tượng</th>
+                  <th>Lý do & Mô tả</th>
+                  <th>Minh chứng</th>
+                  <th>Báo cáo chờ</th>
                   <th>Trạng thái</th>
                   <th>Ưu tiên</th>
-                  <th>Action</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="state-cell">
+                    <td colSpan={10} className="state-cell">
                       Đang tải dữ liệu...
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="state-cell">
+                    <td colSpan={10} className="state-cell">
                       Không có dữ liệu.
                     </td>
                   </tr>
                 ) : (
                   items.map((item) => (
                     <tr key={item.reportId}>
-                      <td>RP-{item.reportId}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="user-link-btn"
-                          onClick={() => handleOpenUserDetail(item.reporterId)}
-                        >
-                          {item.reporterName || `USR-${item.reporterId}`}
-                        </button>
+                      <td><span className="id-badge">RP-{item.reportId}</span></td>
+                      <td className="user-pair-cell">
+                        <div className="user-row">
+                          <span className="user-label reporter">Từ:</span>
+                          <button
+                            type="button"
+                            className="user-link"
+                            onClick={() => handleOpenUserDetail(item.reporterId)}
+                          >
+                            {item.reporterName || `USR-${item.reporterId}`}
+                          </button>
+                        </div>
+                        <div className="user-row">
+                          <span className="user-label target">Đến:</span>
+                          <button
+                            type="button"
+                            className="user-link bold"
+                            onClick={() => handleOpenUserDetail(item.reportedUserId)}
+                          >
+                            {item.reportedUserName || `USR-${item.reportedUserId}`}
+                          </button>
+                        </div>
                       </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="user-link-btn"
-                          onClick={() => handleOpenUserDetail(item.reportedUserId)}
-                        >
-                          {item.reportedUserName || `USR-${item.reportedUserId}`}
-                        </button>
+                      <td className="reason-desc-cell">
+                        <div className="reason-type">{formatReason(item.reason)}</div>
+                        <div className="desc-text" title={item.detailedDescription || "-"}>
+                          {item.detailedDescription || "-"}
+                        </div>
                       </td>
-                      <td>{formatReason(item.reason)}</td>
-                      <td className="desc-cell" title={item.detailedDescription || "-"}>
-                        {item.detailedDescription || "-"}
-                      </td>
-                      <td>{item.pendingReportCountForTarget}</td>
-                      <td>{formatStatus(item.status)}</td>
-                      <td>{item.highPriority ? "TOP" : "Thường"}</td>
-                      <td>
-                        {item.status === "PENDING" ? (
-                          <div className="action-group">
-                            <button
-                              type="button"
-                              className="action-btn dismiss"
-                              disabled={resolvingReportId === item.reportId}
-                              onClick={() => openActionModal(item, "DISMISS")}
-                            >
-                              Bỏ qua
-                            </button>
-                            <button
-                              type="button"
-                              className="action-btn warn"
-                              disabled={resolvingReportId === item.reportId}
-                              onClick={() => openActionModal(item, "WARN")}
-                            >
-                              Cảnh báo
-                            </button>
-                            <button
-                              type="button"
-                              className="action-btn lock"
-                              disabled={resolvingReportId === item.reportId}
-                              onClick={() => openActionModal(item, "LOCK_ACCOUNT")}
-                            >
-                              Khóa
-                            </button>
-                          </div>
+                      <td className="center-cell">
+                        {item.evidenceUrl ? (
+                          <a href={item.evidenceUrl} target="_blank" rel="noopener noreferrer" className="evidence-btn" title="Xem minh chứng">
+                            <Paperclip size={18} />
+                          </a>
                         ) : (
-                          <span className="action-done">Đã xử lý</span>
+                          <span className="muted">-</span>
                         )}
+                      </td>
+                      <td className="center-cell">
+                        <span className="count-badge">{item.pendingReportCountForTarget}</span>
+                      </td>
+                      <td>
+                        <span className={`status-pill ${item.status.toLowerCase()}`}>
+                          {formatStatus(item.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`priority-pill ${item.highPriority ? "high" : "normal"}`}>
+                          {item.highPriority ? "Cao" : "Thường"}
+                        </span>
+                      </td>
+                      <td className="action-cell">
+                        <button
+                          type="button"
+                          className="btn-resolve"
+                          onClick={() => openDetailModal(item)}
+                        >
+                          <ShieldAlert size={16} />
+                          {item.status === "PENDING" ? "Xử lý" : "Chi tiết"}
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -340,45 +461,169 @@ const AdminManageReportPage = () => {
         </div>
       </section>
 
-      {isActionModalOpen && selectedReport && (
-        <div className="action-modal-overlay" onClick={closeActionModal}>
-          <div className="action-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>{getActionModalMeta().title}</h3>
-            <p className="action-modal-helper">{getActionModalMeta().helper}</p>
-            <div className="action-modal-target">
-              Báo cáo: RP-{selectedReport.reportId} | Người báo cáo: {selectedReport.reporterName || `USR-${selectedReport.reporterId}`} | Người bị báo cáo: {selectedReport.reportedUserName || `USR-${selectedReport.reportedUserId}`}
+      {isDetailModalOpen && selectedReport && (
+        <div className="detail-modal-overlay" onClick={closeDetailModal}>
+          <div className="detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-row">
+                <ShieldAlert size={24} className="icon-main" />
+                <div>
+                  <h3>Chi tiết xử lý báo cáo</h3>
+                  <span className="modal-id">Mã: RP-{selectedReport.reportId}</span>
+                </div>
+              </div>
+              <button className="btn-close" onClick={closeDetailModal}>&times;</button>
             </div>
 
-            <textarea
-              className="action-note-input"
-              value={actionNote}
-              onChange={(event) => {
-                setActionNote(event.target.value);
-                if (actionError) setActionError("");
-              }}
-              placeholder={getActionModalMeta().placeholder}
-              rows={5}
-            />
+            <div className="modal-body">
+              <div className="detail-grid">
+                {/* Left Side: Report Info */}
+                <div className="detail-info-pane">
+                  <div className="info-section">
+                    <h4><User size={16} /> Thông tin đối tượng</h4>
+                    <div className="info-card">
+                      <div className="info-item">
+                        <span className="label">Người báo cáo:</span>
+                        <button className="user-link-bold" onClick={() => handleOpenUserDetail(selectedReport.reporterId)}>
+                          {selectedReport.reporterName}
+                        </button>
+                      </div>
+                      <div className="info-item">
+                        <span className="label">Người bị báo cáo:</span>
+                        <button className="user-link-bold highlight" onClick={() => handleOpenUserDetail(selectedReport.reportedUserId)}>
+                          {selectedReport.reportedUserName}
+                        </button>
+                      </div>
+                      <div className="info-item">
+                        <span className="label">Số báo cáo chờ:</span>
+                        <span className="count-badge-large">{selectedReport.pendingReportCountForTarget}</span>
+                      </div>
+                    </div>
+                  </div>
 
-            {actionError && <div className="action-error-text">{actionError}</div>}
+                  <div className="info-section">
+                    <h4><AlertTriangle size={16} /> Nội dung vi phạm</h4>
+                    <div className="reason-box">
+                      <div className="reason-label">{formatReason(selectedReport.reason)}</div>
+                      <div className="reason-description">
+                        {selectedReport.detailedDescription || "Không có mô tả chi tiết."}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="action-modal-buttons">
-              <button
-                type="button"
-                className="modal-btn secondary"
-                onClick={closeActionModal}
-                disabled={resolvingReportId === selectedReport.reportId}
-              >
-                Hủy
+                {/* Right Side: Evidence Preview */}
+                <div className="detail-evidence-pane">
+                  <h4><Eye size={16} /> Minh chứng (Evidence)</h4>
+                  <div className="evidence-preview-box">
+                    {selectedReport.evidenceUrl ? (
+                      selectedReport.evidenceUrl.match(/\.(jpeg|jpg|gif|png)$/) ? (
+                        <img src={selectedReport.evidenceUrl} alt="Evidence" className="evidence-img" />
+                      ) : (
+                        <div className="evidence-file-placeholder">
+                          <Paperclip size={48} />
+                          <a href={selectedReport.evidenceUrl} target="_blank" rel="noopener noreferrer" className="btn-view-file">
+                            Xem tệp đính kèm
+                          </a>
+                        </div>
+                      )
+                    ) : (
+                      <div className="no-evidence">
+                        <p>Không có minh chứng hình ảnh/tệp tin.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom: Resolution Actions */}
+              <div className="resolution-section">
+                {selectedReport.status === "PENDING" ? (
+                  <>
+                    <div className="resolution-header">
+                      <h4>LỰA CHỌN XỬ LÝ</h4>
+                      {!selectedAction && <p>Vui lòng chọn một hành động để tiếp tục</p>}
+                    </div>
+
+                    {!selectedAction ? (
+                      <div className="action-buttons-grid">
+                        <button className="action-choice dismiss" onClick={() => startProcessing("DISMISS")}>
+                          <RotateCcw size={20} />
+                          <span>Bỏ qua báo cáo</span>
+                        </button>
+                        <button className="action-choice warn" onClick={() => startProcessing("WARN")}>
+                          <AlertTriangle size={20} />
+                          <span>Gửi cảnh báo</span>
+                        </button>
+                        <button className="action-choice lock" onClick={() => startProcessing("LOCK_ACCOUNT")}>
+                          <UserX size={20} />
+                          <span>Khóa tài khoản</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="resolution-form animate-fade-in">
+                        <div className="form-header">
+                          <h5>Đang thực hiện: <strong>{getActionModalMeta().title}</strong></h5>
+                          <button className="btn-text" onClick={() => setSelectedAction("")}>Đổi hành động</button>
+                        </div>
+                        <p className="helper-text">{getActionModalMeta().helper}</p>
+                        
+                        <div className="note-inputs">
+                          <div className="input-field">
+                            <label><span className="dot reporter"></span> Gửi cho Người báo cáo:</label>
+                            <textarea
+                              value={actionNote}
+                              onChange={(e) => setActionNote(e.target.value)}
+                              placeholder={getActionModalMeta().placeholder}
+                              rows={3}
+                            />
+                            <div className="template-chips">
+                              {getActionModalMeta().reporterTemplates.map((text, idx) => (
+                                <button key={idx} className="chip" onClick={() => setActionNote(text)}>{text}</button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {selectedAction === "WARN" && (
+                            <div className="input-field">
+                              <label><span className="dot target"></span> Gửi cho Người bị báo cáo:</label>
+                              <textarea
+                                value={actionTargetNote}
+                                onChange={(e) => setActionTargetNote(e.target.value)}
+                                placeholder={getActionModalMeta().targetPlaceholder}
+                                rows={3}
+                              />
+                              <div className="template-chips">
+                                {getActionModalMeta().targetTemplates.map((text, idx) => (
+                                  <button key={idx} className="chip" onClick={() => setActionTargetNote(text)}>{text}</button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {actionError && <p className="error-text">{actionError}</p>}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="processed-box">
+                    <ShieldAlert size={20} />
+                    <span>Báo cáo này đã được xử lý (Trạng thái: {formatStatus(selectedReport.status)})</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={closeDetailModal} disabled={resolvingReportId === selectedReport.reportId}>
+                Đóng
               </button>
-              <button
-                type="button"
-                className="modal-btn primary"
-                onClick={handleConfirmAction}
-                disabled={resolvingReportId === selectedReport.reportId}
-              >
-                {resolvingReportId === selectedReport.reportId ? "Đang xử lý..." : "Xác nhận"}
-              </button>
+              {selectedAction && (
+                <button className="btn-confirm-action" onClick={handleConfirmAction} disabled={resolvingReportId === selectedReport.reportId}>
+                  {resolvingReportId === selectedReport.reportId ? "Đang xử lý..." : "Xác nhận xử lý"}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -397,36 +642,101 @@ const AdminManageReportPage = () => {
           border: 1px solid #dbe5ef;
           border-radius: 12px;
           background: #fff;
-          padding: 12px;
+          padding: 16px;
         }
 
         .header-box h1 {
           margin: 0;
-          font-size: clamp(24px, 2.4vw, 30px);
-          line-height: 1.15;
+          font-size: 24px;
+          font-weight: 700;
         }
 
-        .filter-box {
+        .filter-form {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+
+        .filter-inputs {
+          display: flex;
+          gap: 16px;
+          flex: 1;
+          flex-wrap: wrap;
+        }
+
+        .input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          flex: 1;
+          min-width: 200px;
+        }
+
+        .input-group label {
+          font-size: 12px;
+          font-weight: 700;
+          color: #64748b;
+          text-transform: uppercase;
+        }
+
+        .search-input-wrap {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 0 10px;
+          min-height: 40px;
+          background: #fff;
         }
 
-        .filter-box label {
-          font-size: 13px;
-          color: #334155;
-          font-weight: 600;
+        .search-input-wrap input {
+          border: none;
+          outline: none;
+          width: 100%;
+          font-size: 14px;
         }
 
-        .filter-box select {
-          min-height: 36px;
+        .input-group select {
+          min-height: 40px;
           border: 1px solid #cbd5e1;
           border-radius: 8px;
           padding: 0 10px;
           font-size: 14px;
-          color: #0f172a;
-          background: #fff;
           outline: none;
+          background: #fff;
+        }
+
+        .filter-actions {
+          display: flex;
+          gap: 10px;
+        }
+
+        .btn-primary {
+          background: #0f766e;
+          color: #fff;
+          border: none;
+        }
+
+        .btn-secondary {
+          background: #f8fafc;
+          color: #334155;
+          border: 1px solid #cbd5e1;
+        }
+
+        .btn-primary, .btn-secondary {
+          min-height: 40px;
+          padding: 0 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: opacity 0.2s;
         }
 
         .content-grid {
@@ -470,26 +780,410 @@ const AdminManageReportPage = () => {
           color: #475569;
         }
 
-        .user-link-btn {
+        .id-badge {
+          font-family: monospace;
+          background: #f1f5f9;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-weight: 600;
+          color: #475569;
+        }
+
+        .user-pair-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .user-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+        }
+
+        .user-label {
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          width: 24px;
+        }
+
+        .user-label.reporter { color: #64748b; }
+        .user-label.target { color: #0f766e; }
+
+        .user-link {
           border: none;
           background: none;
           padding: 0;
           font: inherit;
-          font-weight: 700;
-          color: #1d4ed8;
+          color: #1e293b;
           cursor: pointer;
-          text-decoration: underline;
+          text-align: left;
         }
 
-        .user-link-btn:hover {
-          color: #1e40af;
+        .user-link:hover { text-decoration: underline; color: #0f766e; }
+        .user-link.bold { font-weight: 700; }
+
+        .reason-desc-cell {
+          max-width: 280px;
         }
 
-        .desc-cell {
-          max-width: 360px;
+        .reason-type {
+          font-weight: 700;
+          color: #0f172a;
+          margin-bottom: 2px;
+        }
+
+        .desc-text {
+          font-size: 12px;
+          color: #64748b;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        .center-cell { text-align: center; }
+
+        .evidence-btn {
+          color: #0f766e;
+          transition: transform 0.2s;
+          display: inline-block;
+        }
+
+        .evidence-btn:hover { transform: scale(1.1); color: #0d9488; }
+
+        .count-badge {
+          background: #f1f5f9;
+          color: #475569;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+        }
+
+        .status-pill {
+          display: inline-flex;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .status-pill.pending { background: #fffbeb; color: #92400e; }
+        .status-pill.reviewed { background: #f0fdf4; color: #166534; }
+        .status-pill.rejected { background: #f1f5f9; color: #475569; }
+
+        .priority-pill {
+          display: inline-flex;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .priority-pill.high { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+        .priority-pill.normal { background: #f8fafc; color: #64748b; }
+
+        .btn-resolve {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #0f766e;
+          color: #fff;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-resolve:hover {
+          background: #0d9488;
+          transform: translateY(-1px);
+        }
+
+        .detail-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.45);
+          backdrop-filter: blur(4px);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+
+        .detail-modal {
+          width: min(1000px, 100%);
+          max-height: 95vh;
+          background: #fff;
+          border-radius: 16px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          overflow: hidden;
+        }
+
+        .modal-header {
+          padding: 20px 24px;
+          border-bottom: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #f8fafc;
+        }
+
+        .modal-title-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .icon-main { color: #0f766e; }
+
+        .modal-header h3 { margin: 0; font-size: 20px; font-weight: 700; }
+        .modal-id { font-size: 13px; color: #64748b; font-weight: 600; }
+        .btn-close { border: none; background: none; font-size: 28px; cursor: pointer; color: #94a3b8; }
+
+        .modal-body {
+          padding: 24px;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .detail-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+          margin-bottom: 30px;
+        }
+
+        .info-section h4, .detail-evidence-pane h4 {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 700;
+          color: #1e293b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 12px;
+        }
+
+        .info-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .info-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        .info-item .label { color: #64748b; }
+        .user-link-bold {
+          border: none;
+          background: none;
+          padding: 0;
+          font-weight: 700;
+          color: #1e293b;
+          cursor: pointer;
+        }
+        .user-link-bold:hover { text-decoration: underline; }
+        .user-link-bold.highlight { color: #0f766e; font-size: 15px; }
+
+        .count-badge-large {
+          background: #fee2e2;
+          color: #dc2626;
+          padding: 2px 10px;
+          border-radius: 20px;
+          font-weight: 700;
+        }
+
+        .reason-box {
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 16px;
+          background: #fff;
+        }
+
+        .reason-label {
+          display: inline-block;
+          background: #f1f5f9;
+          padding: 4px 12px;
+          border-radius: 6px;
+          font-weight: 700;
+          color: #475569;
+          margin-bottom: 12px;
+        }
+
+        .reason-description {
+          font-size: 14px;
+          color: #334155;
+          line-height: 1.6;
+        }
+
+        .evidence-preview-box {
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          min-height: 280px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+
+        .evidence-img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          cursor: zoom-in;
+          max-height: 400px;
+        }
+
+        .evidence-file-placeholder {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          color: #64748b;
+        }
+
+        .btn-view-file {
+          background: #fff;
+          border: 1px solid #cbd5e1;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-weight: 600;
+          color: #0f766e;
+          text-decoration: none;
+        }
+
+        .resolution-section {
+          border-top: 2px dashed #e2e8f0;
+          padding-top: 24px;
+        }
+
+        .resolution-header { margin-bottom: 20px; }
+        .resolution-header h4 { font-size: 15px; font-weight: 800; color: #1e293b; margin: 0; }
+        .resolution-header p { font-size: 13px; color: #64748b; margin: 4px 0 0; }
+
+        .action-buttons-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+        }
+
+        .action-choice {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 24px;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          background: #fff;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .action-choice span { font-weight: 700; font-size: 14px; }
+
+        .action-choice.dismiss { color: #475569; }
+        .action-choice.dismiss:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+        .action-choice.warn { color: #b45309; }
+        .action-choice.warn:hover { background: #fffbeb; border-color: #fcd34d; }
+
+        .action-choice.lock { color: #dc2626; }
+        .action-choice.lock:hover { background: #fef2f2; border-color: #fecaca; }
+
+        .resolution-form {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 20px;
+        }
+
+        .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .form-header h5 { margin: 0; font-size: 14px; font-weight: 500; }
+        .btn-text { background: none; border: none; color: #1d4ed8; cursor: pointer; font-size: 13px; text-decoration: underline; }
+
+        .helper-text { font-size: 13px; color: #64748b; margin-bottom: 16px; }
+
+        .note-inputs { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .input-field { display: flex; flex-direction: column; gap: 8px; }
+        .input-field label { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.reporter { background: #3b82f6; }
+        .dot.target { background: #ef4444; }
+
+        .input-field textarea {
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 12px;
+          font-size: 14px;
+          resize: vertical;
+          outline: none;
+        }
+
+        .template-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          padding: 4px 10px;
+          border-radius: 16px;
+          font-size: 11px;
+          color: #475569;
+          cursor: pointer;
+        }
+        .chip:hover { background: #f1f5f9; }
+
+        .modal-footer {
+          padding: 20px 24px;
+          border-top: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          background: #f8fafc;
+        }
+
+        .btn-cancel { padding: 10px 20px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600; cursor: pointer; }
+        .btn-confirm-action { padding: 10px 20px; border-radius: 8px; border: none; background: #0f766e; color: #fff; font-weight: 700; cursor: pointer; }
+
+        .processed-box {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 16px;
+          background: #f1f5f9;
+          border-radius: 8px;
+          color: #475569;
+          font-weight: 600;
+        }
+
+        .error-text { color: #dc2626; font-size: 13px; font-weight: 600; margin-top: 10px; }
+
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 900px) {
+          .detail-grid { grid-template-columns: 1fr; }
+          .action-buttons-grid { grid-template-columns: 1fr; }
         }
 
         .action-group {
@@ -632,6 +1326,73 @@ const AdminManageReportPage = () => {
           line-height: 1.45;
         }
 
+        .action-note-section {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .action-note-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: #334155;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .badge-reporter {
+          background: #dbeafe;
+          color: #1e40af;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 11px;
+        }
+
+        .badge-target {
+          background: #fee2e2;
+          color: #991b1b;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 11px;
+        }
+
+        .action-templates {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .template-badge {
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          color: #475569;
+          font-size: 11px;
+          padding: 4px 8px;
+          border-radius: 12px;
+          cursor: pointer;
+          text-align: left;
+          max-width: 100%;
+          transition: all 0.2s;
+        }
+
+        .template-badge:hover {
+          background: #e2e8f0;
+          color: #0f172a;
+        }
+
+        .change-template-btn {
+          background: #e0f2fe;
+          border-color: #bae6fd;
+          color: #0369a1;
+          font-weight: 600;
+        }
+
+        .change-template-btn:hover {
+          background: #bae6fd;
+          color: #0c4a6e;
+        }
+
         .action-note-input {
           width: 100%;
           border: 1px solid #cbd5e1;
@@ -640,7 +1401,7 @@ const AdminManageReportPage = () => {
           font-size: 14px;
           color: #0f172a;
           resize: vertical;
-          min-height: 110px;
+          min-height: 80px;
           outline: none;
         }
 
@@ -658,6 +1419,7 @@ const AdminManageReportPage = () => {
           display: flex;
           justify-content: flex-end;
           gap: 8px;
+          margin-top: 8px;
         }
 
         .modal-btn {

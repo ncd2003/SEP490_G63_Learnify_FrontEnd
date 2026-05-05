@@ -51,6 +51,8 @@ const DashboardLayout = () => {
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [accountLockedNotice, setAccountLockedNotice] = useState("");
+  const [showNewNotificationToast, setShowNewNotificationToast] = useState(false);
+  const toastTimerRef = useRef(null);
   const forcedLogoutTriggeredRef = useRef(false);
 
   const normalizedRole = normalizeRole(user?.role);
@@ -386,6 +388,10 @@ const DashboardLayout = () => {
       onNotification: (incomingNotification) => {
         if (!incomingNotification?.id) return;
 
+        setShowNewNotificationToast(true);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = setTimeout(() => setShowNewNotificationToast(false), 5000);
+
         setNotifications((prev) => {
           const existingIndex = prev.findIndex(
             (item) => item.id === incomingNotification.id,
@@ -596,6 +602,51 @@ const DashboardLayout = () => {
                   </span>
                 )}
               </button>
+
+              {showNewNotificationToast && (
+                <div style={{
+                  position: "absolute",
+                  top: "50%",
+                  right: "calc(100% + 16px)",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                }}>
+                  <style>{`
+                    @keyframes popInLeft {
+                      0% { opacity: 0; transform: translateX(10px) scale(0.95); }
+                      100% { opacity: 1; transform: translateX(0) scale(1); }
+                    }
+                  `}</style>
+                  <div style={{
+                    position: "relative",
+                    background: "linear-gradient(135deg, #f43f5e, #e11d48)",
+                    color: "white",
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    boxShadow: "0 4px 14px rgba(225, 29, 72, 0.4)",
+                    animation: "popInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}>
+                    <span style={{ fontSize: "16px" }}>👋</span> Bạn có 1 thông báo mới!
+                    <div style={{
+                      position: "absolute",
+                      top: "50%",
+                      right: "-5px",
+                      transform: "translateY(-50%)",
+                      borderTop: "6px solid transparent",
+                      borderBottom: "6px solid transparent",
+                      borderLeft: "6px solid #e11d48",
+                      width: 0,
+                      height: 0
+                    }} />
+                  </div>
+                </div>
+              )}
 
               {isNotificationOpen && (
                 <div className="notification-dropdown">

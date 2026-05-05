@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Users, BookOpen, Activity } from "lucide-react";
 import { adminApi } from "@/apis/admin.api";
 import {
   Bar,
@@ -58,7 +59,7 @@ const AdminDashboardPage = () => {
       } catch (err) {
         setError(
           err?.response?.data?.message ||
-            "Không thể tải dữ liệu bảng điều hành hệ thống. Vui lòng thử lại.",
+          "Không thể tải dữ liệu bảng điều hành hệ thống. Vui lòng thử lại.",
         );
       } finally {
         setLoading(false);
@@ -104,6 +105,9 @@ const AdminDashboardPage = () => {
     ];
   }, [dashboard]);
 
+  const isPieEmpty = pieData.every(d => d.value === 0);
+  const renderPieData = isPieEmpty ? [{ name: "Chưa có dữ liệu", value: 1 }] : pieData;
+
   const topClasses = dashboard?.details?.topActiveClasses || [];
   const overview = dashboard?.overview;
   const totalUsers = overview?.totalUsers;
@@ -115,7 +119,7 @@ const AdminDashboardPage = () => {
           <p className="sys-kicker">System Analytics</p>
           <h1>Bảng điều hành hệ thống</h1>
         </div>
-        <div className="sys-updated">Cập nhật gần nhất: {formatTimestamp(overview?.generatedAt)} | cache tối đa 15 phút</div>
+        <div className="sys-updated">Cập nhật gần nhất: {formatTimestamp(overview?.generatedAt)}</div>
       </div>
 
       {loading && <div className="sys-info">Đang tải dữ liệu dashboard...</div>}
@@ -127,24 +131,35 @@ const AdminDashboardPage = () => {
             <div className="sys-section-title">Tổng quan hệ thống</div>
             <div className="sys-overview-grid">
               <article className="sys-card">
-                <h3>Tổng người dùng</h3>
+                <div className="sys-card-header">
+                  <h3>Tổng người dùng</h3>
+                  <Users className="sys-card-icon" size={24} />
+                </div>
                 <p className="sys-card-value">{formatNumber(totalUsers?.total)}</p>
-                <p className="sys-muted">Học sinh: {formatNumber(totalUsers?.roleBreakdown?.students)}</p>
-                <p className="sys-muted">Giáo viên: {formatNumber(totalUsers?.roleBreakdown?.teachers)}</p>
-                <p className="sys-muted">Quản trị viên: {formatNumber(totalUsers?.roleBreakdown?.admins)}</p>
+                <ul className="sys-card-list">
+                  <li>Học sinh: <strong>{formatNumber(totalUsers?.roleBreakdown?.students)}</strong></li>
+                  <li>Giáo viên: <strong>{formatNumber(totalUsers?.roleBreakdown?.teachers)}</strong></li>
+                  <li>Quản trị: <strong>{formatNumber(totalUsers?.roleBreakdown?.admins)}</strong></li>
+                </ul>
                 <p className="sys-split">Đang hoạt động: {formatNumber(totalUsers?.active)} <span>|</span> Đã khóa: {formatNumber(totalUsers?.locked)}</p>
               </article>
 
               <article className="sys-card">
-                <h3>Lớp học đang hoạt động</h3>
+                <div className="sys-card-header">
+                  <h3>Lớp học đang hoạt động</h3>
+                  <BookOpen className="sys-card-icon" size={24} />
+                </div>
                 <p className="sys-card-value">{formatNumber(overview?.activeClasses)}</p>
-                <p className="sys-muted">Không bao gồm lớp đã lưu trữ hoặc đã xóa mềm</p>
+                <p className="sys-muted">Không bao gồm lớp đã lưu trữ hoặc đã xóa mềm.</p>
               </article>
 
               <article className="sys-card">
-                <h3>DAU (Daily Active Users)</h3>
+                <div className="sys-card-header">
+                  <h3>DAU (Daily Active Users)</h3>
+                  <Activity className="sys-card-icon" size={24} />
+                </div>
                 <p className="sys-card-value">{formatNumber(overview?.dau)}</p>
-                <p className="sys-muted">Số người dùng tương tác trong ngày hiện tại</p>
+                <p className="sys-muted">Số người dùng tương tác trong ngày hiện tại.</p>
               </article>
             </div>
           </section>
@@ -153,11 +168,11 @@ const AdminDashboardPage = () => {
             <div className="sys-section-title">Xu hướng tăng trưởng và hoạt động</div>
             <div className="sys-trend-grid">
               <article className="sys-panel">
-                <h4>Biểu đồ đường: Tăng trưởng người dùng 30 ngày</h4>
+                <h4>Tăng trưởng người dùng (30 ngày)</h4>
                 <div className="sys-chart-wrap">
                   <ResponsiveContainer width="100%" height={280}>
                     <LineChart data={lineData}>
-                      <CartesianGrid stroke="#c9d2e3" strokeDasharray="4 4" />
+                      <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
                       <XAxis dataKey="date" stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} />
                       <YAxis stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} allowDecimals={false} />
                       <Tooltip
@@ -173,11 +188,11 @@ const AdminDashboardPage = () => {
               </article>
 
               <article className="sys-panel">
-                <h4>Biểu đồ cột: Xu hướng tạo lớp mới 6 tháng</h4>
+                <h4>Lớp học mới (6 tháng)</h4>
                 <div className="sys-chart-wrap">
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={barData}>
-                      <CartesianGrid stroke="#c9d2e3" strokeDasharray="4 4" />
+                      <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
                       <XAxis dataKey="month" stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} />
                       <YAxis stroke="#283142" tick={{ fontSize: 11, fill: "#283142" }} allowDecimals={false} />
                       <Tooltip
@@ -197,31 +212,38 @@ const AdminDashboardPage = () => {
             <div className="sys-section-title">Chi tiết và phân rã dữ liệu</div>
             <div className="sys-detail-grid">
               <article className="sys-panel">
-                <h4>Biểu đồ tròn: Phân bổ lưu trữ</h4>
+                <h4>Phân bổ lưu trữ</h4>
                 <div className="sys-chart-wrap">
                   <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
                       <Pie
-                        data={pieData}
+                        data={renderPieData}
                         dataKey="value"
                         nameKey="name"
-                        cx="50%"
+                        cx="40%"
                         cy="50%"
                         outerRadius={96}
                         stroke="#ffffff"
                         strokeWidth={1}
-                        label={({ name }) => name}
                       >
-                        <Cell fill="#4c6fb5" />
-                        <Cell fill="#14a47c" />
-                        <Cell fill="#f29d4b" />
+                        {isPieEmpty ? (
+                          <Cell fill="#cbd5e1" />
+                        ) : (
+                          <>
+                            <Cell fill="#4c6fb5" />
+                            <Cell fill="#14a47c" />
+                            <Cell fill="#f29d4b" />
+                          </>
+                        )}
                       </Pie>
-                      <Tooltip
-                        formatter={(v) => `${formatNumber(v)} MB`}
-                        contentStyle={{ background: "#ffffff", border: "1px solid #aebad1", color: "#111827", borderRadius: 10 }}
-                        labelStyle={{ color: "#111827" }}
-                      />
-                      <Legend wrapperStyle={{ color: "#111827", fontSize: 12 }} />
+                      {!isPieEmpty && (
+                        <Tooltip
+                          formatter={(v) => `${formatNumber(v)} MB`}
+                          contentStyle={{ background: "#ffffff", border: "1px solid #aebad1", color: "#111827", borderRadius: 10 }}
+                          labelStyle={{ color: "#111827" }}
+                        />
+                      )}
+                      <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ color: "#111827", fontSize: 13, paddingLeft: "10px" }} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -239,7 +261,6 @@ const AdminDashboardPage = () => {
                         <th>Bài viết</th>
                         <th>Bình luận</th>
                         <th>Bài nộp</th>
-                        <th>Interaction Score</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -251,7 +272,6 @@ const AdminDashboardPage = () => {
                           <td>{formatNumber(item.teacherPosts)}</td>
                           <td>{formatNumber(item.userComments)}</td>
                           <td>{formatNumber(item.studentSubmissions)}</td>
-                          <td>{formatNumber(item.interactionScore)}</td>
                         </tr>
                       ))}
                       {topClasses.length === 0 && (
@@ -362,9 +382,21 @@ const AdminDashboardPage = () => {
         .sys-card h3,
         .sys-panel h4 {
           margin: 0 0 10px;
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 700;
-          color: #22304b;
+          color: #1e293b;
+        }
+
+        .sys-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .sys-card-icon {
+          color: #cbd5e1;
+          opacity: 0.8;
+          margin-top: -10px;
         }
 
         .sys-card-value {
@@ -375,10 +407,26 @@ const AdminDashboardPage = () => {
           color: #0f172a;
         }
 
+        .sys-card-list {
+          list-style: none;
+          padding: 0;
+          margin: 0 0 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .sys-card-list li {
+          font-size: 13px;
+          color: #475569;
+          display: flex;
+          justify-content: space-between;
+        }
+
         .sys-muted {
           margin: 4px 0;
           font-size: 13px;
-          color: #334155;
+          color: #64748b;
         }
 
         .sys-split {
@@ -423,16 +471,16 @@ const AdminDashboardPage = () => {
         .sys-table {
           width: 100%;
           border-collapse: collapse;
-          min-width: 760px;
+          min-width: 600px; /* Reduced to avoid scrollbar on typical desktop */
         }
 
         .sys-table th,
         .sys-table td {
-          border: 1px solid #d8dfec;
-          padding: 8px;
-          font-size: 12px;
+          border: 1px solid #e2e8f0;
+          padding: 12px 14px; /* Increased padding */
+          font-size: 13px;
           text-align: left;
-          color: #111827;
+          color: #1e293b;
           background: #ffffff;
         }
 

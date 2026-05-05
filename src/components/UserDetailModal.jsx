@@ -39,6 +39,7 @@ export default function UserDetailModal({ isOpen, onClose, userId, initialData }
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState('');
   const [reportSuccess, setReportSuccess] = useState('');
+  const [evidenceFile, setEvidenceFile] = useState(null);
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -78,6 +79,7 @@ export default function UserDetailModal({ isOpen, onClose, userId, initialData }
     setReportDetail('');
     setReportError('');
     setReportSuccess('');
+    setEvidenceFile(null);
     setIsReportModalOpen(true);
   };
 
@@ -109,7 +111,7 @@ export default function UserDetailModal({ isOpen, onClose, userId, initialData }
         payload.detailedDescription = reportDetail.trim();
       }
 
-      await reportApi.createUserReport(payload);
+      await reportApi.createUserReport(payload, evidenceFile);
       setReportSuccess('Cảm ơn bạn đã gửi báo cáo. Chúng tôi sẽ xem xét sớm nhất có thể.');
       setIsReportModalOpen(false);
       setTimeout(() => setReportSuccess(''), 3500);
@@ -248,6 +250,22 @@ export default function UserDetailModal({ isOpen, onClose, userId, initialData }
                 placeholder="Nhập nội dung chi tiết..."
                 disabled={reportSubmitting}
               />
+            </label>
+
+            <label className="report-field">
+              Minh chứng (tùy chọn)
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={(e) => setEvidenceFile(e.target.files[0] || null)}
+                disabled={reportSubmitting}
+                style={{ marginTop: '4px' }}
+              />
+              {evidenceFile && (
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                  Đã chọn: {evidenceFile.name} ({(evidenceFile.size / 1024 / 1024).toFixed(2)} MB)
+                </div>
+              )}
             </label>
 
             {reportError && <div className="pending-requests-alert alert-error sidebar-alert">{reportError}</div>}
