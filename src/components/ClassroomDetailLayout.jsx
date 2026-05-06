@@ -56,6 +56,7 @@ const ClassroomDetailLayout = ({
   children,
   classIdOverride = null,
   activeMenuKeyOverride = null,
+  hideHeaderTitle = false,
 }) => {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
@@ -541,9 +542,11 @@ const ClassroomDetailLayout = ({
       <main className="classroom-main-content">
         <header className="classroom-workspace-header">
           <div className="classroom-workspace-left">
-            <div className="classroom-workspace-title-row">
-              <div className="classroom-workspace-title" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{activeMenuLabel}</div>
-            </div>
+            {!hideHeaderTitle && (
+              <div className="classroom-workspace-title-row">
+                <div className="classroom-workspace-title" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{activeMenuLabel}</div>
+              </div>
+            )}
           </div>
 
           <div className="classroom-workspace-right">

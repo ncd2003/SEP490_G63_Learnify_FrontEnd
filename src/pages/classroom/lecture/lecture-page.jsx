@@ -366,6 +366,36 @@ const ClassroomLecturePage = () => {
           jitsiApiRef.current = null;
         }
 
+        const toolbarButtonsNoRecording = [
+          "microphone",
+          "camera",
+          "closedcaptions",
+          "desktop",
+          "fullscreen",
+          "fodeviceselection",
+          "hangup",
+          "profile",
+          "chat",
+          "livestreaming",
+          "etherpad",
+          "sharedvideo",
+          "settings",
+          "raisehand",
+          "videoquality",
+          "filmstrip",
+          "invite",
+          "feedback",
+          "stats",
+          "shortcuts",
+          "tileview",
+          "select-background",
+          "download",
+          "help",
+          "mute-everyone",
+          "mute-video-everyone",
+          "security",
+        ];
+
         const options = {
           roomName: joinConfig.roomName,
           parentNode: containerRef.current,
@@ -376,7 +406,13 @@ const ClassroomLecturePage = () => {
           configOverwrite: {
             prejoinPageEnabled: false,
             startWithAudioMuted: true,
+            disableRecording: !selectedSession?.allowRecording,
           },
+          interfaceConfigOverwrite: !selectedSession?.allowRecording
+            ? {
+              TOOLBAR_BUTTONS: toolbarButtonsNoRecording,
+            }
+            : undefined,
         };
 
         if (joinConfig.jwt) {
@@ -468,7 +504,7 @@ const ClassroomLecturePage = () => {
   }, [joinConfig, navigate, schedulePath, selectedSessionEndTimeMs, user?.email, user?.fullName, user?.role, user?.username]);
 
   return (
-    <ClassroomDetailLayout>
+    <ClassroomDetailLayout hideHeaderTitle>
       <div className="classroom-lecture-page">
         <div className="lecture-header">
           <h1>Phòng học trực tuyến</h1>

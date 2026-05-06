@@ -42,13 +42,17 @@ const getSessionStatusLabel = (session) => {
   if (!start || !end) return "Không xác định";
 
   const now = new Date();
-  const endWithGrace = new Date(end.getTime() + ATTENDANCE_GRACE_MINUTES * 60 * 1000);
+  const endOfDay = new Date(end);
+  endOfDay.setHours(23, 59, 59, 999);
 
   if (now < start) {
     return "Chưa đến giờ điểm danh";
   }
-  if (now > endWithGrace) {
+  if (now > endOfDay) {
     return "Đã quá hạn điểm danh";
+  }
+  if (now > end) {
+    return "Đang mở điểm danh (đến hết ngày)";
   }
   return "Đang mở điểm danh";
 };
@@ -113,8 +117,9 @@ const AttendancePage = () => {
     if (!start || !end) return false;
 
     const now = new Date();
-    const endWithGrace = new Date(end.getTime() + ATTENDANCE_GRACE_MINUTES * 60 * 1000);
-    return now >= start && now <= endWithGrace;
+    const endOfDay = new Date(end);
+    endOfDay.setHours(23, 59, 59, 999);
+    return now >= start && now <= endOfDay;
   }, [selectedSession]);
 
   const {
@@ -224,9 +229,6 @@ const AttendancePage = () => {
           </button>
           <button onClick={markAllAbsent} disabled={locked || readOnlyByRule || attendanceLoading || submitting}>
             Đánh dấu tất cả vắng mặt
-          </button>
-          <button onClick={resetChanges} disabled={attendanceLoading || submitting || readOnlyByRule}>
-            Nhập lại buổi trước
           </button>
         </div>
 

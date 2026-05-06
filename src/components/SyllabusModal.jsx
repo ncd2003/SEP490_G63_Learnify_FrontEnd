@@ -24,6 +24,58 @@ const DAYS_OF_WEEK = [
   { value: 'SUNDAY', label: 'Chủ Nhật', short: 'CN' }
 ];
 
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return null;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+};
+
+const minutesToTime = (value) => {
+  if (!Number.isFinite(value)) return '--:--';
+  const safeValue = Math.max(0, Math.floor(value));
+  const hours = Math.floor(safeValue / 60) % 24;
+  const minutes = safeValue % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const getRuleConflicts = (rules, durationMinutes) => {
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    return { conflictIds: new Set(), conflictMessages: [] };
+  }
+
+  const enabledRules = rules.filter((r) => r.enabled);
+  const conflictIds = new Set();
+  const messageSet = new Set();
+
+  for (let i = 0; i < enabledRules.length; i += 1) {
+    const a = enabledRules[i];
+    const aStart = timeToMinutes(a.startTime);
+    if (aStart == null) continue;
+    const aEnd = aStart + durationMinutes;
+
+    for (let j = i + 1; j < enabledRules.length; j += 1) {
+      const b = enabledRules[j];
+      if (a.dayOfWeek !== b.dayOfWeek) continue;
+      const bStart = timeToMinutes(b.startTime);
+      if (bStart == null) continue;
+      const bEnd = bStart + durationMinutes;
+
+      if (aStart < bEnd && bStart < aEnd) {
+        conflictIds.add(a.id);
+        conflictIds.add(b.id);
+
+        const dayLabel = DAYS_OF_WEEK.find((d) => d.value === a.dayOfWeek)?.label || a.dayOfWeek;
+        const rangeA = `${minutesToTime(aStart)}-${minutesToTime(aEnd)}`;
+        const rangeB = `${minutesToTime(bStart)}-${minutesToTime(bEnd)}`;
+        messageSet.add(`${dayLabel} ${rangeA} trùng ${rangeB}`);
+      }
+    }
+  }
+
+  return { conflictIds, conflictMessages: Array.from(messageSet) };
+};
+
 export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess }) {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
@@ -58,6 +110,27 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
   // Step 4: Preview
   const [previewData, setPreviewData] = useState(null);
   const [previewWeekOffset, setPreviewWeekOffset] = useState(0);
+
+  const scheduleDurationMinutes = React.useMemo(() => {
+    const expected = Number(expectedDuration);
+    if (Number.isFinite(expected) && expected > 0) return expected;
+
+    const durations = sessions
+      .map((s) => Number(s.estimatedMinutes))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    if (durations.length > 0) {
+      const total = durations.reduce((sum, value) => sum + value, 0);
+      return Math.max(1, Math.round(total / durations.length));
+    }
+
+    return 90;
+  }, [expectedDuration, sessions]);
+
+  const { conflictIds, conflictMessages } = React.useMemo(
+    () => getRuleConflicts(weeklyRules, scheduleDurationMinutes),
+    [weeklyRules, scheduleDurationMinutes],
+  );
 
   // Load draft on mount
   React.useEffect(() => {
@@ -269,6 +342,10 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
       return;
     }
 
+    if (conflictMessages.length > 0) {
+      return;
+    }
+
     if (enabledRules.length === 0) {
       toast.error('Vui lòng chọn ít nhất 1 khung giờ trong tuần.');
       return;
@@ -476,16 +553,16 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
               <div className="syl-hints-box" style={{ marginBottom: '15px' }}>
                 <div className="syl-hints-title">Tài liệu mẫu cho Giáo án (Template)</div>
                 <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '10px' }}>
-                  Tải template mẫu dạng Text (.txt) hoặc tự tạo file Word (.docx) theo đúng cấu trúc để AI phân tích chính xác nhất.
+                  Tải template mẫu dạng Word (.docx) theo đúng cấu trúc để AI phân tích chính xác nhất.
                 </p>
                 <a
-                  href="/syllabus_template.txt"
-                  download="Syllabus_Template_70_Sessions.txt"
+                  href="/Syllabus_Example.docx"
+                  download="Syllabus_Example.docx"
                   className="syl-btn syl-btn-outline"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', textDecoration: 'none', padding: '6px 12px', fontSize: '13px', width: 'fit-content' }}
                 >
                   <FileText size={16} />
-                  Tải Template Mẫu (.txt)
+                  Tải Template Mẫu (.docx)
                 </a>
               </div>
 
@@ -572,9 +649,13 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
                   const isDuplicate = rule.enabled && weeklyRules.some(r => 
                     r.enabled && r.id !== rule.id && r.dayOfWeek === rule.dayOfWeek && r.startTime === rule.startTime
                   );
+                  const isOverlap = conflictIds.has(rule.id);
                   
                   return (
-                    <div className={`syl-rule-row ${isDuplicate ? 'syl-rule-duplicate' : ''}`} key={rule.id}>
+                    <div
+                      className={`syl-rule-row ${isDuplicate ? 'syl-rule-duplicate' : ''} ${isOverlap ? 'syl-rule-overlap' : ''}`}
+                      key={rule.id}
+                    >
                       <input type="checkbox" checked={rule.enabled} onChange={e => handleUpdateRule(rule.id, 'enabled', e.target.checked)} className="syl-rule-check" />
                       <select value={rule.dayOfWeek} onChange={e => handleUpdateRule(rule.id, 'dayOfWeek', e.target.value)} className="syl-rule-select">
                         {DAYS_OF_WEEK.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
@@ -583,9 +664,16 @@ export default function SyllabusModal({ isOpen, onClose, classroomId, onSuccess 
                       <input type="time" value={rule.startTime} onChange={e => handleUpdateRule(rule.id, 'startTime', e.target.value)} className="syl-rule-time" />
                       <button className="syl-btn-icon-danger" onClick={() => handleRemoveRule(rule.id)}><X size={16} /></button>
                       {isDuplicate && <span className="syl-duplicate-badge">Trùng lặp</span>}
+                      {isOverlap && !isDuplicate && <span className="syl-overlap-badge">Trùng giờ</span>}
                     </div>
                   );
                 })}
+                {conflictMessages.length > 0 && (
+                  <div className="syl-inline-error">
+                    <AlertCircle size={14} />
+                    <span>Trùng khung giờ: {conflictMessages.join('; ')}.</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
